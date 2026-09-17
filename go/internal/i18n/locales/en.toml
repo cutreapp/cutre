@@ -1,0 +1,77 @@
+# 英語の翻訳ファイル
+
+[default_title]
+description = "デフォルトのページタイトル"
+other = "Cutre"
+
+[default_description]
+description = "デフォルトのページ説明文"
+other = "Cutre makes trading character goods simple."
+
+[skip_to_main_content]
+description = "キーボード操作でメインコンテンツへ移動するスキップリンク"
+other = "Skip to main content"
+
+[welcome_show_title]
+description = "トップページのタイトル"
+other = "Cutre"
+
+[welcome_show_description]
+description = "トップページのmeta description"
+other = "Cutre makes trading character goods simple. Register the goods you want and the ones you can part with, and find someone to trade with."
+
+[welcome_show_heading]
+description = "トップページの見出し"
+other = "Welcome to Cutre!"
+
+[welcome_show_lead]
+description = "トップページの見出しの下に置く説明文"
+other = "Trading character goods, made simpler."
+
+[language_switcher_label]
+description = "言語スイッチャーのaria-label"
+other = "Language"
+
+[language_endonym]
+description = "その言語自身による言語名。言語スイッチャーと言語版の案内で使う"
+other = "English"
+
+[locale_suggestion_label]
+description = "言語版の案内のランドマーク名。案内先の言語で表示する"
+other = "Language notice"
+
+[locale_suggestion_message]
+description = "別の言語版があることを知らせる案内の本文。案内先の言語で表示する"
+other = "This page is also available in English."
+
+[locale_suggestion_switch]
+description = "言語版の案内から別の言語版へ移動するリンクの文言。案内先の言語で表示する"
+other = "Read in English"
+
+[locale_suggestion_dismiss]
+description = "言語版の案内を閉じるボタンの文言。案内先の言語で表示する"
+other = "Dismiss"
+
+[error_not_found_title]
+description = "404ページのタイトルと見出し"
+other = "Page not found"
+
+[error_not_found_message]
+description = "404ページの説明文"
+other = "The page you are looking for may have been removed, or its address may have changed."
+
+[error_not_found_back]
+description = "404ページからトップページへ戻るリンクの文言"
+other = "Back to the top page"
+
+[error_method_not_allowed_title]
+description = "405ページのタイトルと見出し"
+other = "This action is not available"
+
+[error_method_not_allowed_message]
+description = "405ページの説明文"
+other = "This address does not accept that action."
+
+[error_method_not_allowed_back]
+description = "405ページからトップページへ戻るリンクの文言"
+other = "Back to the top page"
