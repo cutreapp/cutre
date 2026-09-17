@@ -1,0 +1,6 @@
+# pnpmは共有設定をこのファイルから読み込む。
+# allowBuildsはインストールスクリプトの実行を許可するパッケージを列挙する。
+# esbuildと @parcel/watcher (tailwindcss --watchが使う) はpostinstallでネイティブバイナリを配置するが、pnpmは既定でこれをブロックする。
+allowBuilds:
+  "@parcel/watcher": true
+  esbuild: true

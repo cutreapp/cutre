@@ -1,0 +1,16 @@
+/* Cutreのスタイルシートのエントリポイント。
+   Tailwind v4はコンテンツソース (templファイルと生成された *_templ.go) を自動で検出するため、別の設定ファイルは要らない。
+
+   BasecoatはTailwindの直後に読み込む。
+   スタイルパックはreset / base層を出力するスタイルシートより後に置く必要があり、Tailwindのpreflightより前に置くとpreflightがBasecoatのコンポーネント既定 (borderやinputなど) をリセットしてしまうため。
+   テーマトークン (shadcn/ui互換のCSS変数) はBasecoatが :root と .dark に定義する。
+   ブランドカラーが決まったら、このimportの後に上書きを置く。 */
+@import "tailwindcss";
+@import "basecoat-css";
+
+/* ライトの配色だけを持つことをCSS側でも宣言し、<meta name="color-scheme">と揃える。
+   Basecoatが宣言するのは .dark 側だけのため、:root には自分で置く。
+   metaはCSSが届く前の初期描画に効き、こちらは要素単位の描画に効く。 */
+:root {
+  color-scheme: light;
+}

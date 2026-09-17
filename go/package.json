@@ -1,0 +1,28 @@
+{
+  "name": "cutre",
+  "private": true,
+  "scripts": {
+    "build:css": "tailwindcss -i web/style.css -o static/css/style.css --minify",
+    "build:js": "esbuild web/main.js --bundle --outfile=static/js/main.js --minify",
+    "build": "pnpm build:css && pnpm build:js",
+    "watch:css": "tailwindcss -i web/style.css -o static/css/style.css --watch",
+    "watch:js": "esbuild web/main.js --bundle --outfile=static/js/main.js --watch",
+    "watch": "concurrently \"pnpm:watch:css\" \"pnpm:watch:js\"",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": "24.21.0",
+    "pnpm": "10.34.5"
+  },
+  "packageManager": "pnpm@10.34.5",
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.3.3",
+    "basecoat-css": "^1.0.2",
+    "concurrently": "^10.0.5",
+    "esbuild": "^0.28.2",
+    "happy-dom": "^20.14.5",
+    "htmx.org": "^4.0.0",
+    "tailwindcss": "^4.3.3",
+    "vitest": "^4.1.11"
+  }
+}
