@@ -1,0 +1,12 @@
+package welcome
+
+import "github.com/cutreapp/cutre/go/internal/templates"
+
+// Show はトップページの本文を描画する。
+// 見出しと説明文だけの静的なページのため、渡すデータを持たない。
+templ Show() {
+	<div class="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center gap-4 px-4 py-16 text-center">
+		<h1 class="text-3xl font-bold tracking-tight sm:text-4xl">{ templates.T(ctx, "welcome_show_heading") }</h1>
+		<p class="text-muted-foreground">{ templates.T(ctx, "welcome_show_lead") }</p>
+	</div>
+}

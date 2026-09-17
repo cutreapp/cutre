@@ -1,0 +1,41 @@
+package layouts
+
+import (
+	"github.com/a-h/templ"
+
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+	"github.com/cutreapp/cutre/go/internal/viewmodel"
+)
+
+// DefaultLayoutData はデフォルトレイアウトに渡すデータ。
+// 引数を構造体にまとめるのは、レイアウトが運ぶものが増えてもシグネチャを変えずに済むようにするため。
+type DefaultLayoutData struct {
+	Meta viewmodel.PageMeta
+}
+
+// Default はページの内容を共通の<head>・フッター・ボディの外枠で包む基本のHTMLレイアウト。
+// lang属性はリクエストのロケールを反映する。
+templ Default(data DefaultLayoutData, content templ.Component) {
+	<!DOCTYPE html>
+	<html lang={ templates.Locale(ctx) }>
+		<head>
+			@components.Head(data.Meta)
+		</head>
+		<body class="flex min-h-screen flex-col bg-background text-foreground">
+			// キーボード / スクリーンリーダーの利用者が本文へ直接移動できるよう、最初のフォーカス可能要素として置く (WCAG 2.4.1)。
+			// フォーカスされるまでは視覚的に隠すが、display:noneでは隠さない (フォーカス自体が当たらなくなるため)。
+			<a
+				href="#main"
+				class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:text-foreground focus:shadow focus:outline focus:outline-2 focus:outline-ring"
+			>
+				{ templates.T(ctx, "skip_to_main_content") }
+			</a>
+			@components.LocaleSuggestion(data.Meta)
+			<main id="main" tabindex="-1" class="flex flex-1 flex-col">
+				@content
+			</main>
+			@components.Footer(data.Meta)
+		</body>
+	</html>
+}

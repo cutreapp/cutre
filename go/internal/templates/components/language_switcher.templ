@@ -1,0 +1,46 @@
+package components
+
+import (
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/viewmodel"
+)
+
+// LanguageSwitcher は全言語版へのリンクを並べる常設の言語スイッチャーを描画する。
+//
+// 各言語をその言語自身の名前で表記し、その言語のlang属性を付ける。
+// 英語に統一した表記では、その言語しか読めない利用者が自分の言語を見つけられない。
+// 国旗は言語ではなく国を表すため使わない。
+//
+// リンク先は相手言語版のトップではなく、見ているページの相手言語版にする。
+// JavaScriptを使わない素の<a href>で実装し、全ページの同じ場所 (フッター) に置く。
+// 表示中の言語版にはaria-currentを付け、選択中であることを支援技術にも伝える。
+//
+// data-locale-choiceは、クリックを選んだ言語として記録する処理 (web/locale-choice.js) が読む。
+// 記録が無くてもリンクとしては成立するため、JavaScriptが無効でも言語版の移動はできる。
+//
+// 言語版を持たないページ (エラーページなど) では領域ごと出力しない。
+// 中身の無いnavは支援技術の領域一覧に名前だけが並び、たどり着いても行き先が無い。
+templ LanguageSwitcher(meta viewmodel.PageMeta) {
+	if len(meta.Alternates) > 0 {
+		<nav aria-label={ templates.T(ctx, "language_switcher_label") }>
+			<ul class="flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+				for _, alternate := range meta.Alternates {
+					<li>
+						<a
+							href={ alternate.URL }
+							lang={ alternate.Lang }
+							hreflang={ alternate.Lang }
+							data-locale-choice={ alternate.Lang }
+							if alternate.Current {
+								aria-current="true"
+							}
+							class="rounded-sm underline underline-offset-4 hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring aria-[current]:font-medium aria-[current]:text-foreground aria-[current]:no-underline"
+						>
+							{ alternate.Endonym }
+						</a>
+					</li>
+				}
+			</ul>
+		</nav>
+	}
+}

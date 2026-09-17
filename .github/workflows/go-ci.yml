@@ -1,0 +1,235 @@
+name: Go CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - "go/**"
+      - ".github/workflows/go-ci.yml"
+  pull_request:
+    paths:
+      - "go/**"
+      - ".github/workflows/go-ci.yml"
+
+# 検査に必要なのはソースの読み取りだけで、書き込み権限を使うステップは無い。
+# push時のpnpm installとgo mod downloadは依存パッケージの取得を伴うため、
+# リポジトリの既定設定に依存せずGITHUB_TOKENを読み取り専用に固定する。
+permissions:
+  contents: read
+
+# PRに続けてpushしたとき、古いコミットに対するビルドとテストを走らせ続けない。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: "1.27.1"
+  NODE_VERSION: "24.21.0"
+  # go/Makefileは CI=true のとき op run を介さず、注入済みの環境変数をそのまま使う。
+  # GitHub Actionsも同じ値を既定で渡すが、Makefileの分岐が依存する値のためここで明示する。
+  CI: "true"
+  # dbmateはリリースバイナリから入れる (Dockerfile.devと同じ方法)。
+  # 浮動参照の `releases/latest` は使わず、バージョンとハッシュを固定してDockerfile.devと揃えて更新する。
+  DBMATE_VERSION: "v2.33.0"
+  DBMATE_SHA256: "dfd4027141b6e4357158099bdfe6c02b286af70f8e49057937744cf80b38ea1c"
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: go
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: go/go.sum
+
+      # 作業ツリーを書き換えない検査は、書き換えるステップより前に実行する。
+      # `make templ-generate` は `goimports -w .` をツリー全体に実行するため、その後ろに
+      # goimportsとsqlcのチェックを置くと、報告すべきドリフトが先に修復された状態で通ってしまう。
+      #
+      # どちらのチェックも作業ツリーを書き換えないため (`goimports -l` と `sqlc diff` は
+      # 報告するだけ)、`git diff --exit-code` のステップは要らない。
+      - name: Check goimports
+        run: make goimports-check
+
+      - name: Check sqlc generate
+        run: make sqlc-diff
+
+      - name: Check templ generate
+        run: |
+          make templ-generate
+          git diff --exit-code internal/templates/
+
+      - name: Check go mod tidy
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum
+
+      # golangci-lintのバージョンはDockerfile.devのGOLANGCI_LINT_VERSIONと揃えて更新する。
+      - name: Run golangci-lint
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          version: v2.13.2
+          working-directory: go
+          args: --config=.golangci.yml ./...
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: go
+    env:
+      APP_ENV: test
+      DATABASE_URL: postgres://postgres@localhost:5432/cutre_test?sslmode=disable
+      CUTRE_PORT: "8080"
+      CUTRE_DOMAIN: "test.example.com"
+
+    services:
+      postgresql:
+        image: postgres:18.6
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_DB: cutre_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: go/go.sum
+
+      - name: Get dependencies
+        run: go mod download
+
+      # test-go はテスト用データベースの構築 (db-setup-test) を前提ターゲットに持つため、
+      # ここで別ステップとして呼ばない。
+      - name: Run tests
+        run: make test-go
+
+  # このリポジトリのデータベースはいずれも go/db/schema.sql をロードして作るため、
+  # マイグレーションファイルのSQLはCIの他のどこでも実行されない。
+  # 結果をそのファイルへダンプし戻していないマイグレーションは、本番で初めて実行されることになる。
+  # 本ジョブはGit管理下のスキーマから作ったデータベースへマイグレーションを適用し、
+  # 続くダンプがそれと食い違えば失敗する。
+  schema:
+    name: Schema
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: go
+    env:
+      APP_ENV: test
+      DATABASE_URL: postgres://postgres@localhost:5432/cutre_test?sslmode=disable
+
+    services:
+      postgresql:
+        image: postgres:18.6
+        ports:
+          - 5432:5432
+        env:
+          POSTGRES_DB: cutre_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # pg_dumpは自分より新しいサーバーのダンプを拒否するが、ランナーのイメージが持つ
+      # クライアントは上のサービスコンテナのサーバーより古い。
+      # サーバーのメジャーバージョンに合わせたクライアントを入れてPATHの先頭に置き、
+      # 本ジョブが比較するダンプがGit管理下のファイルと同じpg_dumpのメジャーバージョンで作られるようにする。
+      - name: Set up PostgreSQL client
+        run: |
+          sudo install -d -m 0755 /etc/apt/keyrings
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            | sudo gpg --dearmor --yes -o /etc/apt/keyrings/postgresql.gpg
+          echo "deb [signed-by=/etc/apt/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list > /dev/null
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql-client-18
+          echo "/usr/lib/postgresql/18/bin" >> "$GITHUB_PATH"
+
+      - name: Set up dbmate
+        run: |
+          curl -fsSL -o /tmp/dbmate \
+            "https://github.com/amacneil/dbmate/releases/download/${DBMATE_VERSION}/dbmate-linux-amd64"
+          echo "${DBMATE_SHA256}  /tmp/dbmate" | sha256sum -c -
+          sudo install -m 0755 /tmp/dbmate /usr/local/bin/dbmate
+
+      - name: Check migration drift
+        run: make db-check-drift
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: go
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: go/go.sum
+
+      - name: Build
+        run: make build
+
+      - name: Check binary exists
+        run: |
+          if [ ! -f bin/cutre ]; then
+            echo "ビルドに失敗しました: バイナリが見つかりません"
+            exit 1
+          fi
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: go
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # フロントエンドの依存は go/package.json にあり、リポジトリルートのもの (Oxfmt) とは別。
+      # pnpmのバージョンと依存の取得先をどちらも go/ のファイルから決める。
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+        with:
+          package_json_file: go/package.json
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: go/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run frontend tests
+        run: make test-js

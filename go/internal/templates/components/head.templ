@@ -1,0 +1,35 @@
+package components
+
+import "github.com/cutreapp/cutre/go/internal/viewmodel"
+
+// Head は全ページ共通の<head>の内容を出力する。
+// アセットのURLに付く "?v=" は、バージョンが変わったときにブラウザのキャッシュを無効化する。
+//
+// meta charsetを先頭に置くのは、ブラウザが非ASCII文字に到達する前にデコード方法を知れるようにするため。
+// HTML Standardはこの宣言が先頭1024バイト以内にあることを求めている。
+templ Head(meta viewmodel.PageMeta) {
+	<meta charset="utf-8"/>
+	<meta name="viewport" content="width=device-width, initial-scale=1"/>
+	<title>{ meta.Title }</title>
+	<meta name="description" content={ meta.Description }/>
+	// ライトの配色だけを持つため、スクロールバーやフォーム部品などブラウザが描く既定UIもライトで描かせる。
+	<meta name="color-scheme" content="light"/>
+	if meta.CanonicalURL != "" {
+		<link rel="canonical" href={ meta.CanonicalURL }/>
+	}
+	// 表示中の言語版を含む全言語版を相互参照の形で並べる。自己参照が欠けたアノテーションは無視される。
+	for _, alternate := range meta.Alternates {
+		<link rel="alternate" hreflang={ alternate.Lang } href={ alternate.URL }/>
+	}
+	<meta property="og:title" content={ meta.Title }/>
+	<meta property="og:description" content={ meta.Description }/>
+	<meta property="og:type" content="website"/>
+	<meta property="og:site_name" content={ viewmodel.SiteName }/>
+	<meta property="og:locale" content={ meta.OGLocale }/>
+	// og:urlはcanonicalと同じアドレスにし、共有で集まるシグナルを正規のアドレスへ寄せる。
+	if meta.CanonicalURL != "" {
+		<meta property="og:url" content={ meta.CanonicalURL }/>
+	}
+	<link rel="stylesheet" href={ "/static/css/style.css?v=" + meta.AssetVersion }/>
+	<script type="module" src={ "/static/js/main.js?v=" + meta.AssetVersion }></script>
+}

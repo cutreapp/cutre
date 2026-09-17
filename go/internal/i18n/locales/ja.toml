@@ -1,0 +1,77 @@
+# 日本語の翻訳ファイル
+
+[default_title]
+description = "デフォルトのページタイトル"
+other = "Cutre"
+
+[default_description]
+description = "デフォルトのページ説明文"
+other = "〝かわいい〟を交換！キャラクターグッズの物々交換を簡単にするサービスです"
+
+[skip_to_main_content]
+description = "キーボード操作でメインコンテンツへ移動するスキップリンク"
+other = "メインコンテンツへスキップ"
+
+[welcome_show_title]
+description = "トップページのタイトル"
+other = "Cutre"
+
+[welcome_show_description]
+description = "トップページのmeta description"
+other = "Cutreはキャラクターグッズの物々交換を簡単にするサービスです。欲しいグッズと譲れるグッズを登録して、交換相手を見つけられます"
+
+[welcome_show_heading]
+description = "トップページの見出し"
+other = "Cutreにようこそ！"
+
+[welcome_show_lead]
+description = "トップページの見出しの下に置く説明文"
+other = "キャラクターグッズの物々交換を、もっと簡単に。"
+
+[language_switcher_label]
+description = "言語スイッチャーのaria-label"
+other = "言語"
+
+[language_endonym]
+description = "その言語自身による言語名。言語スイッチャーと言語版の案内で使う"
+other = "日本語"
+
+[locale_suggestion_label]
+description = "言語版の案内のランドマーク名。案内先の言語で表示する"
+other = "言語版の案内"
+
+[locale_suggestion_message]
+description = "別の言語版があることを知らせる案内の本文。案内先の言語で表示する"
+other = "このページは日本語でも読めます。"
+
+[locale_suggestion_switch]
+description = "言語版の案内から別の言語版へ移動するリンクの文言。案内先の言語で表示する"
+other = "日本語で読む"
+
+[locale_suggestion_dismiss]
+description = "言語版の案内を閉じるボタンの文言。案内先の言語で表示する"
+other = "閉じる"
+
+[error_not_found_title]
+description = "404ページのタイトルと見出し"
+other = "ページが見つかりません"
+
+[error_not_found_message]
+description = "404ページの説明文"
+other = "お探しのページは削除されたか、アドレスが変わった可能性があります。"
+
+[error_not_found_back]
+description = "404ページからトップページへ戻るリンクの文言"
+other = "トップページへ戻る"
+
+[error_method_not_allowed_title]
+description = "405ページのタイトルと見出し"
+other = "この操作は利用できません"
+
+[error_method_not_allowed_message]
+description = "405ページの説明文"
+other = "このアドレスでは、その操作を受け付けていません。"
+
+[error_method_not_allowed_back]
+description = "405ページからトップページへ戻るリンクの文言"
+other = "トップページへ戻る"

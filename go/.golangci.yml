@@ -1,0 +1,136 @@
+# golangci-lint v2の設定ファイル
+# https://golangci-lint.run/usage/configuration/
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  enable:
+    - depguard # レイヤー間の依存ルールを強制
+    - govet # Go標準の静的解析
+    - staticcheck # 高度な静的解析
+    - gosec # セキュリティチェック
+    - errcheck # 未チェックのエラーを検出
+    - ineffassign # 無効な代入を検出
+    - unused # 未使用コードを検出
+
+  exclusions:
+    # 生成テンプレートもdepguardで検査し、他のリンタだけを個別に除外する。
+    # generatedを無効にすると、生成ヘッダーを持つファイルは既定の一括除外から外れる。
+    # 下のrulesで個別除外を持つのは *_templ.go だけのため、生成コードを増やすときは
+    # そのファイル群に対する除外を足すか、リンタをそのまま通すかをここで決める。
+    generated: disable
+    rules:
+      # テストはフィクスチャや内部の継ぎ目を扱うためgosecを無効化し、
+      # レイヤーをまたぐテストヘルパーを組み立てられるようdepguardも外す。
+      - path: '(.+)_test\.go'
+        linters:
+          - gosec
+          - depguard
+      # templの生成ファイルは手書きではないため対象から外す。
+      # depguardだけは残す。生成元の.templが書いたimportがそのまま現れるため、レイヤー違反はここでも検出できる。
+      - path: '(.+)_templ\.go'
+        linters:
+          - govet
+          - staticcheck
+          - gosec
+          - errcheck
+          - ineffassign
+          - unused
+    paths:
+      - bin/.*
+      - vendor/.*
+      - static/.*
+      - node_modules/.*
+
+  settings:
+    gosec:
+      severity: medium
+      confidence: medium
+
+    # レイヤー依存ルール。denyに挙げるのは実在するパッケージだけで、レイヤーが増えたときに追記する。
+    depguard:
+      rules:
+        # Templates層: ViewModelが整えた値を描画する。データアクセスと上位のレイヤーを知らない。
+        templates-layer:
+          files:
+            - "**/internal/templates/**"
+          deny:
+            - pkg: github.com/cutreapp/cutre/go/internal/database
+              desc: "TemplatesはDatabaseに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/handler
+              desc: "TemplatesはHandlerに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/httperror
+              desc: "TemplatesはHttperrorに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/middleware
+              desc: "TemplatesはMiddlewareに依存できません。"
+
+        # ViewModel層: 表示用のデータ変換のみ。他のPresentation層パッケージに依存しない。
+        viewmodel-layer:
+          files:
+            - "**/internal/viewmodel/**"
+          deny:
+            - pkg: github.com/cutreapp/cutre/go/internal/database
+              desc: "ViewModelはDatabaseに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/handler
+              desc: "ViewModelはHandlerに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/httperror
+              desc: "ViewModelはHttperrorに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/middleware
+              desc: "ViewModelはMiddlewareに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/templates
+              desc: "ViewModelはTemplatesに依存できません。"
+
+        # Handler層: HTTPの入出力変換のみ。データアクセスはRepositoryとUseCaseを経由する。
+        handler-layer:
+          files:
+            - "**/internal/handler/**"
+          deny:
+            - pkg: github.com/cutreapp/cutre/go/internal/database
+              desc: "HandlerはDatabaseに直接依存できません。"
+
+        # Httperror層: どのリソースにも属さない共通のエラーページを描画する。
+        # Handler層と同じくPresentation層の入口のため、データアクセスの制約も同じにする。
+        httperror-layer:
+          files:
+            - "**/internal/httperror/**"
+          deny:
+            - pkg: github.com/cutreapp/cutre/go/internal/database
+              desc: "HttperrorはDatabaseに直接依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/handler
+              desc: "HttperrorはHandlerに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/middleware
+              desc: "HttperrorはMiddlewareに依存できません。"
+
+        # Middleware層: リクエストの前処理。ハンドラーと表示用データの組み立てを知らない。
+        middleware-layer:
+          files:
+            - "**/internal/middleware/**"
+          deny:
+            - pkg: github.com/cutreapp/cutre/go/internal/database
+              desc: "MiddlewareはDatabaseに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/handler
+              desc: "MiddlewareはHandlerに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/httperror
+              desc: "MiddlewareはHttperrorに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/viewmodel
+              desc: "MiddlewareはViewModelに依存できません。"
+
+formatters:
+  enable:
+    - gofmt # Go標準のフォーマット
+    - goimports # import文の整理
+  exclusions:
+    paths:
+      - bin/.*
+      - vendor/.*
+      - static/.*
+      - node_modules/.*
+      - '(.+)_templ\.go'
+  settings:
+    goimports:
+      # 本モジュールのimportをサードパーティと分けてグループ化する。
+      local-prefixes:
+        - github.com/cutreapp/cutre/go

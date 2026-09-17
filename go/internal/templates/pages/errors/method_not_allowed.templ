@@ -1,0 +1,15 @@
+package errors
+
+import "github.com/cutreapp/cutre/go/internal/templates"
+
+// MethodNotAllowed は405ページの本文を描画する。
+// アドレス自体はあるがその方法では受け付けないことを平易な言葉で伝え、訪問者を行き止まりに残さないようトップページへの導線を置く。
+//
+// 行き先は表示中の言語版のトップページにする。英語版を見ていた訪問者を日本語版へ送らないため。
+templ MethodNotAllowed() {
+	<div class="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center gap-4 px-4 py-16 text-center">
+		<h1 class="text-3xl font-bold tracking-tight sm:text-4xl">{ templates.T(ctx, "error_method_not_allowed_title") }</h1>
+		<p class="text-muted-foreground">{ templates.T(ctx, "error_method_not_allowed_message") }</p>
+		<a class="btn" data-variant="outline" href={ templates.RootPath(ctx) }>{ templates.T(ctx, "error_method_not_allowed_back") }</a>
+	</div>
+}
