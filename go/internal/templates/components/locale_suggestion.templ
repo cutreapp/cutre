@@ -1,0 +1,35 @@
+package components
+
+import "github.com/cutreapp/cutre/go/internal/viewmodel"
+
+// LocaleSuggestion は別の言語版があることを知らせる案内を描画する。
+// 案内すべき言語版が無いときは何も出力しない。
+//
+// 出し分けはサーバー側で済ませてあり、案内の有無は最初のHTMLに入っている。
+// 描画のあとから案内が現れてレイアウトがずれることがない。
+//
+// 文言は案内先の言語のため、lang属性でその言語を宣言してスクリーンリーダーの読み上げを合わせる。
+// asideはcomplementaryランドマークになる。名前が無いと支援技術の領域一覧で種別しか読まれないため、
+// 案内先の言語のaria-labelを付ける (領域の中身がその言語のため、名前も同じ言語で揃える)。
+// 移動リンクと閉じるボタンにdata-locale-choiceを付け、クリックを選んだ言語として記録する処理
+// (web/locale-choice.js) の対象にする。閉じる操作は「表示中の言語版のままでよい」という選択のため、
+// 記録するのは案内先ではなく表示中のロケールになる。
+// 閉じるボタンにはdata-locale-suggestion-dismissも付け、記録に加えて案内を隠す対象にする。
+templ LocaleSuggestion(meta viewmodel.PageMeta) {
+	if suggestion := meta.LocaleSuggestion; suggestion != nil {
+		<aside
+			data-locale-suggestion
+			lang={ suggestion.Lang }
+			aria-label={ suggestion.Label }
+			class="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-b border-border bg-muted px-4 py-3 text-sm text-muted-foreground"
+		>
+			<p>{ suggestion.Message }</p>
+			<a class="btn" data-variant="outline" data-size="sm" href={ suggestion.URL } hreflang={ suggestion.Lang } data-locale-choice={ suggestion.Lang }>
+				{ suggestion.SwitchLabel }
+			</a>
+			<button type="button" class="btn" data-variant="ghost" data-size="sm" data-locale-choice={ suggestion.DismissLocale } data-locale-suggestion-dismiss>
+				{ suggestion.DismissLabel }
+			</button>
+		</aside>
+	}
+}
