@@ -1,0 +1,10 @@
+/.env
+/.playwright-cli
+/bin
+/node_modules
+/seed-users.toml
+/static/css/*
+!/static/css/.gitkeep
+/static/js/*
+!/static/js/.gitkeep
+/tmp
