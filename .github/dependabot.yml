@@ -1,0 +1,52 @@
+# Dependabotのバージョン更新設定。
+# 参照: https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+#
+# メジャーは破壊的変更を含むことがあり個別のPRでレビューしたいため、
+# 以下のすべてのグループでpatch / minorのみを含める。
+
+version: 2
+updates:
+  # GoアプリのGo module依存。
+  - package-ecosystem: "gomod"
+    directory: "/go"
+    schedule:
+      interval: "daily"
+    groups:
+      golang-x:
+        patterns:
+          - "golang.org/x/*"
+        update-types:
+          - "patch"
+          - "minor"
+      jackc-pgx:
+        patterns:
+          - "github.com/jackc/*"
+        update-types:
+          - "patch"
+          - "minor"
+
+  # Goアプリのアセットパイプライン用のnpm (pnpm) 依存。
+  - package-ecosystem: "npm"
+    directory: "/go"
+    schedule:
+      interval: "daily"
+    groups:
+      tailwindcss:
+        patterns:
+          - "tailwindcss"
+          - "@tailwindcss/*"
+        update-types:
+          - "patch"
+          - "minor"
+
+  # リポジトリ全体のフォーマッタ (Oxfmt) 用のnpm (pnpm) 依存。
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "daily"
+
+  # CIワークフローが使うGitHub Actions。
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "daily"

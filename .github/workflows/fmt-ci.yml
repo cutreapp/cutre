@@ -1,0 +1,85 @@
+name: Formatter
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    paths:
+      - "**/*.js"
+      - "**/*.mjs"
+      - "**/*.ts"
+      - "**/*.tsx"
+      - "**/*.css"
+      - "**/*.json"
+      - "**/*.yaml"
+      - "**/*.yml"
+      - "**/*.md"
+      - "**/*.toml"
+  pull_request:
+    paths:
+      - "**/*.js"
+      - "**/*.mjs"
+      - "**/*.ts"
+      - "**/*.tsx"
+      - "**/*.css"
+      - "**/*.json"
+      - "**/*.yaml"
+      - "**/*.yml"
+      - "**/*.md"
+      - "**/*.toml"
+
+# 検査に必要なのはソースの読み取りだけで、書き込み権限を使うステップは無い。
+# push時のpnpm installは依存パッケージのライフサイクルスクリプトを実行するため、
+# リポジトリの既定設定に依存せずGITHUB_TOKENを読み取り専用に固定する。
+permissions:
+  contents: read
+
+# PRに続けてpushしたとき、古いコミットに対するpnpm installとkoryluslintのビルドを
+# 走らせ続けない。
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: "1.27.1"
+  NODE_VERSION: "24.21.0"
+
+jobs:
+  oxfmt:
+    name: Oxfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install
+      - run: pnpm fmt:check
+
+  # koryluslintの `md` サブコマンドでMarkdownの句点改行を検査する。
+  # koryluslintは go/go.mod の tool ディレクティブで固定し、公開モジュール
+  # github.com/korylus/tools から取得する。
+  #
+  # 検査はPRのベースとの差分行 (`-base`) に限定するため、触っていない既存Markdownは
+  # 指摘されない。したがってpull request時のみ実行し、fetch-depth: 0で差分に必要な
+  # ベースブランチを取得する。
+  prose:
+    name: Markdown prose
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: go/go.sum
+      # ルートMakefileの lint-md-base ターゲット経由で md を実行し、固定版koryluslintを
+      # ビルドしてリポジトリルートのMarkdownをPRのベースとの差分で走査する。
+      # mdが go tool ではなくビルド済みバイナリを要する理由はルートMakefileを参照。
+      - name: Run koryluslint md (changed lines)
+        run: make lint-md-base BASE=origin/${{ github.base_ref }}
