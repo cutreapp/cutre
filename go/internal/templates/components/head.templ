@@ -12,9 +12,15 @@ templ Head(meta viewmodel.PageMeta) {
 	<meta name="viewport" content="width=device-width, initial-scale=1"/>
 	<title>{ meta.Title }</title>
 	<meta name="description" content={ meta.Description }/>
-	// ライトの配色だけを持つため、スクロールバーやフォーム部品などブラウザが描く既定UIもライトで描かせる。
-	<meta name="color-scheme" content="light"/>
-	if meta.CanonicalURL != "" {
+	// ライトとダークの配色を持つことを、CSSが届く前の初期描画に伝える。
+	<meta name="color-scheme" content="light dark"/>
+	// 端末の配色の設定に合わせて html に dark クラスを付ける。本文を描く前に効かせるため、
+	// async / defer を付けずに同期的に読み込む。
+	<script src={ "/static/js/theme.js?v=" + meta.AssetVersion }></script>
+	if meta.NoIndex {
+		<meta name="robots" content="noindex"/>
+	}
+	if meta.CanonicalURL != "" && !meta.NoIndex {
 		<link rel="canonical" href={ meta.CanonicalURL }/>
 	}
 	// 表示中の言語版を含む全言語版を相互参照の形で並べる。自己参照が欠けたアノテーションは無視される。
@@ -27,8 +33,11 @@ templ Head(meta viewmodel.PageMeta) {
 	<meta property="og:site_name" content={ viewmodel.SiteName }/>
 	<meta property="og:locale" content={ meta.OGLocale }/>
 	// og:urlはcanonicalと同じアドレスにし、共有で集まるシグナルを正規のアドレスへ寄せる。
-	if meta.CanonicalURL != "" {
+	if meta.CanonicalURL != "" && !meta.NoIndex {
 		<meta property="og:url" content={ meta.CanonicalURL }/>
+	}
+	for _, origin := range meta.PreconnectOrigins {
+		<link rel="preconnect" href={ origin }/>
 	}
 	<link rel="stylesheet" href={ "/static/css/style.css?v=" + meta.AssetVersion }/>
 	<script type="module" src={ "/static/js/main.js?v=" + meta.AssetVersion }></script>

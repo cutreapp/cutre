@@ -85,6 +85,14 @@ type PageMeta struct {
 
 	// LocaleSuggestion は別の言語版を知らせる案内。案内するものが無いときはnil。
 	LocaleSuggestion *LocaleSuggestion
+
+	// PreconnectOrigins はこのページが接続する第三者オリジン。
+	// 使うページだけで宣言し、DNS・TCP・TLSの接続準備を先行させる。
+	PreconnectOrigins []string
+
+	// NoIndex は検索エンジンにこのページをインデックスさせないかどうか。
+	// 真のときはcanonicalを宣言しない。「正規はこのアドレス」と「インデックスするな」は矛盾したシグナルになる。
+	NoIndex bool
 }
 
 // ogLocaleFromLocale はロケールをOpen Graphが要求する言語_地域の表記へ変換する。
@@ -183,5 +191,30 @@ func ErrorPageMeta(ctx context.Context, cfg *config.Config) PageMeta {
 		Description:  i18n.T(ctx, "default_description"),
 		AssetVersion: cfg.AssetVersion(),
 		OGLocale:     ogLocaleFromLocale(i18n.GetLocale(ctx)),
+	}
+}
+
+// SignedInPageMeta はログイン後のページの基準となるメタ情報を返す。
+//
+// CanonicalURL・Alternates・LocaleSuggestionはいずれも持たせない。
+// ログイン後のページは表示言語を users.locale で決め、言語版のURLを持たないため、
+// 別言語版への参照も、別言語版があるという案内も成り立たない。
+// 利用者ごとの内容で検索の対象にもならないため、正規のアドレスも宣言せず、インデックスも断る。
+// 未ログインのクローラーはログイン画面へ送られて本文に届かないが、noindexはその前提が崩れたときの防御として付ける。
+func SignedInPageMeta(ctx context.Context, cfg *config.Config) PageMeta {
+	return PageMeta{
+		Title:        i18n.T(ctx, "default_title"),
+		Description:  i18n.T(ctx, "default_description"),
+		AssetVersion: cfg.AssetVersion(),
+		OGLocale:     ogLocaleFromLocale(i18n.GetLocale(ctx)),
+		NoIndex:      true,
+	}
+}
+
+// AddTurnstilePreconnect はウィジェットを描画するページの接続準備を宣言する。
+// サイトキーが空なら外部通信しないため、接続準備も行わない。
+func (p *PageMeta) AddTurnstilePreconnect(siteKey string) {
+	if siteKey != "" {
+		p.PreconnectOrigins = append(p.PreconnectOrigins, "https://challenges.cloudflare.com")
 	}
 }

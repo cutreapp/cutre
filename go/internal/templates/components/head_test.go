@@ -77,7 +77,8 @@ func TestHead_MetaCharset(t *testing.T) {
 	wants := []string{
 		`<meta name="viewport" content="width=device-width, initial-scale=1">`,
 		`<title>テスト</title>`,
-		`<meta name="color-scheme" content="light">`,
+		`<meta name="color-scheme" content="light dark">`,
+		`<script src="/static/js/theme.js?v="></script>`,
 		`<meta property="og:type" content="website">`,
 	}
 	for _, want := range wants {
@@ -130,5 +131,55 @@ func TestHead_NoAlternates(t *testing.T) {
 
 	if strings.Contains(buf.String(), `rel="alternate"`) {
 		t.Error("言語版を持たないページの出力に rel=\"alternate\" が含まれている")
+	}
+}
+
+// TestHead_NoIndex は、インデックスを断るページだけがrobotsのmetaを出し、
+// そのページではcanonicalを宣言しないことを検証する。
+// 「正規はこのアドレス」と「インデックスするな」を同時に出すと、検索エンジンに矛盾したシグナルを送る。
+func TestHead_NoIndex(t *testing.T) {
+	t.Parallel()
+
+	const canonical = "https://cutre.example.com/sign_in"
+
+	tests := []struct {
+		name          string
+		meta          viewmodel.PageMeta
+		wantNoIndex   bool
+		wantCanonical bool
+	}{
+		{
+			name:          "インデックスを許すページはrobotsのmetaを出さない",
+			meta:          viewmodel.PageMeta{CanonicalURL: canonical},
+			wantNoIndex:   false,
+			wantCanonical: true,
+		},
+		{
+			name:          "インデックスを断るページはrobotsのmetaを出し、canonicalを宣言しない",
+			meta:          viewmodel.PageMeta{CanonicalURL: canonical, NoIndex: true},
+			wantNoIndex:   true,
+			wantCanonical: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			var buf bytes.Buffer
+			if err := components.Head(tt.meta).Render(context.Background(), &buf); err != nil {
+				t.Fatalf("Render()のエラー = %v", err)
+			}
+
+			html := buf.String()
+			if got := strings.Contains(html, `<meta name="robots" content="noindex">`); got != tt.wantNoIndex {
+				t.Errorf("robotsのmetaの出力有無 = %t、期待値 = %t", got, tt.wantNoIndex)
+			}
+			for _, tag := range []string{`<link rel="canonical"`, `<meta property="og:url"`} {
+				if got := strings.Contains(html, tag); got != tt.wantCanonical {
+					t.Errorf("%qの出力有無 = %t、期待値 = %t", tag, got, tt.wantCanonical)
+				}
+			}
+		})
 	}
 }
