@@ -16,6 +16,10 @@ help: ## ヘルプを表示
 run: ## サーバーを起動
 	$(OP_RUN_DEV) go run ./cmd/cutre serve
 
+.PHONY: seed
+seed: ## seed-users.toml の開発用アカウントを作る (既にあるものは飛ばす)
+	$(OP_RUN_DEV) go run ./cmd/cutre seed
+
 .PHONY: browse-check
 browse-check: ## devサイトのブラウザ確認に必要な環境を、資格情報の値を出さずに検証
 	$(OP_RUN_DEV) bash scripts/browse.sh check

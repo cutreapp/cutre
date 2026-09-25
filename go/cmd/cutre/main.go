@@ -1,5 +1,7 @@
 // cutreコマンドはCutreのコマンドラインのエントリーポイント。
-// serveサブコマンドがHTTPサーバーを起動する。
+// serveサブコマンドがHTTPサーバーを起動し、seedサブコマンドが開発用のアカウントを作る。
+// invitationサブコマンドは、管理者が招待者の無い招待リンクを発行するのに使う。
+// userサブコマンドは、管理者がユーザーの二要素認証を無効にするのに使う。
 package main
 
 import (
@@ -32,6 +34,12 @@ func run(args []string, stderr io.Writer) int {
 	switch args[0] {
 	case "serve":
 		return runServe()
+	case "seed":
+		return runSeed(os.Stdout)
+	case "invitation":
+		return runInvitation(args[1:], os.Stdout, stderr)
+	case "user":
+		return runUser(args[1:], os.Stdout, stderr)
 	default:
 		// ここは診断情報の出力先そのものであり、書き込みの失敗を報告する先が残っていないためエラーを捨てる。
 		// 何が起きたかは終了コードで呼び出し側に伝わる。
@@ -49,5 +57,8 @@ func usage(w io.Writer) {
 
 コマンド:
   serve      HTTPサーバーを起動する
+  seed       開発用のアカウントを作る (開発環境のみ)
+  invitation 招待リンクを発行する
+  user       ユーザーの二要素認証を無効にする
 `)
 }
