@@ -1,0 +1,36 @@
+package already_registered_notice
+
+import (
+	"strings"
+
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/emails/layouts"
+)
+
+// Data は、登録済みのメールアドレスへログインを案内するメールに描画する値。
+type Data struct {
+	// SignInURL はログイン画面の絶対URL。受け取る人の言語版を指す。
+	SignInURL string
+}
+
+// HTML はログインを案内するメールのHTMLの本文を描画する。
+templ HTML(data Data) {
+	@layouts.Default(templates.Locale(ctx), templates.T(ctx, "already_registered_notice_email_subject")) {
+		<p>{ templates.T(ctx, "already_registered_notice_email_intro") }</p>
+		<p>{ templates.T(ctx, "already_registered_notice_email_sign_in") }</p>
+		<p><a href={ templ.SafeURL(data.SignInURL) }>{ data.SignInURL }</a></p>
+		<p>{ templates.T(ctx, "email_ignore_if_unexpected") }</p>
+	}
+}
+
+// Text はログインを案内するメールのテキストの本文を描画する。
+// 改行を保つため templ.Raw で書き出す理由は確認コードのメールと同じ。
+templ Text(data Data) {
+	@templ.Raw(strings.Join([]string{
+		templates.T(ctx, "already_registered_notice_email_intro"),
+		templates.T(ctx, "already_registered_notice_email_sign_in"),
+		data.SignInURL,
+		templates.T(ctx, "email_ignore_if_unexpected"),
+		"Cutre",
+	}, "\n\n") + "\n")
+}
