@@ -72,7 +72,7 @@ func LocaleSuggestion(meta viewmodel.PageMeta) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" class=\"flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-b border-border bg-muted px-4 py-3 text-sm text-muted-foreground\"><p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" class=\"flex flex-wrap items-center justify-center gap-x-4 gap-y-2 border-b border-border bg-muted px-4 py-3 text-sm text-foreground\"><p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

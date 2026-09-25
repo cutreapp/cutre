@@ -233,3 +233,6 @@ jobs:
 
       - name: Run frontend tests
         run: make test-js
+
+      - name: Check design tokens are in sync
+        run: make tokens-diff

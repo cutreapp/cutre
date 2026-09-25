@@ -50,6 +50,9 @@ make lint-md-base BASE=origin/main  # Markdownの句点改行 (基準ブラン�
 make -C go db-new name=create_users  # マイグレーションファイルを作成
 make -C go db-migrate                # マイグレーションを実行し、db/schema.sqlを更新
 make -C go sqlc-generate             # SQLクエリからGoコードを生成
+
+# デザイントークン
+make -C go tokens-generate  # web/tokens.json から web/tokens.css を生成
 ```
 
 ほかのターゲットは `make help` / `make -C go help` で確認できます。

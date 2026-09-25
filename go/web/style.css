@@ -3,14 +3,67 @@
 
    BasecoatはTailwindの直後に読み込む。
    スタイルパックはreset / base層を出力するスタイルシートより後に置く必要があり、Tailwindのpreflightより前に置くとpreflightがBasecoatのコンポーネント既定 (borderやinputなど) をリセットしてしまうため。
-   テーマトークン (shadcn/ui互換のCSS変数) はBasecoatが :root と .dark に定義する。
-   ブランドカラーが決まったら、このimportの後に上書きを置く。 */
+   テーマトークン (shadcn/ui互換のCSS変数) はBasecoatが :root と .dark に定義し、その後に読み込む tokens.css がCutreの値で上書きする。
+   tokens.css は web/tokens.json から生成する (make -C go tokens-generate)。 */
 @import "tailwindcss";
 @import "basecoat-css";
+@import "./tokens.css";
 
-/* ライトの配色だけを持つことをCSS側でも宣言し、<meta name="color-scheme">と揃える。
-   Basecoatが宣言するのは .dark 側だけのため、:root には自分で置く。
-   metaはCSSが届く前の初期描画に効き、こちらは要素単位の描画に効く。 */
-:root {
+/* ブラウザが描く既定UI (スクロールバーやフォーム部品) の配色を、html.dark の有無に揃える。
+   Basecoatが .dark に color-scheme: dark を置くため、ライト側だけを自分で置く。
+   <meta name="color-scheme" content="light dark"> のままだと、JavaScriptが無効で dark クラスが付かない端末でも既定UIがダークで描かれる。 */
+:root:not(.dark) {
   color-scheme: light;
+}
+
+/* Basecoatのボタン・バッジ・アラートに、Cutreのブランド色と状態色のバリアント (data-variant) を足す。
+   Basecoatと同じcomponents層に置き、Tailwindのユーティリティで上書きできるようにする。
+   Basecoatより後に読み込まれ、セレクターの詳細度もBasecoatの既定 (`.btn` や `.alert`) 以上のため、背景や枠の色はこちらが優先される。 */
+@layer components {
+  /* ボタンはバリアント・サイズによらずピル形にする。
+     Basecoatは小さいサイズ (data-size) の角丸を .btn[data-size="sm"] などで指定するため、同じ詳細度で上書きする。 */
+  .btn,
+  .btn[data-size] {
+    @apply rounded-full;
+  }
+
+  /* 淡いピンクは地とのコントラストが低いため、一段濃いピンクの枠で輪郭を付ける。
+     枠の色を上書きするとBasecoatのフォーカス時の枠の色も消えるため、付け直す。 */
+  .btn[data-variant="brand"] {
+    @apply border-brand-line bg-brand text-brand-foreground hover:bg-brand-hover focus-visible:border-ring;
+  }
+
+  .badge[data-variant="brand"] {
+    @apply border-brand-border bg-brand-subtle text-brand-strong;
+  }
+
+  .badge[data-variant="success"] {
+    @apply bg-success text-success-foreground;
+  }
+
+  .badge[data-variant="warning"] {
+    @apply bg-warning text-warning-foreground;
+  }
+
+  .alert[data-variant="brand"] {
+    @apply border-brand-border bg-brand-subtle text-brand-strong;
+  }
+
+  .alert[data-variant="brand"] > section {
+    @apply text-brand-strong;
+  }
+
+  .alert[data-variant="warning"] {
+    @apply border-warning bg-warning text-warning-foreground;
+  }
+
+  .alert[data-variant="warning"] > section {
+    @apply text-warning-foreground;
+  }
+
+  /* 画面の内容を入れるカード。見出しや補足の文はカードの外 (bg-pageの地の上) に置く。
+     md未満は横幅いっぱいに広げて上下にだけ線を引き、md以上は角を丸めて四辺に線を引く。 */
+  .page-card {
+    @apply border-y bg-card p-4 text-card-foreground md:rounded-lg md:border;
+  }
 }

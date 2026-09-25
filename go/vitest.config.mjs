@@ -4,7 +4,7 @@ export default defineConfig({
   test: {
     // Cookieとフォーカスを扱うためDOM環境を使う。Secure Cookieを検証できるHTTPSのURLにする。
     environment: "happy-dom",
-    include: ["web/**/*.test.js"],
+    include: ["web/**/*.test.js", "scripts/**/*.test.mjs"],
     environmentOptions: {
       happyDOM: {
         url: "https://cutre.example.com/",

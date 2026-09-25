@@ -32,6 +32,14 @@ browse-close: ## ブラウザセッションを閉じ一時ファイルを削除
 assets: ## CSS / JSを static/ にビルド
 	pnpm build
 
+.PHONY: tokens-generate
+tokens-generate: ## デザイントークン (web/tokens.json) から web/tokens.css を生成
+	node scripts/generate-tokens.mjs
+
+.PHONY: tokens-diff
+tokens-diff: ## web/tokens.css が web/tokens.json と同期しているかをチェック
+	node scripts/generate-tokens.mjs --check
+
 .PHONY: templ-generate
 templ-generate: ## templファイルからGoコードを生成 (goimportsも実行)
 	go tool templ generate

@@ -3,10 +3,10 @@
   "private": true,
   "scripts": {
     "build:css": "tailwindcss -i web/style.css -o static/css/style.css --minify",
-    "build:js": "esbuild web/main.js --bundle --outfile=static/js/main.js --minify",
+    "build:js": "esbuild web/main.js web/theme.js --bundle --outdir=static/js --minify",
     "build": "pnpm build:css && pnpm build:js",
     "watch:css": "tailwindcss -i web/style.css -o static/css/style.css --watch",
-    "watch:js": "esbuild web/main.js --bundle --outfile=static/js/main.js --watch",
+    "watch:js": "esbuild web/main.js web/theme.js --bundle --outdir=static/js --watch",
     "watch": "concurrently \"pnpm:watch:css\" \"pnpm:watch:js\"",
     "test": "vitest run"
   },
