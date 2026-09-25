@@ -72,3 +72,24 @@ func TestRootPath(t *testing.T) {
 		})
 	}
 }
+
+// TestInvitationPath は、招待リンクのパスが /i/ の後ろにトークンを置く短い形になることを検証する。
+func TestInvitationPath(t *testing.T) {
+	t.Parallel()
+
+	if got := templates.InvitationPath("abc_DEF-123"); got != "/i/abc_DEF-123" {
+		t.Errorf("InvitationPath() = %q、期待値 = %q", got, "/i/abc_DEF-123")
+	}
+}
+
+// TestWithReturnTo は、戻り先をクエリの値としてエスケープして付け、空なら何も付けないことを検証する。
+func TestWithReturnTo(t *testing.T) {
+	t.Parallel()
+
+	if got, want := templates.WithReturnTo("/sign_in/two_factor", "/@cutre_user?tab=1"), "/sign_in/two_factor?return_to=%2F%40cutre_user%3Ftab%3D1"; got != want {
+		t.Errorf("WithReturnTo() = %q、期待値 = %q", got, want)
+	}
+	if got, want := templates.WithReturnTo("/sign_in", ""), "/sign_in"; got != want {
+		t.Errorf("WithReturnTo() = %q、期待値 = %q", got, want)
+	}
+}

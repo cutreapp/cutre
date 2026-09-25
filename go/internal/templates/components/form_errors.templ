@@ -1,0 +1,75 @@
+package components
+
+import (
+	"github.com/cutreapp/cutre/go/internal/model"
+	"github.com/cutreapp/cutre/go/internal/templates"
+)
+
+// FormErrors はフォーム全体に関わるエラー (資格情報の不一致など) を描画する。
+//
+// 最初のエラーには autofocus を付け、再描画した画面を開いたときにフォーカスをそこへ移す。
+// ページの読み込みと同時に存在するライブリージョンは読み上げられないことがあり、
+// フォーカスを移せばスクリーンリーダーの利用者も何が起きたかを最初に知れる。
+// JavaScriptを使わずに済むよう、tabindex="-1" でフォーカスを受けられるようにしてHTMLの autofocus で移す。
+// フォーム全体のエラーと要約の両方があるときは、文書の先にあるこちらが優先される。
+templ FormErrors(formErrors *model.ValidationError) {
+	if formErrors != nil {
+		for i, message := range formErrors.Global {
+			<div
+				class="alert"
+				data-variant="destructive"
+				role="alert"
+				if i == 0 {
+					tabindex="-1"
+					autofocus
+				}
+			>
+				<h2>{ message }</h2>
+			</div>
+		}
+	}
+}
+
+// FormErrorSummary はフィールドのエラーをフォームの冒頭にまとめて並べる。
+// 各項目は該当する入力欄へのリンクにし、長いフォームでもエラーのある欄へ移動できるようにする。
+//
+// FormErrors と同じ理由で、再描画した画面を開いたときにフォーカスを要約へ移す。
+// role="alert" を付けないのは、同じメッセージを各入力欄の FieldErrors が既に通知しているため。
+// 両方に付けると同じエラーが二度読み上げられる。
+templ FormErrorSummary(data FormErrorSummaryData) {
+	if data.hasEntries() {
+		<div class="alert" data-variant="destructive" tabindex="-1" autofocus>
+			<h2>{ templates.T(ctx, "form_error_summary_heading") }</h2>
+			<section>
+				<ul class="list-outside list-disc ps-5">
+					for _, field := range data.Fields {
+						for _, message := range data.Errors.GetFieldErrors(field.Name) {
+							<li>
+								<a href={ templ.SafeURL("#" + field.Name) } class="underline">
+									{ templates.T(ctx, field.LabelKey) }: { message }
+								</a>
+							</li>
+						}
+					}
+				</ul>
+			</section>
+		</div>
+	}
+}
+
+// FieldErrors は入力欄のエラーメッセージを、入力欄の直後に描画する。
+// idは FieldErrorsDescribedBy と揃え、入力欄の aria-describedby から参照させる。
+templ FieldErrors(field string, formErrors *model.ValidationError) {
+	for i, message := range formErrors.GetFieldErrors(field) {
+		<p id={ fieldErrorID(field, i) } role="alert">{ message }</p>
+	}
+}
+
+// RequiredFieldLabel は必須の入力欄のラベルを、必須であることの注記付きで描画する。
+// 注記を記号 (*) ではなく文字にするのは、記号の意味を知らない利用者と支援技術にも伝わるようにするため。
+templ RequiredFieldLabel(field string, label string) {
+	<label for={ field } class="items-baseline gap-1">
+		<span>{ label }</span>
+		<span class="text-xs font-normal text-muted-foreground">({ templates.T(ctx, "field_required") })</span>
+	</label>
+}

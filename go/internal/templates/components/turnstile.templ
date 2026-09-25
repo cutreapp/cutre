@@ -1,0 +1,24 @@
+package components
+
+import "github.com/cutreapp/cutre/go/internal/templates"
+
+// Turnstile はCloudflare Turnstileのウィジェットを描画する。
+// フォームの内側に置くと、送信時にブラウザが cf-turnstile-response のトークンをフォームへ加える。
+// スクリプトはasync・deferで読み込み、HTMLの解析を止めない。
+//
+// siteKeyが空のとき (Turnstileを無効にした開発・テスト環境) はスクリプトもウィジェットも出力しない。
+// 無効な環境で外部へのリクエストを発生させないため。
+//
+// 配色はサイトと同じく端末の設定に従わせる (auto)。
+// 文言はブラウザの言語ではなく、表示中のページの言語に合わせる。
+templ Turnstile(siteKey string) {
+	if siteKey != "" {
+		<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+		<div
+			class="cf-turnstile"
+			data-sitekey={ siteKey }
+			data-theme="auto"
+			data-language={ templates.Locale(ctx) }
+		></div>
+	}
+}
