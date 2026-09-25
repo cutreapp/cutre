@@ -1,0 +1,151 @@
+package settings_two_factor_auth
+
+import (
+	"strings"
+
+	"github.com/cutreapp/cutre/go/internal/model"
+	"github.com/cutreapp/cutre/go/internal/qrcode"
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+)
+
+// NewPageData は二要素認証を有効にする画面の描画に使うデータ。
+type NewPageData struct {
+	CSRFToken string
+	// Secret は認証アプリへ手で入力するbase32の秘密鍵。
+	Secret string
+	// OTPAuthURL は秘密鍵を認証アプリへ登録するotpauth URI。
+	OTPAuthURL string
+	// QRCode は OTPAuthURL のQRコード。
+	QRCode *qrcode.Code
+	// Code は再描画のときに入力欄へ戻すコード。
+	Code       string
+	FormErrors *model.ValidationError
+}
+
+// newSummaryFields はエラーの要約に並べるフィールドを、フォームに現れる順で持つ。
+var newSummaryFields = []components.FormErrorSummaryField{
+	{Name: "code", LabelKey: "settings_two_factor_auth_new_code_label"},
+}
+
+// New は、認証アプリへ秘密鍵を登録し、表示されたコードで確かめる画面を描画する。
+//
+// スマホで開いているときは画面のQRコードを同じスマホのカメラで読めないため、md未満ではotpauthのリンクを先頭に置き、
+// QRコードと手入力用のキーをその下に回す。md以上ではQRコードを先頭にする。
+templ New(data NewPageData) {
+	<div class="flex w-full flex-1 flex-col gap-3 py-4 md:mx-auto md:max-w-180">
+		@pageHeading(templates.SettingsTwoFactorAuthPath, templates.T(ctx, "settings_two_factor_auth_new_back"), templates.T(ctx, "settings_two_factor_auth_new_heading"))
+		<section class="page-card flex flex-col gap-3" aria-labelledby="two-factor-auth-register-heading">
+			@stepHeading("1", "two-factor-auth-register-heading", templates.T(ctx, "settings_two_factor_auth_new_register_heading"))
+			<a href={ templ.SafeURL(data.OTPAuthURL) } class="btn w-full md:order-last" data-variant="brand">
+				<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"></path><path d="M20 4l-9 9"></path><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"></path></svg>
+				{ templates.T(ctx, "settings_two_factor_auth_new_open_app") }
+			</a>
+			<p class="flex items-center gap-2 text-sm text-muted-foreground md:hidden">
+				<span aria-hidden="true" class="h-px flex-1 bg-border"></span>
+				{ templates.T(ctx, "settings_two_factor_auth_new_on_computer") }
+				<span aria-hidden="true" class="h-px flex-1 bg-border"></span>
+			</p>
+			<div class="flex items-center gap-3">
+				// QRコードはダークモードでも白地に黒で描く。招待のQRコードと同じく、反転した符号を読めない端末があるため。
+				<svg
+					role="img"
+					aria-label={ templates.T(ctx, "settings_two_factor_auth_new_qr_code_label") }
+					xmlns="http://www.w3.org/2000/svg"
+					viewBox={ data.QRCode.ViewBox() }
+					class="size-32 shrink-0 rounded-lg border bg-white md:size-40"
+					shape-rendering="crispEdges"
+				>
+					<path class="fill-black" d={ data.QRCode.Path }></path>
+				</svg>
+				<p class="min-w-0 flex-1 text-sm">{ templates.T(ctx, "settings_two_factor_auth_new_qr_code_help") }</p>
+			</div>
+			// キーはスマホ幅でも省略せずに見えるよう、QRコードの横ではなく下に全幅で置く。
+			<div class="flex items-center gap-2">
+				<input
+					type="text"
+					class="input min-w-0 flex-1 font-mono"
+					value={ groupSecret(data.Secret) }
+					aria-label={ templates.T(ctx, "settings_two_factor_auth_new_secret_label") }
+					readonly
+				/>
+				<button
+					type="button"
+					class="btn shrink-0"
+					data-variant="outline"
+					data-copy-text={ data.Secret }
+					data-copied-label={ templates.T(ctx, "settings_two_factor_auth_copied") }
+					hidden
+				>
+					<span aria-live="polite">{ templates.T(ctx, "settings_two_factor_auth_copy_button") }</span>
+				</button>
+			</div>
+		</section>
+		<section class="page-card flex flex-col gap-3" aria-labelledby="two-factor-auth-verify-heading">
+			@stepHeading("2", "two-factor-auth-verify-heading", templates.T(ctx, "settings_two_factor_auth_new_verify_heading"))
+			<form action={ templ.SafeURL(templates.SettingsTwoFactorAuthPath) } method="post" class="flex flex-col gap-4" data-disable-on-submit>
+				@components.FormErrors(data.FormErrors)
+				@components.FormErrorSummary(components.FormErrorSummaryData{Fields: newSummaryFields, Errors: data.FormErrors})
+				<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+				<div
+					role="group"
+					class="field"
+					if data.FormErrors.HasFieldError("code") {
+						data-invalid
+					}
+				>
+					@components.RequiredFieldLabel("code", templates.T(ctx, "settings_two_factor_auth_new_code_label"))
+					<input
+						id="code"
+						name="code"
+						type="text"
+						class="font-mono tracking-widest"
+						value={ data.Code }
+						inputmode="numeric"
+						autocomplete="one-time-code"
+						required
+						aria-describedby={ codeDescribedBy(data.FormErrors) }
+						if data.FormErrors.HasFieldError("code") {
+							aria-invalid="true"
+						}
+					/>
+					<p id="code-help" class="text-sm text-muted-foreground">{ templates.T(ctx, "settings_two_factor_auth_new_code_help") }</p>
+					@components.FieldErrors("code", data.FormErrors)
+				</div>
+				<button type="submit" class="btn w-full">{ templates.T(ctx, "settings_two_factor_auth_new_submit") }</button>
+			</form>
+		</section>
+	</div>
+}
+
+// stepHeading は番号付きの手順の見出しを描画する。
+templ stepHeading(number string, id string, heading string) {
+	<div class="flex items-center gap-2">
+		<span aria-hidden="true" class="flex size-6 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground">{ number }</span>
+		<h2 id={ id } class="font-semibold">{ heading }</h2>
+	</div>
+}
+
+// codeDescribedBy はコードの欄の aria-describedby を返す。補足の文に、エラーがあればそのメッセージを加える。
+func codeDescribedBy(formErrors *model.ValidationError) string {
+	if !formErrors.HasFieldError("code") {
+		return "code-help"
+	}
+
+	return "code-help " + components.FieldErrorsDescribedBy("code", formErrors)
+}
+
+// secretGroupLength は手入力用のキーを区切る1組の文字数。
+const secretGroupLength = 4
+
+// groupSecret は手入力用のキーを4文字ずつ空白で区切る。書き写すときに位置を見失わないようにするため。
+// コピーのボタンは、区切りを受け付けない認証アプリもあるため、区切らないキーを写す。
+func groupSecret(secret string) string {
+	var groups []string
+	for len(secret) > secretGroupLength {
+		groups = append(groups, secret[:secretGroupLength])
+		secret = secret[secretGroupLength:]
+	}
+
+	return strings.Join(append(groups, secret), " ")
+}

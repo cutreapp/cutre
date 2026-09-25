@@ -14,6 +14,7 @@ Cutreはキャラクターグッズの物々交換を簡単にするためのサ
   - go-i18n/v2: 国際化
   - database/sql + pgx (stdlibドライバ): PostgreSQLへの接続
   - sqlc: SQLクエリからGoコードを生成
+  - river: バックグラウンドジョブキュー (PostgreSQLを使う。テーブルはdbmateのマイグレーションで管理する)
 - PostgreSQL 18.6
 - dbmate: データベースマイグレーション
 - pnpm (Node.js 24)
@@ -50,6 +51,9 @@ make lint-md-base BASE=origin/main  # Markdownの句点改行 (基準ブラン�
 make -C go db-new name=create_users  # マイグレーションファイルを作成
 make -C go db-migrate                # マイグレーションを実行し、db/schema.sqlを更新
 make -C go sqlc-generate             # SQLクエリからGoコードを生成
+
+# デザイントークン
+make -C go tokens-generate  # web/tokens.json から web/tokens.css を生成
 ```
 
 ほかのターゲットは `make help` / `make -C go help` で確認できます。

@@ -9,7 +9,7 @@ import "github.com/cutreapp/cutre/go/internal/templates"
 templ NotFound() {
 	<div class="mx-auto flex w-full max-w-2xl flex-1 flex-col items-center justify-center gap-4 px-4 py-16 text-center">
 		<h1 class="text-3xl font-bold tracking-tight sm:text-4xl">{ templates.T(ctx, "error_not_found_title") }</h1>
-		<p class="text-muted-foreground">{ templates.T(ctx, "error_not_found_message") }</p>
+		<p>{ templates.T(ctx, "error_not_found_message") }</p>
 		<a class="btn" data-variant="outline" href={ templates.RootPath(ctx) }>{ templates.T(ctx, "error_not_found_back") }</a>
 	</div>
 }

@@ -1,0 +1,19 @@
+package home
+
+import "github.com/cutreapp/cutre/go/internal/templates"
+
+// ShowPageData はログイン後のホームの描画に使うデータ。
+type ShowPageData struct {
+	// Atname はログイン中のユーザーのアットネーム。
+	Atname string
+}
+
+// Show はログイン後のホームを描画する。
+// 物々交換の機能が入るまでの仮の中身で、ログインできたことを確かめられるだけの内容を置く。
+templ Show(data ShowPageData) {
+	<div class="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-4 py-16">
+		<h1 class="text-3xl font-bold tracking-tight">
+			{ templates.T(ctx, "home_show_heading", map[string]any{"Atname": data.Atname}) }
+		</h1>
+	</div>
+}

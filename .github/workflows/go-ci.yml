@@ -92,6 +92,8 @@ jobs:
       DATABASE_URL: postgres://postgres@localhost:5432/cutre_test?sslmode=disable
       CUTRE_PORT: "8080"
       CUTRE_DOMAIN: "test.example.com"
+      CUTRE_CONTINUATION_TOKEN_KEY: "ci-test-continuation-token-key-0123456789"
+      CUTRE_TOTP_ENCRYPTION_KEY: "ci-test-totp-encryption-key-0123456789"
 
     services:
       postgresql:
@@ -233,3 +235,6 @@ jobs:
 
       - name: Run frontend tests
         run: make test-js
+
+      - name: Check design tokens are in sync
+        run: make tokens-diff

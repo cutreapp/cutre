@@ -1,0 +1,164 @@
+package settings_two_factor_auth
+
+import (
+	"github.com/cutreapp/cutre/go/internal/model"
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+)
+
+// ShowPageData は二要素認証の画面の描画に使うデータ。
+type ShowPageData struct {
+	// ProfilePath は戻り先の自分のプロフィールのパス。
+	ProfilePath string
+	// Enabled は二要素認証を有効にしているか。
+	Enabled bool
+	// EnabledOn は有効にした日。Enabled がfalseのときは空。
+	EnabledOn string
+	// UnusedRecoveryCodeCount はまだ使っていないリカバリーコードの数。
+	UnusedRecoveryCodeCount int
+	// CSRFToken は無効にするフォームに載せるトークン。
+	CSRFToken string
+	// FormErrors は無効にするフォームの再認証を受け付けなかったときのエラー。
+	FormErrors *model.ValidationError
+}
+
+// disableSummaryFields はエラーの要約に並べるフィールドを、フォームに現れる順で持つ。
+var disableSummaryFields = []components.FormErrorSummaryField{
+	{Name: "credential", LabelKey: "settings_two_factor_auth_show_credential_label"},
+}
+
+// Show は二要素認証の画面を描画する。オフのときは説明と有効にする入口を、オンのときは状態を出す。
+templ Show(data ShowPageData) {
+	<div class="flex w-full flex-1 flex-col gap-3 py-4 md:mx-auto md:max-w-180">
+		@pageHeading(data.ProfilePath, templates.T(ctx, "settings_two_factor_auth_show_back"), templates.T(ctx, "settings_two_factor_auth_show_heading"))
+		if data.Enabled {
+			@enabledCard(data)
+			@disableSection(data)
+		} else {
+			<p class="px-4 text-sm md:px-0">{ templates.T(ctx, "settings_two_factor_auth_show_lead") }</p>
+			@disabledCard()
+		}
+	</div>
+}
+
+// pageHeading は戻るリンクと見出しを並べた画面の見出しを描画する。
+templ pageHeading(backPath string, backLabel string, heading string) {
+	<div class="flex items-center gap-1 px-2 md:px-0">
+		<a href={ templ.SafeURL(backPath) } class="btn" data-variant="ghost" data-size="icon" aria-label={ backLabel }>
+			<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>
+		</a>
+		<h1 class="text-base font-semibold">{ heading }</h1>
+	</div>
+}
+
+// shieldIcon は二要素認証を表す盾のアイコンを描画する。
+templ shieldIcon() {
+	<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"></path><path d="M9 12l2 2 4-4"></path></svg>
+}
+
+// disabledCard は二要素認証がオフのときに、有効にしたときの変化と有効にする入口を描画する。
+templ disabledCard() {
+	<section class="page-card flex flex-col gap-4" aria-labelledby="two-factor-auth-status-heading">
+		<div class="flex items-center gap-3">
+			<span class="flex size-12 shrink-0 items-center justify-center rounded-full border bg-muted text-muted-foreground">
+				@shieldIcon()
+			</span>
+			<span class="flex flex-1 flex-col">
+				<h2 id="two-factor-auth-status-heading" class="font-semibold">{ templates.T(ctx, "settings_two_factor_auth_show_disabled_heading") }</h2>
+				<span class="text-sm text-muted-foreground">{ templates.T(ctx, "settings_two_factor_auth_show_disabled_message") }</span>
+			</span>
+		</div>
+		<div class="flex flex-col gap-1.5">
+			<h3 class="text-sm font-semibold">{ templates.T(ctx, "settings_two_factor_auth_show_benefits_heading") }</h3>
+			<ul class="flex list-disc flex-col gap-1 pl-5 text-sm">
+				<li>{ templates.T(ctx, "settings_two_factor_auth_show_benefit_protection") }</li>
+				<li>{ templates.T(ctx, "settings_two_factor_auth_show_benefit_sign_in") }</li>
+				<li>{ templates.T(ctx, "settings_two_factor_auth_show_benefit_recovery_codes") }</li>
+			</ul>
+		</div>
+		<p class="flex items-start gap-2.5 rounded-lg bg-muted p-3 text-sm">
+			<svg aria-hidden="true" class="shrink-0" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v5"></path><path d="M12 16h.01"></path><circle cx="12" cy="12" r="9"></circle></svg>
+			{ templates.T(ctx, "settings_two_factor_auth_show_apps") }
+		</p>
+		<a href={ templ.SafeURL(templates.NewSettingsTwoFactorAuthPath) } class="btn w-full">
+			{ templates.T(ctx, "settings_two_factor_auth_show_enable") }
+		</a>
+	</section>
+}
+
+// enabledCard は二要素認証がオンのときに、有効にした日と残りのリカバリーコードの数を描画する。
+templ enabledCard(data ShowPageData) {
+	<section class="page-card flex flex-col gap-3" aria-labelledby="two-factor-auth-status-heading">
+		<div class="flex items-center gap-3">
+			<span class="flex size-12 shrink-0 items-center justify-center rounded-full bg-success text-success-foreground">
+				@shieldIcon()
+			</span>
+			<span class="flex flex-1 flex-col">
+				<h2 id="two-factor-auth-status-heading" class="font-semibold">{ templates.T(ctx, "settings_two_factor_auth_show_enabled_heading") }</h2>
+				<span class="text-sm text-muted-foreground">
+					{ templates.T(ctx, "settings_two_factor_auth_show_enabled_on", map[string]any{"Date": data.EnabledOn}) }
+				</span>
+			</span>
+		</div>
+		<dl class="flex flex-col divide-y border-t text-sm">
+			<div class="flex items-center justify-between gap-2 py-2.5">
+				<dt>{ templates.T(ctx, "settings_two_factor_auth_show_app_label") }</dt>
+				<dd class="font-medium">{ templates.T(ctx, "settings_two_factor_auth_show_app_value") }</dd>
+			</div>
+			<div class="flex items-center justify-between gap-2 py-2.5">
+				<dt>{ templates.T(ctx, "settings_two_factor_auth_show_recovery_codes_label") }</dt>
+				<dd class="font-medium">
+					{ templates.T(ctx, "settings_two_factor_auth_show_recovery_codes_value", map[string]any{"Count": data.UnusedRecoveryCodeCount}) }
+				</dd>
+			</div>
+		</dl>
+	</section>
+}
+
+// disableSection は二要素認証を無効にするフォームを描画する。
+//
+// 再認証の入力はパスワードと認証アプリのコードを1つの欄で受ける。サーバーはまずコードとして照合し、合わなければパスワードとしても照合する。
+// 欄は autocomplete="current-password" にし、パスワードマネージャーが今のパスワードを入れられるようにする。
+// フォームはDELETEで送る。HTMLのフォームはDELETEを送れないため、POSTに _method を載せて上書きする。
+templ disableSection(data ShowPageData) {
+	<section class="flex flex-col gap-2" aria-labelledby="two-factor-auth-disable-heading">
+		<h2 id="two-factor-auth-disable-heading" class="px-4 font-semibold md:px-0">{ templates.T(ctx, "settings_two_factor_auth_show_disable_heading") }</h2>
+		<form
+			action={ templ.SafeURL(templates.SettingsTwoFactorAuthPath) }
+			method="post"
+			class="page-card flex flex-col gap-3"
+			data-disable-on-submit
+			data-clear-on-history-restore
+		>
+			@components.FormErrors(data.FormErrors)
+			@components.FormErrorSummary(components.FormErrorSummaryData{Fields: disableSummaryFields, Errors: data.FormErrors})
+			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+			<input type="hidden" name="_method" value="DELETE"/>
+			<p class="text-sm text-muted-foreground">{ templates.T(ctx, "settings_two_factor_auth_show_disable_message") }</p>
+			<div
+				role="group"
+				class="field"
+				if data.FormErrors.HasFieldError("credential") {
+					data-invalid
+				}
+			>
+				@components.RequiredFieldLabel("credential", templates.T(ctx, "settings_two_factor_auth_show_credential_label"))
+				<input
+					id="credential"
+					name="credential"
+					type="password"
+					autocomplete="current-password"
+					required
+					if data.FormErrors.HasFieldError("credential") {
+						aria-invalid="true"
+						aria-describedby={ components.FieldErrorsDescribedBy("credential", data.FormErrors) }
+					}
+				/>
+				@components.FieldErrors("credential", data.FormErrors)
+			</div>
+			<button type="submit" class="btn w-full" data-variant="destructive">
+				{ templates.T(ctx, "settings_two_factor_auth_show_disable_submit") }
+			</button>
+		</form>
+	</section>
+}

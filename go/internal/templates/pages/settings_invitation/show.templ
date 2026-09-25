@@ -1,0 +1,216 @@
+package settings_invitation
+
+import (
+	"github.com/cutreapp/cutre/go/internal/model"
+	"github.com/cutreapp/cutre/go/internal/qrcode"
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/viewmodel"
+)
+
+// ShowPageData は招待の画面の描画に使うデータ。
+type ShowPageData struct {
+	// CSRFToken は招待リンクを作り直すフォームに載せるトークン。
+	CSRFToken string
+	// ProfilePath は戻り先の自分のプロフィールのパス。
+	ProfilePath string
+	// Invitation は使える招待。人数の上限に達しているときはnilで、招待リンクの代わりに上限に達した旨を出す。
+	Invitation *viewmodel.UserInvitation
+	// QRCode は招待リンクのQRコード。Invitation がnilのときはnil。
+	QRCode *qrcode.Code
+	// RemainingCount はこれから招待できる人数。
+	RemainingCount int
+	// Redemptions は招待で参加した人の一覧で、新しい順に並ぶ。
+	Redemptions []viewmodel.InvitationRedemption
+}
+
+// Show は招待の画面を描画する。
+//
+// 招待リンクは、対面で読み取ってもらうQRコードと、好きな手段で送れるURLの両方で示す。
+// コピーと共有のボタンはJavaScriptとブラウザが対応しているときだけ表示し、使えないボタンを押させない。
+templ Show(data ShowPageData) {
+	<div class="flex w-full flex-1 flex-col gap-3 py-4 md:mx-auto md:max-w-180">
+		<div class="flex items-center gap-1 px-2 md:px-0">
+			<a
+				href={ templ.SafeURL(data.ProfilePath) }
+				class="btn"
+				data-variant="ghost"
+				data-size="icon"
+				aria-label={ templates.T(ctx, "settings_invitation_show_back") }
+			>
+				<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>
+			</a>
+			<h1 class="text-base font-semibold">{ templates.T(ctx, "settings_invitation_show_heading") }</h1>
+		</div>
+		<div class="alert rounded-none border-x-0 md:rounded-lg md:border-x" data-variant="brand">
+			<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"></circle><path d="M2 21c0-4 3-6 7-6s7 2 7 6"></path><path d="M16 3.5a4 4 0 0 1 0 8"></path><path d="M19 15c2 .6 3 2.5 3 6"></path></svg>
+			<h2>{ templates.T(ctx, "settings_invitation_show_rule_heading") }</h2>
+			<section>{ templates.T(ctx, "settings_invitation_show_rule_message") }</section>
+		</div>
+		if data.Invitation != nil {
+			@invitationCard(data)
+		} else {
+			@fullCard(data)
+		}
+		@members(data.Redemptions)
+		if data.Invitation != nil {
+			<div class="mt-auto px-4 pt-3 md:px-0">
+				<button
+					type="button"
+					class="btn w-full"
+					data-variant="brand"
+					data-share-url={ data.Invitation.URL }
+					data-share-title={ templates.T(ctx, "settings_invitation_show_share_title") }
+					hidden
+				>
+					<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"></path><path d="M7 8l5-5 5 5"></path><path d="M5 13v7h14v-7"></path></svg>
+					{ templates.T(ctx, "settings_invitation_show_share_button") }
+				</button>
+			</div>
+		}
+	</div>
+}
+
+// invitationCard は招待リンクをQRコードとURLで示すカードを描画する。
+//
+// QRコードはダークモードでも白地に黒で描く。読み取り機が前提とする配色で、反転した符号を読めない端末があるため。
+templ invitationCard(data ShowPageData) {
+	<section class="page-card flex flex-col items-center gap-3" aria-labelledby="invitation-url-heading">
+		<div class="flex w-full flex-wrap items-baseline gap-x-2">
+			<h2 id="invitation-url-heading" class="flex-1 text-sm font-medium">
+				{ templates.T(ctx, "settings_invitation_show_url_heading") }
+			</h2>
+			<p class="text-sm">
+				{ templates.T(ctx, "settings_invitation_show_remaining", map[string]any{"Count": data.RemainingCount}) }
+			</p>
+		</div>
+		<svg
+			role="img"
+			aria-label={ templates.T(ctx, "settings_invitation_show_qr_code_label") }
+			xmlns="http://www.w3.org/2000/svg"
+			viewBox={ data.QRCode.ViewBox() }
+			class="size-48 rounded-lg border bg-white"
+			shape-rendering="crispEdges"
+		>
+			<path class="fill-black" d={ data.QRCode.Path }></path>
+		</svg>
+		<p class="text-center text-sm text-muted-foreground">
+			{ templates.T(ctx, "settings_invitation_show_qr_code_help") }
+		</p>
+		<div class="flex w-full items-center gap-2">
+			<input
+				type="url"
+				class="input min-w-0 flex-1 font-mono"
+				value={ data.Invitation.URL }
+				aria-label={ templates.T(ctx, "settings_invitation_show_url_label") }
+				readonly
+			/>
+			<button
+				type="button"
+				class="btn shrink-0"
+				data-variant="outline"
+				data-copy-text={ data.Invitation.URL }
+				data-copied-label={ templates.T(ctx, "settings_invitation_show_copied") }
+				hidden
+			>
+				<span aria-live="polite">{ templates.T(ctx, "settings_invitation_show_copy_button") }</span>
+			</button>
+		</div>
+		<div class="flex w-full items-center gap-2 border-t pt-3">
+			<div class="flex min-w-0 flex-1 flex-col">
+				<p class="text-sm">
+					{ templates.T(ctx, "settings_invitation_show_expires_on", map[string]any{"Date": data.Invitation.ExpiresOn}) }
+				</p>
+				<p class="text-sm text-muted-foreground">{ templates.T(ctx, "settings_invitation_show_recreate_help") }</p>
+			</div>
+			<button
+				type="button"
+				class="btn shrink-0"
+				data-variant="outline"
+				commandfor={ recreateDialogID }
+				command="show-modal"
+			>
+				<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"></path><path d="M21 4v5h-5"></path></svg>
+				{ templates.T(ctx, "settings_invitation_show_recreate_button") }
+			</button>
+		</div>
+		@recreateDialog(data.CSRFToken, data.Invitation.ID)
+	</section>
+}
+
+// recreateDialogID は招待リンクを作り直す前の確認ダイアログのid。
+const recreateDialogID = "invitation-recreate-dialog"
+
+// recreateDialog は招待リンクを作り直す前の確認ダイアログを描画する。
+//
+// 作り直すと渡したリンクが使えなくなり、元に戻せないため、押し間違いで作り直さないよう確かめる。
+// 開閉はボタンの commandfor / command で行い、対応していないブラウザではJavaScriptが補う。
+templ recreateDialog(csrfToken string, invitationID model.InvitationID) {
+	<dialog
+		id={ recreateDialogID }
+		class="alert-dialog"
+		aria-labelledby={ recreateDialogID + "-title" }
+		aria-describedby={ recreateDialogID + "-description" }
+	>
+		<div>
+			<header>
+				<h2 id={ recreateDialogID + "-title" }>{ templates.T(ctx, "settings_invitation_show_recreate_confirm_title") }</h2>
+				<p id={ recreateDialogID + "-description" }>{ templates.T(ctx, "settings_invitation_show_recreate_confirm_message") }</p>
+			</header>
+			<footer>
+				<button type="button" class="btn" data-variant="outline" commandfor={ recreateDialogID } command="close">
+					{ templates.T(ctx, "settings_invitation_show_recreate_cancel") }
+				</button>
+				<form action={ templ.SafeURL(templates.SettingsInvitationPath) } method="post" class="contents" data-disable-on-submit>
+					<input type="hidden" name="csrf_token" value={ csrfToken }/>
+					<input type="hidden" name="invitation_id" value={ invitationID.String() }/>
+					<button type="submit" class="btn" data-variant="brand">
+						{ templates.T(ctx, "settings_invitation_show_recreate_submit") }
+					</button>
+				</form>
+			</footer>
+		</div>
+	</dialog>
+}
+
+// fullCard は招待できる人数の上限に達したことを伝えるカードを描画する。
+templ fullCard(data ShowPageData) {
+	<section class="page-card flex flex-col items-center gap-2 py-6 text-center" aria-labelledby="invitation-full-heading">
+		<h2 id="invitation-full-heading" class="font-semibold">
+			{ templates.T(ctx, "settings_invitation_show_full_heading") }
+		</h2>
+		<p class="text-sm">{ templates.T(ctx, "settings_invitation_show_full_message") }</p>
+		<p class="badge mt-1" data-variant="outline">
+			{ templates.T(ctx, "settings_invitation_show_remaining", map[string]any{"Count": data.RemainingCount}) }
+		</p>
+	</section>
+}
+
+// members は招待で参加した人の一覧を描画する。
+templ members(redemptions []viewmodel.InvitationRedemption) {
+	<section class="flex flex-col gap-2" aria-labelledby="invitation-members-heading">
+		<div class="flex items-baseline gap-2 px-4 md:px-0">
+			<h2 id="invitation-members-heading" class="flex-1 font-semibold">
+				{ templates.T(ctx, "settings_invitation_show_members_heading") }
+			</h2>
+			<p class="text-sm">
+				{ templates.T(ctx, "settings_invitation_show_members_count", map[string]any{"Count": len(redemptions)}) }
+			</p>
+		</div>
+		if len(redemptions) == 0 {
+			<p class="page-card text-sm text-muted-foreground">
+				{ templates.T(ctx, "settings_invitation_show_members_empty") }
+			</p>
+		} else {
+			<ul class="page-card divide-y py-0">
+				for _, redemption := range redemptions {
+					<li class="flex flex-col py-2">
+						<span class="text-sm font-medium">{ redemption.Label }</span>
+						<span class="text-sm text-muted-foreground">
+							{ templates.T(ctx, "settings_invitation_show_member_joined_on", map[string]any{"Date": redemption.JoinedOn}) }
+						</span>
+					</li>
+				}
+			</ul>
+		}
+	</section>
+}

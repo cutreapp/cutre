@@ -5,7 +5,7 @@ import "github.com/cutreapp/cutre/go/internal/viewmodel"
 // Footer は著作権表示と言語スイッチャーを持つページフッターを描画する。
 // 利用規約などのリンク先はまだ存在しないため、置くのはサイトの帰属を示す1行とスイッチャーに留める。
 templ Footer(meta viewmodel.PageMeta) {
-	<footer class="mt-auto flex flex-col items-center gap-3 py-8 text-center text-sm text-muted-foreground">
+	<footer class="mt-auto flex flex-col items-center gap-3 py-8 text-center text-sm text-foreground">
 		@LanguageSwitcher(meta)
 		<p>&copy; 2026 Cutre</p>
 	</footer>

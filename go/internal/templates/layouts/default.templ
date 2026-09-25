@@ -3,6 +3,7 @@ package layouts
 import (
 	"github.com/a-h/templ"
 
+	"github.com/cutreapp/cutre/go/internal/session"
 	"github.com/cutreapp/cutre/go/internal/templates"
 	"github.com/cutreapp/cutre/go/internal/templates/components"
 	"github.com/cutreapp/cutre/go/internal/viewmodel"
@@ -12,6 +13,8 @@ import (
 // 引数を構造体にまとめるのは、レイアウトが運ぶものが増えてもシグネチャを変えずに済むようにするため。
 type DefaultLayoutData struct {
 	Meta viewmodel.PageMeta
+	// Header はログイン後のページのヘッダー。nilのとき (ログイン前のページ) はヘッダーを出力しない。
+	Header *components.HeaderData
 }
 
 // Default はページの内容を共通の<head>・フッター・ボディの外枠で包む基本のHTMLレイアウト。
@@ -22,7 +25,7 @@ templ Default(data DefaultLayoutData, content templ.Component) {
 		<head>
 			@components.Head(data.Meta)
 		</head>
-		<body class="flex min-h-screen flex-col bg-background text-foreground">
+		<body class="flex min-h-screen flex-col bg-page text-foreground">
 			// キーボード / スクリーンリーダーの利用者が本文へ直接移動できるよう、最初のフォーカス可能要素として置く (WCAG 2.4.1)。
 			// フォーカスされるまでは視覚的に隠すが、display:noneでは隠さない (フォーカス自体が当たらなくなるため)。
 			<a
@@ -31,11 +34,17 @@ templ Default(data DefaultLayoutData, content templ.Component) {
 			>
 				{ templates.T(ctx, "skip_to_main_content") }
 			</a>
+			if data.Header != nil {
+				@components.Header(*data.Header)
+			}
 			@components.LocaleSuggestion(data.Meta)
 			<main id="main" tabindex="-1" class="flex flex-1 flex-col">
 				@content
 			</main>
 			@components.Footer(data.Meta)
+			// フラッシュメッセージは本文の後に置く。Toastは画面の端に重ねて表示されるため、
+			// 文書の順序では本文を読み終えた位置に来ても、見た目の位置は変わらない。
+			@components.Flash(session.FlashFromContext(ctx))
 		</body>
 	</html>
 }

@@ -1,0 +1,36 @@
+package email_confirmation
+
+import (
+	"strings"
+
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/emails/layouts"
+)
+
+// Data は確認コードのメールに描画する値。
+type Data struct {
+	Code string
+}
+
+// HTML は確認コードのメールのHTMLの本文を描画する。
+// 文言はctxのロケール (受け取る人の言語) で引く。
+templ HTML(data Data) {
+	@layouts.Default(templates.Locale(ctx), templates.T(ctx, "email_confirmation_email_subject")) {
+		<p>{ templates.T(ctx, "email_confirmation_email_intro") }</p>
+		<p style="font-size: 28px; font-weight: bold; letter-spacing: 6px;">{ data.Code }</p>
+		<p>{ templates.T(ctx, "email_confirmation_email_expiry") }</p>
+		<p>{ templates.T(ctx, "email_ignore_if_unexpected") }</p>
+	}
+}
+
+// Text は確認コードのメールのテキストの本文を描画する。
+// templの式の出力はHTML向け (エスケープと空白の畳み込み) のため、改行を保てるよう templ.Raw で書き出す。
+templ Text(data Data) {
+	@templ.Raw(strings.Join([]string{
+		templates.T(ctx, "email_confirmation_email_intro"),
+		data.Code,
+		templates.T(ctx, "email_confirmation_email_expiry"),
+		templates.T(ctx, "email_ignore_if_unexpected"),
+		"Cutre",
+	}, "\n\n") + "\n")
+}

@@ -18,7 +18,7 @@ other = "Cutre"
 
 [welcome_show_description]
 description = "トップページのmeta description"
-other = "Cutreはキャラクターグッズの物々交換を簡単にするサービスです。欲しいグッズと譲れるグッズを登録して、交換相手を見つけられます"
+other = "Cutreはキャラクターグッズの物々交換を簡単にするサービスです。欲しいグッズと譲れるグッズを登録して、交換相手を見つけられます。登録は、実際に会ったことのある人からの招待制です"
 
 [welcome_show_heading]
 description = "トップページの見出し"
@@ -75,3 +75,956 @@ other = "このアドレスでは、その操作を受け付けていません�
 [error_method_not_allowed_back]
 description = "405ページからトップページへ戻るリンクの文言"
 other = "トップページへ戻る"
+
+[field_required]
+description = "必須の入力欄のラベルに添える注記"
+other = "必須"
+
+[form_error_summary_heading]
+description = "フォームの冒頭に置くエラーの要約の見出し"
+other = "入力内容を確認してください"
+
+[flash_dismiss]
+description = "フラッシュメッセージを閉じるボタンの文言"
+other = "閉じる"
+
+[validation_required]
+description = "必須の入力欄が空のときのエラー"
+other = "入力してください"
+
+[validation_email_invalid]
+description = "メールアドレスとして読めない値が入力されたときのエラー"
+other = "メールアドレスの形式が正しくありません"
+
+[validation_credentials_invalid]
+description = "ログインの資格情報が一致しないときのエラー。どちらが誤りかは明かさない"
+other = "メールアドレスまたはパスワードが正しくありません"
+
+[validation_turnstile_failed]
+description = "Bot対策の確認を通過しなかったときのエラー"
+other = "ロボットによる操作ではないことを確認できませんでした。もう一度お試しください"
+
+[validation_rate_limited]
+description = "試行の回数がレート制限の上限を超えたときのエラー"
+other = "試行の回数が多すぎます。しばらく待ってからもう一度お試しください"
+
+[validation_confirmation_code_format]
+description = "確認コードが半角数字6桁でないときのエラー"
+other = "6桁の数字で入力してください"
+
+[validation_confirmation_code_incorrect]
+description = "入力された確認コードが一致しないときのエラー"
+other = "確認コードが正しくありません"
+
+[validation_totp_code_format]
+description = "認証アプリのコードが半角数字6桁でないときのエラー"
+other = "6桁の数字で入力してください"
+
+[validation_totp_code_incorrect]
+description = "入力された認証アプリのコードが一致しないときのエラー"
+other = "コードが正しくありません。認証アプリに表示されている最新のコードを入力してください"
+
+[validation_totp_rate_limited]
+description = "認証アプリのコード・リカバリーコードの試行や、二要素認証を無効にするとき・退会するときの再認証の試行がレート制限の上限を超えたときのエラー。Minutesは解除までの分数 (切り上げ)"
+other = "試行の回数が上限に達しました。あと{{.Minutes}}分で試せます"
+
+[validation_two_factor_auth_reauth_incorrect]
+description = "二要素認証を無効にするときに入力されたパスワード・認証アプリのコードが一致しないときのエラー。どちらとして照合したかは明かさない"
+other = "パスワードまたはコードが正しくありません"
+
+[validation_current_password_incorrect]
+description = "退会するときに入力された今のパスワードが一致しないときのエラー"
+other = "パスワードが正しくありません"
+
+[validation_withdrawal_unconfirmed]
+description = "退会を元に戻せないことを確認するチェックが無いときのエラー"
+other = "退会を元に戻せないことを確認して、チェックを入れてください"
+
+[validation_recovery_code_format]
+description = "リカバリーコードの形が正しくないときのエラー"
+other = "リカバリーコードは8文字の英数字で入力してください"
+
+[validation_recovery_code_incorrect]
+description = "リカバリーコードが一致しないか、使用済みのときのエラー"
+other = "コードが正しくありません。保存したリカバリーコードを確認してください"
+
+[validation_confirmation_code_unusable]
+description = "確認コードの有効期限が切れたか、誤入力の回数が上限に達したときのエラー"
+other = "この確認コードは使えなくなりました。コードを再送して、新しいコードを入力してください"
+
+[validation_atname_too_long]
+description = "アットネームが最大の長さを超えたときのエラー"
+other = "20文字以内で入力してください"
+
+[validation_atname_invalid_format]
+description = "アットネームに使えない文字が含まれるときのエラー"
+other = "半角英数字とアンダースコア (_) だけで入力してください"
+
+[validation_atname_taken]
+description = "アットネームが他のユーザーに使われているときのエラー"
+other = "このアットネームは既に使われています"
+
+[validation_password_too_short]
+description = "パスワードが最小の長さに満たないときのエラー"
+other = "8文字以上で入力してください"
+
+[validation_password_too_long]
+description = "パスワードが最大の長さ (72バイト) を超えたときのエラー"
+other = "長すぎます。英数字なら72文字、日本語なら24文字程度までにしてください"
+
+[validation_account_email_taken]
+description = "アカウントの作成中に、同じメールアドレスのアカウントが先に作られていたときのエラー"
+other = "このメールアドレスのアカウントは既にあります。ログインしてください"
+
+[sign_in_new_title]
+description = "ログイン画面のタイトル"
+other = "ログイン"
+
+[sign_in_new_description]
+description = "ログイン画面のmeta description"
+other = "Cutreにログインします"
+
+[auth_heading_home_link]
+description = "ログインまわりの画面で、見出しの上に置くロゴのリンクの名前 (読み上げ用)。見えている「Cutre」を含める"
+other = "Cutreのトップへ"
+
+[sign_in_new_heading]
+description = "ログイン画面の見出し"
+other = "ログイン"
+
+[sign_in_new_email_label]
+description = "ログイン画面のメールアドレスの入力欄のラベル"
+other = "メールアドレス"
+
+[sign_in_new_password_label]
+description = "ログイン画面のパスワードの入力欄のラベル"
+other = "パスワード"
+
+[sign_in_new_submit]
+description = "ログイン画面の送信ボタンの文言"
+other = "ログイン"
+
+[flash_sign_in_success]
+description = "ログインしたあとに出すフラッシュメッセージ"
+other = "ログインしました"
+
+[home_show_title]
+description = "ログイン後のホームのタイトル"
+other = "ホーム"
+
+[home_show_heading]
+description = "ログイン後のホームの見出し。Atnameはログイン中のユーザーのアットネーム"
+other = "ようこそ、@{{.Atname}} さん"
+
+[header_nav_label]
+description = "ログイン後のページのヘッダーにあるメニューの名前 (読み上げ用)"
+other = "メインメニュー"
+
+[header_profile_link]
+description = "ログイン後のページのヘッダーにある、自分のプロフィールへのリンクの文言"
+other = "プロフィール"
+
+[profile_show_title]
+description = "自分のプロフィールのタイトル"
+other = "プロフィール"
+
+[profile_show_heading]
+description = "自分のプロフィールの見出し"
+other = "プロフィール"
+
+[profile_show_sign_out]
+description = "自分のプロフィールのログアウトボタンの文言"
+other = "ログアウト"
+
+[date_month_day_layout]
+description = "年を省いた日付の書式 (Goの時刻のレイアウト。1が月、2が日を表す)"
+other = "1月2日"
+
+[date_year_month_day_layout]
+description = "年を含めた日付の書式 (Goの時刻のレイアウト。2006が年、1が月、2が日を表す)"
+other = "2006年1月2日"
+
+[profile_show_invitation_link]
+description = "自分のプロフィールのメニューにある、招待の画面へのリンクの文言"
+other = "招待"
+
+[profile_show_invitation_summary]
+description = "自分のプロフィールのメニューの招待のリンクに添える、残りの人数と参加した人数"
+other = "あと{{.Remaining}}人招待できます・{{.Joined}}人が参加"
+
+[profile_show_two_factor_auth_link]
+description = "自分のプロフィールのメニューにある、二要素認証の画面へのリンクの文言"
+other = "二要素認証"
+
+[profile_show_two_factor_auth_enabled]
+description = "二要素認証のリンクに添える、有効にしていることを示すバッジ"
+other = "オン"
+
+[profile_show_two_factor_auth_disabled]
+description = "二要素認証のリンクに添える、有効にしていないことを示すバッジ"
+other = "オフ"
+
+[profile_show_withdrawal_link]
+description = "自分のプロフィールの下部にある、退会の画面へのリンクの文言"
+other = "退会"
+
+[settings_invitation_show_title]
+description = "招待の画面のタイトル"
+other = "招待"
+
+[settings_invitation_show_heading]
+description = "招待の画面の見出し"
+other = "招待"
+
+[settings_invitation_show_back]
+description = "招待の画面から自分のプロフィールへ戻るリンクの名前 (読み上げ用)"
+other = "プロフィールにもどる"
+
+[settings_invitation_show_rule_heading]
+description = "招待の画面で、招待してよい相手の決まりを伝える見出し"
+other = "実際に会ったことがある人だけを招待してください"
+
+[settings_invitation_show_rule_message]
+description = "招待の画面で、招待してよい相手の決まりを補う説明"
+other = "SNSやネットだけで知り合った人には渡さないでください。"
+
+[settings_invitation_show_url_heading]
+description = "招待の画面の、招待リンクを示すカードの見出し"
+other = "あなたの招待URL"
+
+[settings_invitation_show_remaining]
+description = "招待の画面で、これから招待できる人数"
+other = "あと{{.Count}}人招待できます"
+
+[settings_invitation_show_qr_code_label]
+description = "招待リンクのQRコードの画像の名前 (読み上げ用)"
+other = "招待URLのQRコード"
+
+[settings_invitation_show_qr_code_help]
+description = "招待リンクのQRコードの下に添える説明"
+other = "QRコードを読み取ると招待の受け取り画面が開きます"
+
+[settings_invitation_show_url_label]
+description = "招待リンクの入力欄の名前 (読み上げ用)"
+other = "招待URL"
+
+[settings_invitation_show_copy_button]
+description = "招待リンクをクリップボードにコピーするボタンの文言"
+other = "コピー"
+
+[settings_invitation_show_copied]
+description = "招待リンクをコピーしたあとにボタンに出す文言"
+other = "コピーしました"
+
+[settings_invitation_show_expires_on]
+description = "招待リンクの有効期限。Dateは使える最後の日"
+other = "有効期限 {{.Date}}まで"
+
+[settings_invitation_show_recreate_help]
+description = "招待リンクの有効期限の下に出す、作り直しの説明"
+other = "作り直すと、いまのURLとQRコードは使えなくなります"
+
+[settings_invitation_show_recreate_button]
+description = "招待リンクを作り直す確認ダイアログを開くボタン"
+other = "作り直す"
+
+[settings_invitation_show_recreate_confirm_title]
+description = "招待リンクを作り直す前の確認ダイアログの見出し"
+other = "招待リンクを作り直しますか?"
+
+[settings_invitation_show_recreate_confirm_message]
+description = "招待リンクを作り直す前の確認ダイアログの説明"
+other = "いまのURLとQRコードは使えなくなり、元に戻せません。いまのリンクで登録している途中の人も、登録を終えられなくなります。"
+
+[settings_invitation_show_recreate_cancel]
+description = "招待リンクを作り直す確認ダイアログを閉じるボタン"
+other = "キャンセル"
+
+[settings_invitation_show_recreate_submit]
+description = "招待リンクを作り直す確認ダイアログで、作り直しを確定するボタン"
+other = "作り直す"
+
+[settings_invitation_show_share_button]
+description = "招待リンクを端末の共有機能で送るボタンの文言"
+other = "URLを送る"
+
+[settings_invitation_show_share_title]
+description = "端末の共有機能で招待リンクを送るときに添える題名"
+other = "Cutreへの招待"
+
+[settings_invitation_show_full_heading]
+description = "招待できる人数の上限に達したときに、招待の画面に出す見出し"
+other = "招待できる人数の上限に達しました"
+
+[settings_invitation_show_full_message]
+description = "招待できる人数の上限に達したときに、招待の画面に出す説明"
+other = "いまは招待URLとQRコードを使えません。招待できる人数が増えると、ここにまた表示されます。"
+
+[settings_invitation_show_members_heading]
+description = "招待の画面の、参加した人の一覧の見出し"
+other = "参加した人"
+
+[settings_invitation_show_members_count]
+description = "招待の画面の、参加した人数"
+other = "{{.Count}}人"
+
+[settings_invitation_show_members_empty]
+description = "招待で参加した人がまだいないときの説明"
+other = "まだ参加した人はいません"
+
+[settings_invitation_show_member_joined_on]
+description = "参加した人の一覧で、参加した日。Dateは参加した日"
+other = "{{.Date}}に参加"
+
+[settings_two_factor_auth_show_title]
+description = "二要素認証の画面のタイトル"
+other = "二要素認証"
+
+[settings_two_factor_auth_show_heading]
+description = "二要素認証の画面の見出し"
+other = "二要素認証"
+
+[settings_two_factor_auth_show_back]
+description = "二要素認証の画面から自分のプロフィールへ戻るリンクの名前 (読み上げ用)"
+other = "プロフィールにもどる"
+
+[settings_two_factor_auth_show_lead]
+description = "二要素認証がオフのときに、画面の冒頭に置く説明"
+other = "ログインのときに、パスワードに加えて認証アプリの6桁のコードを入力するようにできます。"
+
+[settings_two_factor_auth_show_disabled_heading]
+description = "二要素認証がオフであることを示す見出し"
+other = "二要素認証はオフです"
+
+[settings_two_factor_auth_show_disabled_message]
+description = "二要素認証がオフのときに、見出しに添える説明"
+other = "いまはパスワードだけでログインできます"
+
+[settings_two_factor_auth_show_benefits_heading]
+description = "二要素認証を有効にしたときの変化を並べる一覧の見出し"
+other = "有効にすると"
+
+[settings_two_factor_auth_show_benefit_protection]
+description = "有効にしたときの変化 (不正なログインを防げる)"
+other = "パスワードが漏れても、認証アプリのコードがなければ、ほかの人はログインできなくなります"
+
+[settings_two_factor_auth_show_benefit_sign_in]
+description = "有効にしたときの変化 (ログインのたびにコードを入力する)"
+other = "ログインのたびに、スマホの認証アプリでコードを確かめます"
+
+[settings_two_factor_auth_show_benefit_recovery_codes]
+description = "有効にしたときの変化 (リカバリーコードを保存する)"
+other = "スマホをなくしたときに備えて、リカバリーコードを保存しておきます"
+
+[settings_two_factor_auth_show_apps]
+description = "使える認証アプリの例"
+other = "iPhoneの「パスワード」アプリ、Google Authenticator、1Passwordなどの認証アプリを使えます"
+
+[settings_two_factor_auth_show_enable]
+description = "二要素認証を有効にする画面へのリンクの文言"
+other = "有効にする"
+
+[settings_two_factor_auth_show_enabled_heading]
+description = "二要素認証がオンであることを示す見出し"
+other = "二要素認証はオンです"
+
+[settings_two_factor_auth_show_enabled_on]
+description = "二要素認証を有効にした日。Dateは有効にした日"
+other = "{{.Date}}に有効にしました"
+
+[settings_two_factor_auth_show_app_label]
+description = "二要素認証の状態の一覧の、認証アプリの項目名"
+other = "認証アプリ"
+
+[settings_two_factor_auth_show_app_value]
+description = "二要素認証の状態の一覧の、認証アプリを登録済みであることを示す値"
+other = "設定済み"
+
+[settings_two_factor_auth_show_recovery_codes_label]
+description = "二要素認証の状態の一覧の、リカバリーコードの項目名"
+other = "リカバリーコード"
+
+[settings_two_factor_auth_show_recovery_codes_value]
+description = "まだ使っていないリカバリーコードの数。Countは数"
+other = "{{.Count}}件 残っています"
+
+[settings_two_factor_auth_show_disable_heading]
+description = "二要素認証を無効にするフォームの見出し"
+other = "無効にする"
+
+[settings_two_factor_auth_show_disable_message]
+description = "二要素認証を無効にするフォームの説明"
+other = "無効にすると、ログインはパスワードだけになります。"
+
+[settings_two_factor_auth_show_credential_label]
+description = "二要素認証を無効にするときに、再認証のためパスワードか認証アプリのコードを入力する欄のラベル"
+other = "確認のため、パスワードか認証アプリのコードを入力"
+
+[settings_two_factor_auth_show_disable_submit]
+description = "二要素認証を無効にするボタンの文言"
+other = "二要素認証を無効にする"
+
+[settings_two_factor_auth_new_title]
+description = "二要素認証を有効にする画面のタイトル"
+other = "二要素認証を有効にする"
+
+[settings_two_factor_auth_new_heading]
+description = "二要素認証を有効にする画面の見出し"
+other = "二要素認証を有効にする"
+
+[settings_two_factor_auth_new_back]
+description = "二要素認証を有効にする画面から二要素認証の画面へ戻るリンクの名前 (読み上げ用)"
+other = "二要素認証にもどる"
+
+[settings_two_factor_auth_new_register_heading]
+description = "認証アプリへ登録する手順の見出し"
+other = "認証アプリにCutreを追加する"
+
+[settings_two_factor_auth_new_open_app]
+description = "otpauthのリンクで認証アプリを開くリンクの文言"
+other = "認証アプリで開く"
+
+[settings_two_factor_auth_new_on_computer]
+description = "スマホ幅で、QRコードと手入力用のキーの前に置く区切りの文言"
+other = "パソコンで開いているときは"
+
+[settings_two_factor_auth_new_qr_code_label]
+description = "認証アプリへ登録するQRコードの画像の説明 (読み上げ用)"
+other = "認証アプリに追加するQRコード"
+
+[settings_two_factor_auth_new_qr_code_help]
+description = "QRコードと手入力用のキーの使い方の説明"
+other = "スマホの認証アプリで読み取るか、キーを入力してください"
+
+[settings_two_factor_auth_new_secret_label]
+description = "手入力用のキーの欄の名前 (読み上げ用)"
+other = "手入力用のキー"
+
+[settings_two_factor_auth_new_verify_heading]
+description = "認証アプリのコードで確かめる手順の見出し"
+other = "表示されたコードを入力する"
+
+[settings_two_factor_auth_new_code_label]
+description = "認証アプリのコードの入力欄のラベル"
+other = "6桁のコード"
+
+[settings_two_factor_auth_new_code_help]
+description = "認証アプリのコードの入力欄の補足"
+other = "コードは30秒ごとに変わります。変わる直前なら、次のコードを待ってから入力してください。"
+
+[settings_two_factor_auth_new_submit]
+description = "コードを確かめて二要素認証を有効にするボタンの文言"
+other = "確かめて有効にする"
+
+[settings_two_factor_auth_copy_button]
+description = "手入力用のキーやリカバリーコードをクリップボードにコピーするボタンの文言"
+other = "コピー"
+
+[settings_two_factor_auth_copied]
+description = "手入力用のキーやリカバリーコードをコピーしたあとにボタンに出す文言"
+other = "コピーしました"
+
+[settings_two_factor_auth_create_title]
+description = "リカバリーコードを示す画面のタイトル"
+other = "リカバリーコード"
+
+[settings_two_factor_auth_create_heading]
+description = "リカバリーコードを示す画面の見出し"
+other = "リカバリーコード"
+
+[settings_two_factor_auth_create_enabled]
+description = "二要素認証を有効にしたことを伝える文"
+other = "二要素認証を有効にしました。"
+
+[settings_two_factor_auth_create_lead]
+description = "リカバリーコードの保存を促す文"
+other = "最後に、リカバリーコードを保存してください。"
+
+[settings_two_factor_auth_create_once_heading]
+description = "リカバリーコードがいまだけ表示されることを伝える警告の見出し"
+other = "このコードは、いまだけ表示されます。"
+
+[settings_two_factor_auth_create_once_message]
+description = "リカバリーコードがいまだけ表示されることを伝える警告の本文"
+other = "あとから見直すことはできません。いま保存してください。"
+
+[settings_two_factor_auth_create_download_button]
+description = "リカバリーコードをテキストファイルに保存するボタンの文言"
+other = "ファイルに保存"
+
+[settings_two_factor_auth_create_usage]
+description = "リカバリーコードの使い方の説明"
+other = "スマホをなくして認証アプリが使えないとき、コードの代わりに入力します。1つにつき1回だけ使えます。"
+
+[settings_two_factor_auth_create_saved]
+description = "リカバリーコードを保存したことを確かめるチェックボックスのラベル"
+other = "リカバリーコードを保存しました"
+
+[settings_two_factor_auth_create_done]
+description = "リカバリーコードの画面を終えて二要素認証の画面へ進むボタンの文言"
+other = "完了"
+
+[settings_two_factor_auth_create_done_help]
+description = "完了ボタンの下に添える、チェックが必要であることの説明"
+other = "「保存しました」にチェックすると完了できます"
+
+[settings_withdrawal_new_title]
+description = "退会の画面のタイトル"
+other = "退会"
+
+[settings_withdrawal_new_heading]
+description = "退会の画面の見出し"
+other = "退会"
+
+[settings_withdrawal_new_back]
+description = "退会の画面から自分のプロフィールへ戻るリンクの名前 (読み上げ用)"
+other = "プロフィールにもどる"
+
+[settings_withdrawal_new_consequences_heading]
+description = "退会の画面の、退会すると何が起きるかの見出し"
+other = "退会すると"
+
+[settings_withdrawal_new_consequence_account]
+description = "退会すると何が起きるかの項目。アカウントが消えること"
+other = "アカウント (メールアドレスとアットネーム) が消え、ログインできなくなります。元に戻せません"
+
+[settings_withdrawal_new_consequence_invitation]
+description = "退会すると何が起きるかの項目。招待リンクが使えなくなること"
+other = "あなたの招待リンクは使えなくなります"
+
+[settings_withdrawal_new_consequence_record]
+description = "退会すると何が起きるかの項目。招待の記録に退会したユーザーとして残ること"
+other = "招待の記録では、あなたの名前は「退会したユーザー」になります"
+
+[settings_withdrawal_new_consequence_sign_up]
+description = "退会すると何が起きるかの項目。再び使うには招待が必要なこと"
+other = "もう一度使うには、あらためて招待を受けて登録する必要があります"
+
+[settings_withdrawal_new_current_password_label]
+description = "退会の画面の、今のパスワードの入力欄のラベル"
+other = "確認のためパスワードを入力"
+
+[settings_withdrawal_new_confirmed_label]
+description = "退会を元に戻せないことを確認するチェックボックスのラベル"
+other = "退会を元に戻せないことを理解しました"
+
+[settings_withdrawal_new_submit]
+description = "退会の画面の送信ボタンの文言"
+other = "退会する"
+
+[invitation_redemption_withdrawn]
+description = "招待で参加した人が退会しているときに、参加した人として示す名前"
+other = "退会したユーザー"
+
+[flash_sign_out_success]
+description = "ログアウトしたあとに出すフラッシュメッセージ"
+other = "ログアウトしました"
+
+[flash_email_confirmation_resent]
+description = "確認コードを再送したあとに出すフラッシュメッセージ"
+other = "新しい確認コードを送りました"
+
+[flash_account_created]
+description = "アカウントを作成してログインしたあとに出すフラッシュメッセージ"
+other = "アカウントを作成しました。Cutreへようこそ"
+
+[flash_password_updated]
+description = "パスワードリセットで新しいパスワードを設定したあと、ログイン画面に出すフラッシュメッセージ"
+other = "パスワードを再設定しました。新しいパスワードでログインしてください"
+
+[flash_invitation_recreated]
+description = "招待リンクを作り直したあと、招待の画面に出すフラッシュメッセージ"
+other = "招待リンクを作り直しました"
+
+[flash_two_factor_auth_disabled]
+description = "二要素認証を無効にしたあと、二要素認証の画面に出すフラッシュメッセージ"
+other = "二要素認証を無効にしました"
+
+[flash_account_withdrawn]
+description = "退会したあと、トップページに出すフラッシュメッセージ"
+other = "退会しました。ご利用ありがとうございました"
+
+[invitation_inviter_admin]
+description = "管理者が発行した招待で、招待した人として示す名前"
+other = "Cutreの運営"
+
+[invitation_inviter_withdrawn]
+description = "招待した人が退会しているときに、招待した人として示す名前"
+other = "退会したユーザー"
+
+[invitation_acceptance_new_title]
+description = "招待の受け取り画面のタイトル"
+other = "Cutreへの招待"
+
+[invitation_acceptance_new_description]
+description = "招待の受け取り画面のmeta description"
+other = "Cutreへの招待を受け取ります"
+
+[invitation_acceptance_new_heading]
+description = "招待の受け取り画面の見出し"
+other = "Cutreへの招待"
+
+[invitation_acceptance_new_invited_by]
+description = "招待の受け取り画面で、誰から招待されたかを示す文。{{.Inviter}} は招待した人の表示名"
+other = "{{.Inviter}}から招待が届いています。"
+
+[invitation_acceptance_new_about]
+description = "招待の受け取り画面で、サービスと招待制であることを説明する文"
+other = "Cutreはキャラクターグッズの物々交換のためのサービスです。登録には、実際に会ったことのある人からの招待が必要です。"
+
+[invitation_acceptance_new_submit]
+description = "招待の受け取り画面の、登録を始めるボタンの文言"
+other = "登録を始める"
+
+[invitation_acceptance_new_unusable_heading]
+description = "使えない招待リンクを開いたときの見出し"
+other = "この招待リンクは使えません"
+
+[invitation_acceptance_new_unusable_message]
+description = "使えない招待リンクを開いたときの説明。期限切れ・取り消し済み・人数の上限に達したことを区別しない"
+other = "有効期限が切れたか、取り消されたか、招待できる人数の上限に達した招待です。招待してくれた人に確かめてください。"
+
+[invitation_acceptance_new_rate_limited_heading]
+description = "招待リンクを開く回数が上限を超えたときの見出し"
+other = "しばらくしてから開き直してください"
+
+[invitation_acceptance_new_back]
+description = "使えない招待リンクの画面から、トップへ戻るリンクの文言"
+other = "トップへ戻る"
+
+[email_ignore_if_unexpected]
+description = "メールの末尾に置く、心当たりが無いときの案内"
+other = "このメールに心当たりが無い場合は、何もせずに破棄してください。"
+
+[email_confirmation_email_subject]
+description = "確認コードのメールの件名"
+other = "Cutreの確認コード"
+
+[email_confirmation_email_intro]
+description = "確認コードのメールの書き出し"
+other = "Cutreへの登録を続けるには、次の確認コードを入力してください。"
+
+[email_confirmation_email_expiry]
+description = "確認コードのメールで、コードの有効期限を伝える文"
+other = "このコードの有効期限は15分です。"
+
+[already_registered_notice_email_subject]
+description = "登録済みのメールアドレスで登録を始めた人へ送るメールの件名"
+other = "Cutreのアカウントは登録済みです"
+
+[already_registered_notice_email_intro]
+description = "登録済みのメールアドレスで登録を始めた人へ送るメールの書き出し"
+other = "このメールアドレスでCutreへの登録が始められましたが、このアドレスのアカウントは既にあります。"
+
+[already_registered_notice_email_sign_in]
+description = "登録済みのメールアドレスで登録を始めた人へ、ログインを案内する文"
+other = "次のリンクからログインしてください。"
+
+[sign_up_new_title]
+description = "登録の画面 (メールアドレスの入力) のタイトル"
+other = "新規登録"
+
+[sign_up_new_description]
+description = "登録の画面のmeta description"
+other = "招待を受け取った人がCutreのアカウントを作ります"
+
+[sign_up_new_heading]
+description = "登録の画面の見出し"
+other = "新規登録"
+
+[sign_up_new_email_label]
+description = "登録の画面のメールアドレスの入力欄のラベル"
+other = "メールアドレス"
+
+[sign_up_new_email_hint]
+description = "登録の画面のメールアドレスの入力欄の補足"
+other = "このアドレスに確認コードをお送りします。"
+
+[sign_up_new_submit]
+description = "登録の画面の送信ボタンの文言"
+other = "確認コードを送る"
+
+[sign_up_new_invitation_required_heading]
+description = "招待を持たずに登録の画面を開いたときの見出し"
+other = "Cutreは招待制です"
+
+[sign_up_new_invitation_required_message]
+description = "招待を持たずに登録の画面を開いたときの説明"
+other = "登録には、Cutreを使っている人からの招待リンクが必要です。実際に会ったことのある人に、招待を頼んでください。"
+
+[sign_up_new_back]
+description = "招待制の案内から、トップへ戻るリンクの文言"
+other = "トップへ戻る"
+
+[email_confirmation_new_title]
+description = "確認コードの入力画面のタイトル"
+other = "メールアドレスの確認"
+
+[email_confirmation_new_description]
+description = "確認コードの入力画面のmeta description"
+other = "メールで届いた確認コードを入力します"
+
+[email_confirmation_new_heading]
+description = "確認コードの入力画面の見出し"
+other = "メールアドレスの確認"
+
+[email_confirmation_new_message]
+description = "確認コードの入力画面の説明"
+other = "メールでお送りした6桁の確認コードを入力してください。コードの有効期限は15分です。"
+
+[email_confirmation_new_code_label]
+description = "確認コードの入力欄のラベル"
+other = "確認コード"
+
+[email_confirmation_new_submit]
+description = "確認コードの入力画面の送信ボタン"
+other = "確認する"
+
+[email_confirmation_new_resend_message]
+description = "確認コードの入力画面で、コードの再送を案内する文"
+other = "メールが届かないときや、コードが使えなくなったときは、新しいコードを送り直せます。"
+
+[email_confirmation_new_resend_submit]
+description = "確認コードの入力画面の再送ボタン"
+other = "コードを再送する"
+
+[account_new_title]
+description = "アカウントの作成画面のタイトル"
+other = "アカウントの作成"
+
+[account_new_description]
+description = "アカウントの作成画面のmeta description"
+other = "アットネームとパスワードを決めてCutreのアカウントを作ります"
+
+[account_new_heading]
+description = "アカウントの作成画面の見出し"
+other = "アカウントの作成"
+
+[account_new_message]
+description = "アカウントの作成画面の説明"
+other = "メールアドレスを確認しました。アットネームとパスワードを決めて、登録を完了してください。"
+
+[account_new_email_label]
+description = "アカウントの作成画面で、確認を済ませたメールアドレスを示す欄のラベル"
+other = "メールアドレス"
+
+[account_new_atname_label]
+description = "アカウントの作成画面のアットネームの入力欄のラベル"
+other = "アットネーム"
+
+[account_new_atname_hint]
+description = "アカウントの作成画面のアットネームの入力欄の補足"
+other = "@に続けて表示される、ほかの人から見えるIDです。半角英数字とアンダースコア (_) で20文字まで使えます。"
+
+[account_new_password_label]
+description = "アカウントの作成画面のパスワードの入力欄のラベル"
+other = "パスワード"
+
+[account_new_password_hint]
+description = "アカウントの作成画面のパスワードの入力欄の補足"
+other = "8文字以上にしてください。"
+
+[account_new_submit]
+description = "アカウントの作成画面の送信ボタンの文言"
+other = "アカウントを作成"
+
+[account_new_invitation_unusable_heading]
+description = "アカウントの作成中に、招待が使えなくなっていたときの見出し"
+other = "この招待は使えなくなりました"
+
+[account_new_invitation_unusable_message]
+description = "アカウントの作成中に、招待が使えなくなっていたときの説明。期限切れ・取り消し済み・人数の上限に達したことを区別しない"
+other = "有効期限が切れたか、取り消されたか、招待できる人数の上限に達したため、この招待では登録を完了できません。招待してくれた人に確かめてください。"
+
+[account_new_back]
+description = "招待が使えなくなった案内から、トップへ戻るリンクの文言"
+other = "トップへ戻る"
+
+[sign_in_new_forgot_password]
+description = "ログイン画面から、パスワードリセットの申請の画面へのリンクの文言"
+other = "パスワードを忘れた場合"
+
+[sign_in_two_factor_new_title]
+description = "ログインで認証アプリのコードを入力する画面のタイトル"
+other = "確認コードの入力"
+
+[sign_in_two_factor_new_description]
+description = "ログインで認証アプリのコードを入力する画面のmeta description"
+other = "認証アプリのコードを入力してログインします"
+
+[sign_in_two_factor_new_heading]
+description = "ログインで認証アプリのコードを入力する画面の見出し"
+other = "確認コードを入力"
+
+[sign_in_two_factor_new_message]
+description = "ログインで認証アプリのコードを入力する画面の説明"
+other = "認証アプリに表示されている6桁のコードを入力してください。"
+
+[sign_in_two_factor_new_code_label]
+description = "ログインで認証アプリのコードを入力する欄のラベル"
+other = "6桁のコード"
+
+[sign_in_two_factor_new_submit]
+description = "ログインで認証アプリのコードを入力する画面の送信ボタンの文言"
+other = "ログイン"
+
+[sign_in_two_factor_new_recovery_lead]
+description = "リカバリーコードでのログインへのリンクの前置き"
+other = "スマホが手元にないときは"
+
+[sign_in_two_factor_new_recovery_link]
+description = "リカバリーコードでのログインの画面へのリンクの文言"
+other = "リカバリーコードを使う"
+
+[sign_in_two_factor_new_back]
+description = "認証アプリのコードの入力をやめて、ログイン画面へ戻るリンクの文言"
+other = "ログイン画面にもどる"
+
+[sign_in_two_factor_recovery_new_title]
+description = "リカバリーコードでログインする画面のタイトル"
+other = "リカバリーコードの入力"
+
+[sign_in_two_factor_recovery_new_description]
+description = "リカバリーコードでログインする画面のmeta description"
+other = "保存したリカバリーコードを入力してログインします"
+
+[sign_in_two_factor_recovery_new_heading]
+description = "リカバリーコードでログインする画面の見出し"
+other = "リカバリーコードを入力"
+
+[sign_in_two_factor_recovery_new_message]
+description = "リカバリーコードでログインする画面の説明"
+other = "保存したリカバリーコードを1つ入力してください。使ったコードは再利用できません。"
+
+[sign_in_two_factor_recovery_new_code_label]
+description = "リカバリーコードの入力欄のラベル"
+other = "リカバリーコード"
+
+[sign_in_two_factor_recovery_new_submit]
+description = "リカバリーコードでログインする画面の送信ボタンの文言"
+other = "ログイン"
+
+[sign_in_two_factor_recovery_new_back]
+description = "認証アプリのコードの入力画面へ戻るリンク"
+other = "認証アプリのコードを使う"
+
+[help_contact_lead]
+description = "ログインのコードの入力画面で、ヘルプのお問い合わせのページへのリンクの前置き"
+other = "認証アプリもリカバリーコードもないときは"
+
+[help_contact_link]
+description = "ヘルプのお問い合わせのページへのリンクの文言。新しいタブで開く"
+other = "ヘルプからお問い合わせ"
+
+[help_contact_new_tab]
+description = "ヘルプのお問い合わせのページへのリンクの補足。別のサイトが新しいタブで開くことを知らせる"
+other = "ヘルプのページ (Wikino) が開きます"
+
+
+[password_reset_email_subject]
+description = "パスワードリセットのメールの件名"
+other = "Cutreのパスワードの再設定"
+
+[password_reset_email_intro]
+description = "パスワードリセットのメールの書き出し"
+other = "Cutreのパスワードの再設定を受け付けました。次のリンクから新しいパスワードを設定してください。"
+
+[password_reset_email_expiry]
+description = "パスワードリセットのメールで、リンクの有効期限を伝える文"
+other = "このリンクの有効期限は1時間です。"
+
+[password_reset_email_ignore_if_unexpected]
+description = "パスワードリセットのメールの末尾に置く、心当たりが無いときの案内"
+other = "このメールに心当たりが無い場合は、何もせずに破棄してください。パスワードは変わりません。"
+
+[password_reset_new_title]
+description = "パスワードリセットの申請の画面のタイトル"
+other = "パスワードの再設定"
+
+[password_reset_new_description]
+description = "パスワードリセットの申請の画面のmeta description"
+other = "パスワードを忘れたときに、Cutreのパスワードを再設定するためのリンクをメールで受け取ります"
+
+[password_reset_new_heading]
+description = "パスワードリセットの申請の画面の見出し"
+other = "パスワードの再設定"
+
+[password_reset_new_email_label]
+description = "パスワードリセットの申請の画面のメールアドレスの入力欄のラベル"
+other = "メールアドレス"
+
+[password_reset_new_email_hint]
+description = "パスワードリセットの申請の画面のメールアドレスの入力欄の補足"
+other = "登録したメールアドレスに、パスワードを再設定するためのリンクをお送りします。"
+
+[password_reset_new_submit]
+description = "パスワードリセットの申請の画面の送信ボタンの文言"
+other = "再設定のリンクを送る"
+
+[password_reset_new_back_to_sign_in]
+description = "パスワードリセットの申請の画面から、ログイン画面へ戻るリンクの文言"
+other = "ログイン画面へ戻る"
+
+[password_reset_sent_show_title]
+description = "パスワードリセットの申請を受け付けた後の画面のタイトル"
+other = "メールを確認してください"
+
+[password_reset_sent_show_description]
+description = "パスワードリセットの申請を受け付けた後の画面のmeta description"
+other = "パスワードの再設定の申請を受け付けました"
+
+[password_reset_sent_show_heading]
+description = "パスワードリセットの申請を受け付けた後の画面の見出し"
+other = "メールを確認してください"
+
+[password_reset_sent_show_message]
+description = "パスワードリセットの申請を受け付けた後の画面の説明。登録の有無を明かさないよう、送ったと断定しない"
+other = "入力したメールアドレスが登録されていれば、パスワードを再設定するためのリンクをお送りしました。リンクの有効期限は1時間です。メールが届かない場合は、迷惑メールのフォルダも確認してください。"
+
+[password_reset_sent_show_back_to_sign_in]
+description = "パスワードリセットの申請を受け付けた後の画面から、ログイン画面へ戻るリンクの文言"
+other = "ログイン画面へ戻る"
+
+[password_edit_title]
+description = "新しいパスワードの設定画面のタイトル"
+other = "新しいパスワードの設定"
+
+[password_edit_description]
+description = "新しいパスワードの設定画面のmeta description"
+other = "Cutreのアカウントに新しいパスワードを設定します"
+
+[password_edit_heading]
+description = "新しいパスワードの設定画面の見出し"
+other = "新しいパスワードの設定"
+
+[password_edit_message]
+description = "新しいパスワードの設定画面の説明"
+other = "新しいパスワードを決めてください。設定すると、ログイン中のすべての端末からログアウトします。"
+
+[password_edit_email_label]
+description = "新しいパスワードの設定画面で、パスワードを設定するアカウントのメールアドレスを示す欄のラベル"
+other = "メールアドレス"
+
+[password_edit_password_label]
+description = "新しいパスワードの設定画面のパスワードの入力欄のラベル"
+other = "新しいパスワード"
+
+[password_edit_password_hint]
+description = "新しいパスワードの設定画面のパスワードの入力欄の補足"
+other = "8文字以上にしてください。"
+
+[password_edit_submit]
+description = "新しいパスワードの設定画面の送信ボタンの文言"
+other = "パスワードを設定"
+
+[password_edit_unusable_heading]
+description = "パスワードの再設定のリンクが使えないときの見出し"
+other = "このリンクは使えません"
+
+[password_edit_unusable_message]
+description = "パスワードの再設定のリンクが使えないときの説明。期限切れ・使用済み・新しいリンクへの置き換えを区別しない"
+other = "有効期限が切れたか、既に使われたか、新しいリンクを申請したため、このリンクではパスワードを再設定できません。もう一度、再設定のリンクを申請してください。"
+
+[password_edit_request_new_link]
+description = "パスワードの再設定のリンクが使えないときの、申請の画面へのリンクの文言"
+other = "再設定のリンクを申請する"

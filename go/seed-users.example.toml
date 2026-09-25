@@ -1,0 +1,20 @@
+# `cutre seed` (make -C go seed) が作る開発用アカウントの名簿の見本。
+# 実際に使う名簿は、開発者が自分でメールを読めるアドレスを持つためバージョン管理に入れない。
+# 使うときは、このファイルを .gitignore が除外している go/seed-users.toml へ複製し、アドレスを書き換える。
+#
+# 同じメールアドレスのアカウントが既にあれば作らないため、名簿に書き足して再実行すれば足した分だけが作られる。
+
+# すべてのアカウントで共通のパスワード。シードは開発環境でしか動かず、
+# 開発用のサイトもプロキシの認証の内側にあるため、アカウントごとに分けても守れるものが無い。
+password = "password"
+
+# ログインを確かめる既定のアカウント。
+[[users]]
+atname = "seeduser1"
+email = "seeduser1@example.com"
+
+# 英語で表示するアカウント。ログイン後のページが users.locale で表示されることを確かめる。
+[[users]]
+atname = "seeduser2"
+email = "seeduser2@example.com"
+locale = "en"

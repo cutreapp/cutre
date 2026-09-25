@@ -1,0 +1,106 @@
+package sign_in
+
+import (
+	"github.com/cutreapp/cutre/go/internal/model"
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+)
+
+// NewPageData はログイン画面の描画に使うデータ。
+type NewPageData struct {
+	CSRFToken string
+	// Email は再描画のときに入力欄へ戻すメールアドレス。パスワードは戻さない。
+	Email      string
+	FormErrors *model.ValidationError
+	// TurnstileSiteKey が空のとき (Turnstileを無効にした環境) はウィジェットを描画しない。
+	TurnstileSiteKey string
+	// ReturnTo はログイン後の戻り先。検証済みの値だけを受け取る。
+	ReturnTo string
+}
+
+// summaryFields はエラーの要約に並べるフィールドを、フォームに現れる順で持つ。
+var summaryFields = []components.FormErrorSummaryField{
+	{Name: "email", LabelKey: "sign_in_new_email_label"},
+	{Name: "password", LabelKey: "sign_in_new_password_label"},
+}
+
+// New はログイン画面を描画する。
+//
+// 送信先は表示中の言語版のパスにし、エラーで再描画したときも同じ言語のまま留まるようにする。
+// メールアドレスの欄は autocomplete="username" にする。パスワードマネージャーは、
+// パスワードの欄の直前にある username の欄をアカウントの識別子として保存・補完するため。
+//
+// 見出しは地の上に中央寄せで、エラーとフォームはカードの中に置く。
+// md以上ではカードを横幅いっぱいにせず、入力欄が間延びしない幅に留める。
+templ New(data NewPageData) {
+	<div class="flex w-full flex-1 flex-col justify-center gap-6 py-10 md:mx-auto md:max-w-md">
+		@components.AuthHeading(templates.T(ctx, "sign_in_new_heading"))
+		<form
+			action={ templ.SafeURL(templates.LocalePath(ctx, templates.SignInPath)) }
+			method="post"
+			class="page-card flex flex-col gap-4"
+			data-disable-on-submit
+			data-clear-on-history-restore
+		>
+			@components.FormErrors(data.FormErrors)
+			@components.FormErrorSummary(components.FormErrorSummaryData{Fields: summaryFields, Errors: data.FormErrors})
+			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+			if data.ReturnTo != "" {
+				<input type="hidden" name={ templates.ReturnToParam } value={ data.ReturnTo }/>
+			}
+			<div
+				role="group"
+				class="field"
+				if data.FormErrors.HasFieldError("email") {
+					data-invalid
+				}
+			>
+				@components.RequiredFieldLabel("email", templates.T(ctx, "sign_in_new_email_label"))
+				<input
+					id="email"
+					name="email"
+					type="email"
+					value={ data.Email }
+					autocomplete="username"
+					required
+					if data.FormErrors.HasFieldError("email") {
+						aria-invalid="true"
+						aria-describedby={ components.FieldErrorsDescribedBy("email", data.FormErrors) }
+					}
+				/>
+				@components.FieldErrors("email", data.FormErrors)
+			</div>
+			<div
+				role="group"
+				class="field"
+				if data.FormErrors.HasFieldError("password") {
+					data-invalid
+				}
+			>
+				@components.RequiredFieldLabel("password", templates.T(ctx, "sign_in_new_password_label"))
+				<input
+					id="password"
+					name="password"
+					type="password"
+					autocomplete="current-password"
+					enterkeyhint="go"
+					required
+					if data.FormErrors.HasFieldError("password") {
+						aria-invalid="true"
+						aria-describedby={ components.FieldErrorsDescribedBy("password", data.FormErrors) }
+					}
+				/>
+				@components.FieldErrors("password", data.FormErrors)
+			</div>
+			@components.Turnstile(data.TurnstileSiteKey)
+			<button type="submit" class="btn w-full" data-size="lg">
+				{ templates.T(ctx, "sign_in_new_submit") }
+			</button>
+		</form>
+		<p class="text-center">
+			<a href={ templ.SafeURL(templates.LocalePath(ctx, templates.PasswordResetPath)) } class="underline">
+				{ templates.T(ctx, "sign_in_new_forgot_password") }
+			</a>
+		</p>
+	</div>
+}

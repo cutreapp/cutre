@@ -1,0 +1,22 @@
+package components
+
+import "github.com/cutreapp/cutre/go/internal/templates"
+
+// AuthHeading はログインまわりの画面 (ログイン・新規登録・パスワードリセットなど) の見出しを描画する。
+//
+// 見出しの上にサービス名のロゴを置き、タップでトップへ戻れるようにする。
+// ロゴの画像を用意するまでは、サービス名を文字で組んで代わりにする。
+// リンクの名前が「Cutre」だけでは行き先が伝わらないため aria-label で補い、
+// 見えている文字列を名前に含めて音声入力でも指定できるようにする (WCAG 2.5.3)。
+templ AuthHeading(title string) {
+	<div class="flex flex-col items-center gap-2 px-4 text-center">
+		<a
+			href={ templates.RootPath(ctx) }
+			aria-label={ templates.T(ctx, "auth_heading_home_link") }
+			class="rounded-md px-2 text-3xl font-bold tracking-tight text-brand-strong"
+		>
+			Cutre
+		</a>
+		<h1 class="text-2xl font-bold">{ title }</h1>
+	</div>
+}

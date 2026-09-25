@@ -63,3 +63,19 @@ func TestRun_Serve(t *testing.T) {
 		t.Errorf("標準エラー出力 = %q、usageを含まないことを期待", stderr.String())
 	}
 }
+
+// seedの振り分けも同じく、設定の読み込みに失敗させて終了コード1が返ることだけを検証する。
+// 開発環境以外での拒否は TestRunSeed_RejectsNonDev、名簿の読み込みは internal/seed のテストで確かめる。
+// t.Setenv を使うため t.Parallel() は呼ばない。
+func TestRun_Seed(t *testing.T) {
+	t.Setenv("DATABASE_URL", "")
+
+	var stderr bytes.Buffer
+
+	if code := run([]string{"seed"}, &stderr); code != 1 {
+		t.Errorf("終了コード = %d、期待値 = %d", code, 1)
+	}
+	if strings.Contains(stderr.String(), "使い方:") {
+		t.Errorf("標準エラー出力 = %q、usageを含まないことを期待", stderr.String())
+	}
+}

@@ -1,0 +1,55 @@
+package sign_in_two_factor_recovery
+
+import (
+	"github.com/cutreapp/cutre/go/internal/model"
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+)
+
+// NewPageData は、ログインでリカバリーコードを入力する画面の描画に使うデータ。
+type NewPageData struct {
+	CSRFToken string
+	// Code は再描画のときに入力欄へ戻すコード。
+	Code       string
+	FormErrors *model.ValidationError
+	// ReturnTo はログイン後の戻り先。検証済みの値だけを受け取る。
+	ReturnTo string
+}
+
+// summaryFields はエラーの要約に並べるフィールドを、フォームに現れる順で持つ。
+var summaryFields = []components.FormErrorSummaryField{
+	{Name: "code", LabelKey: "sign_in_two_factor_recovery_new_code_label"},
+}
+
+// New はリカバリーコードの入力画面を描画する。
+templ New(data NewPageData) {
+	<div class="flex w-full flex-1 flex-col justify-center gap-6 py-10 md:mx-auto md:max-w-md">
+		@components.AuthHeading(templates.T(ctx, "sign_in_two_factor_recovery_new_heading"))
+		<div class="page-card flex flex-col gap-4">
+			<form action={ templ.SafeURL(templates.LocalePath(ctx, templates.SignInTwoFactorRecoveryPath)) } method="post" class="flex flex-col gap-4" data-disable-on-submit data-clear-on-history-restore>
+				@components.FormErrors(data.FormErrors)
+				@components.FormErrorSummary(components.FormErrorSummaryData{Fields: summaryFields, Errors: data.FormErrors})
+				<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+				if data.ReturnTo != "" {
+					<input type="hidden" name={ templates.ReturnToParam } value={ data.ReturnTo }/>
+				}
+				<p>{ templates.T(ctx, "sign_in_two_factor_recovery_new_message") }</p>
+				<div role="group" class="field" if data.FormErrors.HasFieldError("code") { data-invalid }>
+					@components.RequiredFieldLabel("code", templates.T(ctx, "sign_in_two_factor_recovery_new_code_label"))
+					<input id="code" name="code" type="text" class="font-mono tracking-widest" value={ data.Code } autocomplete="off" autocapitalize="none" autocorrect="off" spellcheck="false" enterkeyhint="go" required
+						if data.FormErrors.HasFieldError("code") {
+							aria-invalid="true"
+							aria-describedby={ components.FieldErrorsDescribedBy("code", data.FormErrors) }
+						}
+					/>
+					@components.FieldErrors("code", data.FormErrors)
+				</div>
+				<button type="submit" class="btn w-full" data-size="lg">{ templates.T(ctx, "sign_in_two_factor_recovery_new_submit") }</button>
+			</form>
+			<div class="border-t pt-3">
+				@components.HelpContact()
+			</div>
+		</div>
+		<p class="text-center"><a href={ templ.SafeURL(templates.WithReturnTo(templates.LocalePath(ctx, templates.SignInTwoFactorPath), data.ReturnTo)) } class="underline">{ templates.T(ctx, "sign_in_two_factor_recovery_new_back") }</a></p>
+	</div>
+}

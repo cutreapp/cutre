@@ -9,6 +9,9 @@ sql:
         out: "internal/query"
         sql_package: "database/sql"
         emit_empty_slices: true
+        # クエリから参照されないテーブルの型は生成しない。
+        # Riverのテーブルは実行時にRiverのドライバーが読み書きし、アプリケーションはsqlcで触れないため。
+        omit_unused_structs: true
         overrides:
           - db_type: "uuid"
             go_type: "github.com/google/uuid.UUID"
@@ -20,3 +23,18 @@ sql:
             nullable: true
           - db_type: "timestamptz"
             go_type: "time.Time"
+          # NULL許容のtimestamptzは sql.NullTime ではなく *time.Time で受け取り、
+          # モデルのポインタ型のフィールドへそのまま渡せるようにする。
+          # このケースだけスキーマ修飾が要るのは、sqlcがNULL許容の列の型名を
+          # pg_catalog修飾で解決するため。
+          - db_type: "pg_catalog.timestamptz"
+            go_type:
+              import: "time"
+              type: "Time"
+              pointer: true
+            nullable: true
+          # citextは大文字小文字を区別しないだけのテキスト型のため、Go側はstringで扱う。
+          - db_type: "public.citext"
+            go_type: "string"
+          - db_type: "pg_catalog.citext"
+            go_type: "string"

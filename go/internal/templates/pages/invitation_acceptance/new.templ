@@ -1,0 +1,73 @@
+package invitation_acceptance
+
+import (
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+)
+
+// State は招待の受け取り画面が何を示すか。
+type State int
+
+const (
+	// StateUsable は登録に使える招待で、登録を始めるボタンを出す。
+	StateUsable State = iota
+	// StateUnusable は無い・使用済み・期限切れ・取り消し済みの招待。
+	StateUnusable
+	// StateRateLimited は招待リンクを開く回数が上限を超えたとき。招待が使えるかどうかは示さない。
+	StateRateLimited
+)
+
+// NewPageData は招待の受け取り画面の描画に使うデータ。
+type NewPageData struct {
+	State State
+	// Token は招待リンクのトークン。登録を始めるフォームの送信先に使う。
+	Token     string
+	CSRFToken string
+	// Inviter は招待した人の表示名 (@アットネーム・運営・退会したユーザー)。
+	Inviter string
+}
+
+// New は招待の受け取り画面を描画する。
+//
+// 登録を始めるボタンは、招待リンクと同じURLへのPOSTにする。
+// 押すと受け取った招待をCookieに移し、トークンをURLに残したまま登録の画面へ進まないようにする。
+// 見出しとカードの組み方はログイン画面に揃える。
+templ New(data NewPageData) {
+	<div class="flex w-full flex-1 flex-col justify-center gap-6 py-10 md:mx-auto md:max-w-md">
+		switch data.State {
+			case StateUsable:
+				@components.AuthHeading(templates.T(ctx, "invitation_acceptance_new_heading"))
+				<form
+					action={ templ.SafeURL(templates.LocalePath(ctx, templates.InvitationPath(data.Token))) }
+					method="post"
+					class="page-card flex flex-col gap-4"
+					data-disable-on-submit
+				>
+					<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+					<p class="font-bold">
+						{ templates.T(ctx, "invitation_acceptance_new_invited_by", map[string]any{"Inviter": data.Inviter}) }
+					</p>
+					<p>{ templates.T(ctx, "invitation_acceptance_new_about") }</p>
+					<button type="submit" class="btn w-full" data-size="lg">
+						{ templates.T(ctx, "invitation_acceptance_new_submit") }
+					</button>
+				</form>
+			case StateUnusable:
+				@components.AuthHeading(templates.T(ctx, "invitation_acceptance_new_unusable_heading"))
+				@notice(templates.T(ctx, "invitation_acceptance_new_unusable_message"))
+			case StateRateLimited:
+				@components.AuthHeading(templates.T(ctx, "invitation_acceptance_new_rate_limited_heading"))
+				@notice(templates.T(ctx, "validation_rate_limited"))
+		}
+	</div>
+}
+
+// notice は招待を受け取れないときの説明と、トップへ戻るリンクを描画する。
+templ notice(message string) {
+	<div class="page-card flex flex-col gap-4">
+		<p>{ message }</p>
+		<a href={ templ.SafeURL(templates.RootPath(ctx)) } class="underline">
+			{ templates.T(ctx, "invitation_acceptance_new_back") }
+		</a>
+	</div>
+}

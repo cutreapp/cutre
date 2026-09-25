@@ -1,0 +1,27 @@
+package layouts
+
+// Default はHTMLのメールの共通のレイアウト。文書の外枠とフッターを持ち、各メールの本文を children で受け取る。
+//
+// スタイルはすべてstyle属性に書く。メールクライアントの多くは外部のスタイルシートと <head> のスタイルを読まないため。
+// 色はWebの画面のトークン (page・foreground・border のライトの値) をhexへ変換して書いている。
+// CSSの変数とoklchは、対応していないメールクライアントがあるため。
+//
+// lang はcontextから読まずに引数で受け取る。メールはリクエストの外 (ワーカー) で、
+// 受け取る人の users.locale の言語で描画するため、I18nのミドルウェアがcontextに載せるロケールは無い。
+templ Default(lang, title string) {
+	<!DOCTYPE html>
+	<html lang={ lang }>
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ title }</title>
+		</head>
+		<body style="margin: 0; padding: 0; background-color: #f8f6f4;">
+			<div style="max-width: 600px; margin: 0 auto; padding: 24px; font-family: sans-serif; font-size: 16px; line-height: 1.7; color: #0a0a0a;">
+				{ children... }
+				<hr style="border: none; border-top: 1px solid #e5e5e5; margin: 24px 0;"/>
+				<p style="margin: 0; font-size: 13px; color: #0a0a0a;">Cutre</p>
+			</div>
+		</body>
+	</html>
+}

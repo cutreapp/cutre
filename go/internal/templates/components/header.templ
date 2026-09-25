@@ -1,0 +1,43 @@
+package components
+
+import "github.com/cutreapp/cutre/go/internal/templates"
+
+// HeaderData はログイン後のページのヘッダーの描画に使うデータ。
+type HeaderData struct {
+	// Atname はログイン中のユーザーのアットネーム。自分のプロフィールへのリンクに使う。
+	Atname string
+	// CurrentPath は表示中のページのパス。ヘッダーのリンクのうち、このページを指すものに aria-current を付ける。
+	CurrentPath string
+}
+
+// Header はログイン後のページのヘッダーを描画する。
+//
+// ホームへのリンクと自分のプロフィールへのリンクを置く。
+// ログアウトなど自分向けの操作はプロフィールから辿る。
+templ Header(data HeaderData) {
+	<header>
+		<div class="mx-auto flex h-14 w-full max-w-5xl items-center justify-between gap-4 px-4 md:h-16 md:px-8">
+			<a
+				href={ templ.SafeURL(templates.HomePath) }
+				class="text-2xl font-bold tracking-tight"
+				if data.CurrentPath == templates.HomePath {
+					aria-current="page"
+				}
+			>Cutre</a>
+			<nav aria-label={ templates.T(ctx, "header_nav_label") }>
+				<a
+					href={ templ.SafeURL(templates.ProfilePath(data.Atname)) }
+					class="btn aria-[current=page]:bg-accent"
+					data-variant="ghost"
+					data-size="sm"
+					if data.CurrentPath == templates.ProfilePath(data.Atname) {
+						aria-current="page"
+					}
+				>
+					<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"></path></svg>
+					{ templates.T(ctx, "header_profile_link") }
+				</a>
+			</nav>
+		</div>
+	</header>
+}

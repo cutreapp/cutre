@@ -308,3 +308,26 @@ func TestErrorPageMeta(t *testing.T) {
 		t.Errorf("LocaleSuggestion = %+v、期待値 = nil", meta.LocaleSuggestion)
 	}
 }
+
+// TestSignedInPageMeta は、ログイン後のページが言語版の参照も正規のアドレスも持たず、インデックスを断ることを検証する。
+func TestSignedInPageMeta(t *testing.T) {
+	t.Parallel()
+
+	cfg := &config.Config{Env: "prod", Domain: "cutre.example.com", GitRev: "abc1234"}
+	ctx := i18n.SetLocale(context.Background(), i18n.LangEn)
+
+	meta := viewmodel.SignedInPageMeta(ctx, cfg)
+
+	if !meta.NoIndex {
+		t.Error("NoIndex = false、期待値 = true")
+	}
+	if meta.CanonicalURL != "" {
+		t.Errorf("CanonicalURL = %q、期待値 = 空文字列", meta.CanonicalURL)
+	}
+	if len(meta.Alternates) != 0 {
+		t.Errorf("Alternatesの件数 = %d、期待値 = 0", len(meta.Alternates))
+	}
+	if meta.OGLocale != "en_US" {
+		t.Errorf("OGLocale = %q、期待値 = %q", meta.OGLocale, "en_US")
+	}
+}

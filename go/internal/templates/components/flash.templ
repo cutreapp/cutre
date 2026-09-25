@@ -1,0 +1,41 @@
+package components
+
+import (
+	"github.com/cutreapp/cutre/go/internal/session"
+	"github.com/cutreapp/cutre/go/internal/templates"
+)
+
+// Flash はリダイレクトをまたいで運ばれたフラッシュメッセージを、BasecoatのToastで描画する。
+//
+// 失敗を伝えるメッセージは role="alert" で直ちに読み上げさせ、それ以外は role="status" で
+// 読み上げ中の内容を遮らずに伝える。
+// 失敗を伝えるメッセージは自動で閉じない (data-duration="-1")。何が起きたかを読み終える前に消えると、
+// 利用者が次に何をすべきか分からなくなるため。他の種類はBasecoatの既定の時間で閉じる。
+// どの種類にも閉じるボタンを置き、読み終えた利用者がすぐに閉じられるようにする。
+templ Flash(flash *session.FlashMessage) {
+	if flash != nil {
+		<div id="toaster" class="toaster">
+			<div
+				class="toast"
+				if flash.Type == session.FlashError {
+					role="alert"
+					data-duration="-1"
+				} else {
+					role="status"
+				}
+				aria-atomic="true"
+				aria-hidden="false"
+				data-category={ string(flash.Type) }
+			>
+				<div class="toast-content">
+					<section>
+						<h2>{ flash.Message }</h2>
+					</section>
+					<footer>
+						<button type="button" class="btn" data-toast-action>{ templates.T(ctx, "flash_dismiss") }</button>
+					</footer>
+				</div>
+			</div>
+		</div>
+	}
+}
