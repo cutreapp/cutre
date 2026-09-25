@@ -1,0 +1,94 @@
+package sign_in_two_factor
+
+import (
+	"github.com/cutreapp/cutre/go/internal/model"
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+)
+
+// NewPageData は、ログインで認証アプリのコードを入力する画面の描画に使うデータ。
+type NewPageData struct {
+	CSRFToken string
+	// Code は再描画のときに入力欄へ戻すコード。
+	Code       string
+	FormErrors *model.ValidationError
+	// ReturnTo はログイン後の戻り先。検証済みの値だけを受け取る。
+	ReturnTo string
+}
+
+// summaryFields はエラーの要約に並べるフィールドを、フォームに現れる順で持つ。
+var summaryFields = []components.FormErrorSummaryField{
+	{Name: "code", LabelKey: "sign_in_two_factor_new_code_label"},
+}
+
+// New は、パスワードを確かめた二要素認証のユーザーに、認証アプリのコードを入力してもらう画面を描画する。
+//
+// 送信先はログイン画面と同じく表示中の言語版のパスにする。
+// コードの欄は、貼り付けで混じった空白やハイフン、全角の数字もサーバーで受け付けるため、pattern と maxlength を付けない。
+// 6桁そろっても自動では送信せず、ボタンで送る。
+// リカバリーコードの画面とログイン画面へのリンクにも戻り先を載せ、どこから入り直しても行き先を失わないようにする。
+templ New(data NewPageData) {
+	<div class="flex w-full flex-1 flex-col justify-center gap-6 py-10 md:mx-auto md:max-w-md">
+		@components.AuthHeading(templates.T(ctx, "sign_in_two_factor_new_heading"))
+		<div class="page-card flex flex-col gap-4">
+			<form
+				action={ templ.SafeURL(templates.LocalePath(ctx, templates.SignInTwoFactorPath)) }
+				method="post"
+				class="flex flex-col gap-4"
+				data-disable-on-submit
+				data-clear-on-history-restore
+			>
+				@components.FormErrors(data.FormErrors)
+				@components.FormErrorSummary(components.FormErrorSummaryData{Fields: summaryFields, Errors: data.FormErrors})
+				<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+				if data.ReturnTo != "" {
+					<input type="hidden" name={ templates.ReturnToParam } value={ data.ReturnTo }/>
+				}
+				<p>{ templates.T(ctx, "sign_in_two_factor_new_message") }</p>
+				<div
+					role="group"
+					class="field"
+					if data.FormErrors.HasFieldError("code") {
+						data-invalid
+					}
+				>
+					@components.RequiredFieldLabel("code", templates.T(ctx, "sign_in_two_factor_new_code_label"))
+					<input
+						id="code"
+						name="code"
+						type="text"
+						class="font-mono tracking-widest"
+						value={ data.Code }
+						inputmode="numeric"
+						autocomplete="one-time-code"
+						enterkeyhint="go"
+						required
+						if data.FormErrors.HasFieldError("code") {
+							aria-invalid="true"
+							aria-describedby={ components.FieldErrorsDescribedBy("code", data.FormErrors) }
+						}
+					/>
+					@components.FieldErrors("code", data.FormErrors)
+				</div>
+				<button type="submit" class="btn w-full" data-size="lg">{ templates.T(ctx, "sign_in_two_factor_new_submit") }</button>
+			</form>
+			<div class="flex flex-col gap-3 border-t pt-3">
+				<div class="flex flex-col gap-0.5">
+					<p class="text-sm">{ templates.T(ctx, "sign_in_two_factor_new_recovery_lead") }</p>
+					<a
+						href={ templ.SafeURL(templates.WithReturnTo(templates.LocalePath(ctx, templates.SignInTwoFactorRecoveryPath), data.ReturnTo)) }
+						class="self-start text-sm font-medium underline"
+					>
+						{ templates.T(ctx, "sign_in_two_factor_new_recovery_link") }
+					</a>
+				</div>
+				@components.HelpContact()
+			</div>
+		</div>
+		<p class="text-center">
+			<a href={ templ.SafeURL(templates.WithReturnTo(templates.LocalePath(ctx, templates.SignInPath), data.ReturnTo)) } class="underline">
+				{ templates.T(ctx, "sign_in_two_factor_new_back") }
+			</a>
+		</p>
+	</div>
+}
