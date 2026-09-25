@@ -1,0 +1,22 @@
+package password_reset_sent
+
+import (
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+)
+
+// Show はパスワードリセットの申請を受け付けた後の画面を描画する。
+//
+// 入力されたアドレスが登録済みかどうかによらず同じ画面を出すため、文言は「登録されていれば送った」と断定を避け、
+// 入力されたアドレスも表示しない。
+templ Show() {
+	<div class="flex w-full flex-1 flex-col justify-center gap-6 py-10 md:mx-auto md:max-w-md">
+		@components.AuthHeading(templates.T(ctx, "password_reset_sent_show_heading"))
+		<div class="page-card flex flex-col gap-4">
+			<p>{ templates.T(ctx, "password_reset_sent_show_message") }</p>
+			<a href={ templ.SafeURL(templates.LocalePath(ctx, templates.SignInPath)) } class="underline">
+				{ templates.T(ctx, "password_reset_sent_show_back_to_sign_in") }
+			</a>
+		</div>
+	</div>
+}

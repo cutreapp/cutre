@@ -1,0 +1,86 @@
+package password_reset
+
+import (
+	"github.com/cutreapp/cutre/go/internal/model"
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+)
+
+// NewPageData はパスワードリセットの申請の画面の描画に使うデータ。
+type NewPageData struct {
+	CSRFToken string
+	// Email は再描画のときに入力欄へ戻すメールアドレス。
+	Email      string
+	FormErrors *model.ValidationError
+	// TurnstileSiteKey が空のとき (Turnstileを無効にした環境) はウィジェットを描画しない。
+	TurnstileSiteKey string
+}
+
+// summaryFields はエラーの要約に並べるフィールドを、フォームに現れる順で持つ。
+var summaryFields = []components.FormErrorSummaryField{
+	{Name: "email", LabelKey: "password_reset_new_email_label"},
+}
+
+// New はパスワードリセットの申請の画面を描画する。
+//
+// メールアドレスの欄は autocomplete="username" にする。ログインの識別子として保存したアドレスを、
+// パスワードマネージャーが補完できるようにするため。
+// 見出しとカードの組み方はログイン画面に揃える。
+templ New(data NewPageData) {
+	<div class="flex w-full flex-1 flex-col justify-center gap-6 py-10 md:mx-auto md:max-w-md">
+		@components.AuthHeading(templates.T(ctx, "password_reset_new_heading"))
+		<form
+			action={ templ.SafeURL(templates.LocalePath(ctx, templates.PasswordResetPath)) }
+			method="post"
+			class="page-card flex flex-col gap-4"
+			data-disable-on-submit
+		>
+			@components.FormErrors(data.FormErrors)
+			@components.FormErrorSummary(components.FormErrorSummaryData{Fields: summaryFields, Errors: data.FormErrors})
+			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+			<div
+				role="group"
+				class="field"
+				if data.FormErrors.HasFieldError("email") {
+					data-invalid
+				}
+			>
+				@components.RequiredFieldLabel("email", templates.T(ctx, "password_reset_new_email_label"))
+				<input
+					id="email"
+					name="email"
+					type="email"
+					value={ data.Email }
+					autocomplete="username"
+					enterkeyhint="send"
+					required
+					aria-describedby={ emailDescribedBy(data.FormErrors) }
+					if data.FormErrors.HasFieldError("email") {
+						aria-invalid="true"
+					}
+				/>
+				<p id="email-hint" class="text-sm">{ templates.T(ctx, "password_reset_new_email_hint") }</p>
+				@components.FieldErrors("email", data.FormErrors)
+			</div>
+			@components.Turnstile(data.TurnstileSiteKey)
+			<button type="submit" class="btn w-full" data-size="lg">
+				{ templates.T(ctx, "password_reset_new_submit") }
+			</button>
+		</form>
+		<p class="text-center">
+			<a href={ templ.SafeURL(templates.LocalePath(ctx, templates.SignInPath)) } class="underline">
+				{ templates.T(ctx, "password_reset_new_back_to_sign_in") }
+			</a>
+		</p>
+	</div>
+}
+
+// emailDescribedBy はメールアドレスの欄を説明する要素のidを返す。
+// 補足の文は常に結び付け、エラーがあるときはそのメッセージも続けて読ませる。
+func emailDescribedBy(formErrors *model.ValidationError) string {
+	if !formErrors.HasFieldError("email") {
+		return "email-hint"
+	}
+
+	return "email-hint " + components.FieldErrorsDescribedBy("email", formErrors)
+}
