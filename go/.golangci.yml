@@ -109,6 +109,23 @@ linters:
             - pkg: github.com/cutreapp/cutre/go/internal/middleware
               desc: "HttperrorはMiddlewareに依存できません。"
 
+        # Session層: Cookieに紐づくログイン中のセッションを扱うPresentation層のヘルパー。
+        # リポジトリ経由でセッションを読み書きするため、他のPresentation層のパッケージは知らない。
+        session-layer:
+          files:
+            - "**/internal/session/**"
+          deny:
+            - pkg: github.com/cutreapp/cutre/go/internal/handler
+              desc: "SessionはHandlerに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/httperror
+              desc: "SessionはHttperrorに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/middleware
+              desc: "SessionはMiddlewareに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/templates
+              desc: "SessionはTemplatesに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/viewmodel
+              desc: "SessionはViewModelに依存できません。"
+
         # Middleware層: リクエストの前処理。ハンドラーと表示用データの組み立てを知らない。
         middleware-layer:
           files:
@@ -122,6 +139,191 @@ linters:
               desc: "MiddlewareはHttperrorに依存できません。"
             - pkg: github.com/cutreapp/cutre/go/internal/viewmodel
               desc: "MiddlewareはViewModelに依存できません。"
+
+        # UseCase層: 操作ごとのオーケストレーター。データアクセスはRepositoryを経由し、Presentation層を知らない。
+        usecase-layer:
+          files:
+            - "**/internal/usecase/**"
+          deny:
+            - pkg: github.com/cutreapp/cutre/go/internal/query
+              desc: "UseCaseはQueryに直接依存できません。Repositoryを経由してください。"
+            - pkg: github.com/cutreapp/cutre/go/internal/handler
+              desc: "UseCaseはHandlerに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/httperror
+              desc: "UseCaseはHttperrorに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/middleware
+              desc: "UseCaseはMiddlewareに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/session
+              desc: "UseCaseはSessionに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/templates
+              desc: "UseCaseはTemplatesに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/viewmodel
+              desc: "UseCaseはViewModelに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/worker
+              desc: "UseCaseはWorkerに依存できません。ジョブの投入はDispatcherを経由してください。"
+
+        # Worker層: ジョブの引数をUseCaseの入力へ変換する薄いAdapter。
+        # client.goはワーカーが呼ぶUseCaseを組み立てるためRepositoryを知るが、クエリやHTTPの側には触れない。
+        worker-layer:
+          files:
+            - "**/internal/worker/**"
+          deny:
+            - pkg: github.com/cutreapp/cutre/go/internal/query
+              desc: "WorkerはQueryに直接依存できません。UseCaseを経由してください。"
+            - pkg: github.com/cutreapp/cutre/go/internal/validator
+              desc: "WorkerはValidatorに直接依存できません。UseCaseを経由してください。"
+            - pkg: github.com/cutreapp/cutre/go/internal/handler
+              desc: "WorkerはHandlerに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/httperror
+              desc: "WorkerはHTTPのエラーページを描画しません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/middleware
+              desc: "WorkerはMiddlewareに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/session
+              desc: "WorkerはCookieのセッションを扱いません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/templates
+              desc: "WorkerはTemplatesに依存できません。メールの描画はUseCaseを経由してください。"
+            - pkg: github.com/cutreapp/cutre/go/internal/viewmodel
+              desc: "WorkerはViewModelに依存できません。"
+
+        # Email層: メールの描画と送信を扱うPresentation層のヘルパー。
+        # テンプレートと翻訳だけを使い、データアクセスとジョブの配線はUseCaseとWorkerに任せる。
+        email-layer:
+          files:
+            - "**/internal/email/**"
+          deny:
+            - pkg: github.com/cutreapp/cutre/go/internal/database
+              desc: "Emailはデータベース接続に依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/query
+              desc: "EmailはQueryに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/repository
+              desc: "EmailはRepositoryに依存できません。送る値は呼び出し元から受け取ってください。"
+            - pkg: github.com/cutreapp/cutre/go/internal/usecase
+              desc: "EmailはUseCaseに依存できません。UseCaseのほうがEmailの種類ごとのSenderを使います。"
+            - pkg: github.com/cutreapp/cutre/go/internal/validator
+              desc: "EmailはValidatorに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/worker
+              desc: "EmailはWorkerに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/dispatcher
+              desc: "EmailはDispatcherに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/handler
+              desc: "EmailはHandlerに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/httperror
+              desc: "EmailはHttperrorに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/middleware
+              desc: "EmailはMiddlewareに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/session
+              desc: "Emailはセッションに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/viewmodel
+              desc: "EmailはViewModelに依存できません。"
+
+        # Dispatcher層: ジョブキューへ投入するジョブの引数を定義するInfrastructure層のアダプタ。
+        # Riverだけに依存し、投入する側 (UseCase) と処理する側 (Worker) のどちらも知らない。
+        dispatcher-layer:
+          files:
+            - "**/internal/dispatcher/**"
+          deny:
+            - pkg: github.com/cutreapp/cutre/go/internal/config
+              desc: "Dispatcherは設定に依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/database
+              desc: "Dispatcherはデータベース接続に依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/handler
+              desc: "DispatcherはHandlerに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/i18n
+              desc: "Dispatcherは翻訳に依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/middleware
+              desc: "DispatcherはMiddlewareに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/query
+              desc: "DispatcherはQueryに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/repository
+              desc: "DispatcherはRepositoryに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/session
+              desc: "Dispatcherはセッションに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/templates
+              desc: "DispatcherはTemplatesに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/usecase
+              desc: "DispatcherはUseCaseに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/worker
+              desc: "DispatcherはWorkerに依存できません。"
+
+        # Validator層: フォームの入力を検証する。UseCaseから呼ばれ、データアクセスはRepositoryを経由する。
+        validator-layer:
+          files:
+            - "**/internal/validator/**"
+          deny:
+            - pkg: github.com/cutreapp/cutre/go/internal/query
+              desc: "ValidatorはQueryに直接依存できません。Repositoryを経由してください。"
+            - pkg: github.com/cutreapp/cutre/go/internal/usecase
+              desc: "ValidatorはUseCaseに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/handler
+              desc: "ValidatorはHandlerに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/httperror
+              desc: "ValidatorはHttperrorに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/middleware
+              desc: "ValidatorはMiddlewareに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/session
+              desc: "ValidatorはSessionに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/templates
+              desc: "ValidatorはTemplatesに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/viewmodel
+              desc: "ValidatorはViewModelに依存できません。"
+
+        # RateLimit層: 試行を数えて上限との関係を判定するInfrastructure層のアダプタ。
+        # カウンターはRepositoryを経由して読み書きし、判定の結果をどう伝えるかは呼び出し元に任せる。
+        ratelimit-layer:
+          files:
+            - "**/internal/ratelimit/**"
+          deny:
+            - pkg: github.com/cutreapp/cutre/go/internal/query
+              desc: "RateLimitはQueryに直接依存できません。Repositoryを経由してください。"
+            - pkg: github.com/cutreapp/cutre/go/internal/handler
+              desc: "RateLimitはHandlerに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/httperror
+              desc: "RateLimitはHttperrorに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/i18n
+              desc: "RateLimitはI18nに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/middleware
+              desc: "RateLimitはMiddlewareに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/session
+              desc: "RateLimitはSessionに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/templates
+              desc: "RateLimitはTemplatesに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/viewmodel
+              desc: "RateLimitはViewModelに依存できません。"
+
+        # ClientIP層: リクエストからクライアントのアドレスを解決する技術ユーティリティ。
+        # 信頼するプロキシは引数で受け取り、標準ライブラリだけで完結させる。
+        clientip-layer:
+          files:
+            - "**/internal/clientip/**"
+          deny:
+            - pkg: github.com/cutreapp/cutre/go/internal/auth
+              desc: "ClientIPはAuthに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/config
+              desc: "ClientIPはConfigに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/database
+              desc: "ClientIPはDatabaseに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/handler
+              desc: "ClientIPはHandlerに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/httperror
+              desc: "ClientIPはHttperrorに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/i18n
+              desc: "ClientIPはI18nに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/middleware
+              desc: "ClientIPはMiddlewareに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/model
+              desc: "ClientIPはModelに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/query
+              desc: "ClientIPはQueryに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/ratelimit
+              desc: "ClientIPはRateLimitに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/repository
+              desc: "ClientIPはRepositoryに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/session
+              desc: "ClientIPはSessionに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/templates
+              desc: "ClientIPはTemplatesに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/viewmodel
+              desc: "ClientIPはViewModelに依存できません。"
 
 formatters:
   enable:
