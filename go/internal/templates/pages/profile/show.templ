@@ -1,0 +1,67 @@
+package profile
+
+import "github.com/cutreapp/cutre/go/internal/templates"
+
+// ShowPageData は自分のプロフィールの描画に使うデータ。
+type ShowPageData struct {
+	// CSRFToken はログアウトのフォームに載せるトークン。
+	CSRFToken string
+	// InvitationRemainingCount はこれから招待できる人数。
+	InvitationRemainingCount int
+	// InvitationJoinedCount は招待で参加した人数。
+	InvitationJoinedCount int
+	// TwoFactorAuthEnabled は二要素認証を有効にしているか。
+	TwoFactorAuthEnabled bool
+}
+
+// Show は自分のプロフィールを描画する。
+//
+// ログアウトは状態を変える操作のため、リンクではなくDELETEを送るフォームにする。
+// 退会はパスワードを求める画面を挟むため、その画面へのリンクにする。
+// HTMLのフォームはDELETEを送れないため、POSTに _method を載せて上書きする。
+templ Show(data ShowPageData) {
+	<div class="flex w-full flex-1 flex-col gap-3 py-4 md:mx-auto md:max-w-180">
+		<h1 class="px-4 text-2xl font-bold tracking-tight md:px-0">
+			{ templates.T(ctx, "profile_show_heading") }
+		</h1>
+		<ul class="page-card divide-y py-0">
+			<li>
+				<a href={ templ.SafeURL(templates.SettingsInvitationPath) } class="-mx-4 flex min-h-12 items-center gap-3 px-4 py-2">
+					<svg aria-hidden="true" class="shrink-0 text-brand-strong" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16v12H4z"></path><path d="M2 5h20v3H2z"></path><path d="M12 5v15"></path><path d="M12 5c-2-3-6-3-6 0"></path><path d="M12 5c2-3 6-3 6 0"></path></svg>
+					<span class="flex flex-1 flex-col">
+						<span class="text-sm font-medium">{ templates.T(ctx, "profile_show_invitation_link") }</span>
+						<span class="text-sm text-muted-foreground">
+							{ templates.T(ctx, "profile_show_invitation_summary", map[string]any{"Remaining": data.InvitationRemainingCount, "Joined": data.InvitationJoinedCount}) }
+						</span>
+					</span>
+					<svg aria-hidden="true" class="shrink-0 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"></path></svg>
+				</a>
+			</li>
+			<li>
+				<a href={ templ.SafeURL(templates.SettingsTwoFactorAuthPath) } class="-mx-4 flex min-h-12 items-center gap-3 px-4 py-2">
+					<svg aria-hidden="true" class="shrink-0" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"></path><path d="M9 12l2 2 4-4"></path></svg>
+					<span class="flex-1 text-sm font-medium">{ templates.T(ctx, "profile_show_two_factor_auth_link") }</span>
+					if data.TwoFactorAuthEnabled {
+						<span class="badge" data-variant="success">{ templates.T(ctx, "profile_show_two_factor_auth_enabled") }</span>
+					} else {
+						<span class="badge" data-variant="outline">{ templates.T(ctx, "profile_show_two_factor_auth_disabled") }</span>
+					}
+					<svg aria-hidden="true" class="shrink-0 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"></path></svg>
+				</a>
+			</li>
+		</ul>
+		<div class="mt-auto flex items-center justify-center gap-1 px-4">
+			<form action={ templ.SafeURL(templates.UserSessionPath) } method="post" data-disable-on-submit>
+				<input type="hidden" name="_method" value="DELETE"/>
+				<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+				<button type="submit" class="btn" data-variant="ghost">
+					{ templates.T(ctx, "profile_show_sign_out") }
+				</button>
+			</form>
+			<span aria-hidden="true" class="h-4 w-px bg-border"></span>
+			<a href={ templ.SafeURL(templates.SettingsWithdrawalPath) } class="btn" data-variant="ghost">
+				{ templates.T(ctx, "profile_show_withdrawal_link") }
+			</a>
+		</div>
+	</div>
+}

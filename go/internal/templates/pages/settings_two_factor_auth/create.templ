@@ -1,0 +1,80 @@
+package settings_two_factor_auth
+
+import (
+	"strings"
+
+	"github.com/cutreapp/cutre/go/internal/templates"
+)
+
+// CreatePageData は、二要素認証を有効にした直後にリカバリーコードを示す画面の描画に使うデータ。
+type CreatePageData struct {
+	// RecoveryCodes は発行したリカバリーコード。
+	RecoveryCodes []string
+}
+
+// recoveryCodesFileName は、リカバリーコードをファイルに保存するときの名前。
+const recoveryCodesFileName = "cutre-recovery-codes.txt"
+
+// Create は、二要素認証を有効にしたことを伝え、リカバリーコードを一度だけ示す画面を描画する。
+//
+// コードは保存していないため、この画面から離れると二度と表示できない。戻るリンクは置かず、
+// 「保存しました」をチェックして完了を押す操作だけで二要素認証の画面へ進ませる。
+// 完了はGETのフォームにし、required のチェックボックスでJavaScriptが無くてもチェックするまで進めないようにする。
+// チェックボックスには name を付けず、完了後のURLに値を残さない。
+templ Create(data CreatePageData) {
+	<div class="flex w-full flex-1 flex-col gap-3 py-4 md:mx-auto md:max-w-180">
+		<h1 id="recovery-codes-heading" class="px-4 text-base font-semibold md:px-0">{ templates.T(ctx, "settings_two_factor_auth_create_heading") }</h1>
+		<p class="px-4 text-sm md:px-0">
+			<strong class="font-semibold">{ templates.T(ctx, "settings_two_factor_auth_create_enabled") }</strong>
+			{ templates.T(ctx, "settings_two_factor_auth_create_lead") }
+		</p>
+		<section class="page-card flex flex-col gap-3" aria-labelledby="recovery-codes-heading">
+			<div class="alert" data-variant="warning">
+				<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.3 3.9L1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"></path></svg>
+				<h2>{ templates.T(ctx, "settings_two_factor_auth_create_once_heading") }</h2>
+				<section>{ templates.T(ctx, "settings_two_factor_auth_create_once_message") }</section>
+			</div>
+			<ul class="grid grid-cols-2 gap-x-2 gap-y-0.5 rounded-lg border bg-muted p-2 font-mono tracking-wide">
+				for _, code := range data.RecoveryCodes {
+					<li class="px-2 py-1.5">{ code }</li>
+				}
+			</ul>
+			<div class="flex gap-2">
+				<button
+					type="button"
+					class="btn flex-1"
+					data-variant="outline"
+					data-copy-text={ recoveryCodesText(data.RecoveryCodes) }
+					data-copied-label={ templates.T(ctx, "settings_two_factor_auth_copied") }
+					hidden
+				>
+					<span aria-live="polite">{ templates.T(ctx, "settings_two_factor_auth_copy_button") }</span>
+				</button>
+				<button
+					type="button"
+					class="btn flex-1"
+					data-variant="outline"
+					data-download-text={ recoveryCodesText(data.RecoveryCodes) }
+					data-download-filename={ recoveryCodesFileName }
+					hidden
+				>
+					{ templates.T(ctx, "settings_two_factor_auth_create_download_button") }
+				</button>
+			</div>
+			<p class="text-sm text-muted-foreground">{ templates.T(ctx, "settings_two_factor_auth_create_usage") }</p>
+			<form action={ templ.SafeURL(templates.SettingsTwoFactorAuthPath) } method="get" class="flex flex-col gap-3">
+				<label class="flex min-h-11 items-center gap-2.5 rounded-full border px-4 text-sm font-medium">
+					<input type="checkbox" class="input" required/>
+					{ templates.T(ctx, "settings_two_factor_auth_create_saved") }
+				</label>
+				<button type="submit" class="btn w-full">{ templates.T(ctx, "settings_two_factor_auth_create_done") }</button>
+				<p class="text-center text-sm">{ templates.T(ctx, "settings_two_factor_auth_create_done_help") }</p>
+			</form>
+		</section>
+	</div>
+}
+
+// recoveryCodesText はコピーとファイルへの保存に使う、リカバリーコードを1行に1つずつ並べた文字列を返す。
+func recoveryCodesText(codes []string) string {
+	return strings.Join(codes, "\n") + "\n"
+}

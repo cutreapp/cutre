@@ -1,0 +1,121 @@
+package settings_withdrawal
+
+import (
+	"github.com/cutreapp/cutre/go/internal/model"
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+)
+
+// NewPageData は退会の画面の描画に使うデータ。
+type NewPageData struct {
+	// ProfilePath は戻り先の自分のプロフィールのパス。
+	ProfilePath string
+	// CSRFToken は退会のフォームに載せるトークン。
+	CSRFToken string
+	// Confirmed は退会を元に戻せないことを確認した状態で描くか。エラーで描き直すときに戻す。
+	Confirmed bool
+	// FormErrors は退会のフォームを受け付けなかったときのエラー。
+	FormErrors *model.ValidationError
+}
+
+// summaryFields はエラーの要約に並べるフィールドを、フォームに現れる順で持つ。
+var summaryFields = []components.FormErrorSummaryField{
+	{Name: "current_password", LabelKey: "settings_withdrawal_new_current_password_label"},
+	{Name: "confirmed", LabelKey: "settings_withdrawal_new_confirmed_label"},
+}
+
+// New は退会の画面を描画する。退会すると何が起きるかを示し、今のパスワードと理解したことのチェックを求める。
+//
+// チェックを required にし、チェックするまで送信できないようにする (送信時の最終確認)。
+// 二要素認証を有効にしていても、認証アプリのコードは求めない。
+// フォームはDELETEで送る。HTMLのフォームはDELETEを送れないため、POSTに _method を載せて上書きする。
+templ New(data NewPageData) {
+	<div class="flex w-full flex-1 flex-col gap-3 py-4 md:mx-auto md:max-w-180">
+		<div class="flex items-center gap-1 px-2 md:px-0">
+			<a
+				href={ templ.SafeURL(data.ProfilePath) }
+				class="btn"
+				data-variant="ghost"
+				data-size="icon"
+				aria-label={ templates.T(ctx, "settings_withdrawal_new_back") }
+			>
+				<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>
+			</a>
+			<h1 class="text-base font-semibold">{ templates.T(ctx, "settings_withdrawal_new_heading") }</h1>
+		</div>
+		<section class="flex flex-col gap-2" aria-labelledby="withdrawal-consequences-heading">
+			<h2 id="withdrawal-consequences-heading" class="px-4 font-semibold md:px-0">{ templates.T(ctx, "settings_withdrawal_new_consequences_heading") }</h2>
+			<div class="page-card">
+				<ul class="flex list-disc flex-col gap-1 pl-5 text-sm">
+					<li>{ templates.T(ctx, "settings_withdrawal_new_consequence_account") }</li>
+					<li>{ templates.T(ctx, "settings_withdrawal_new_consequence_invitation") }</li>
+					<li>{ templates.T(ctx, "settings_withdrawal_new_consequence_record") }</li>
+					<li>{ templates.T(ctx, "settings_withdrawal_new_consequence_sign_up") }</li>
+				</ul>
+			</div>
+		</section>
+		<form
+			action={ templ.SafeURL(templates.SettingsWithdrawalPath) }
+			method="post"
+			class="page-card flex flex-col gap-4"
+			data-disable-on-submit
+			data-clear-on-history-restore
+		>
+			@components.FormErrors(data.FormErrors)
+			@components.FormErrorSummary(components.FormErrorSummaryData{Fields: summaryFields, Errors: data.FormErrors})
+			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+			<input type="hidden" name="_method" value="DELETE"/>
+			<div
+				role="group"
+				class="field"
+				if data.FormErrors.HasFieldError("current_password") {
+					data-invalid
+				}
+			>
+				@components.RequiredFieldLabel("current_password", templates.T(ctx, "settings_withdrawal_new_current_password_label"))
+				<input
+					id="current_password"
+					name="current_password"
+					type="password"
+					autocomplete="current-password"
+					required
+					if data.FormErrors.HasFieldError("current_password") {
+						aria-invalid="true"
+						aria-describedby={ components.FieldErrorsDescribedBy("current_password", data.FormErrors) }
+					}
+				/>
+				@components.FieldErrors("current_password", data.FormErrors)
+			</div>
+			<div
+				role="group"
+				class="field"
+				if data.FormErrors.HasFieldError("confirmed") {
+					data-invalid
+				}
+			>
+				<label for="confirmed" class="flex min-h-11 items-center gap-2.5 rounded-full border px-4 text-sm font-medium">
+					<input
+						id="confirmed"
+						name="confirmed"
+						type="checkbox"
+						class="input"
+						value="1"
+						required
+						if data.Confirmed {
+							checked
+						}
+						if data.FormErrors.HasFieldError("confirmed") {
+							aria-invalid="true"
+							aria-describedby={ components.FieldErrorsDescribedBy("confirmed", data.FormErrors) }
+						}
+					/>
+					{ templates.T(ctx, "settings_withdrawal_new_confirmed_label") }
+				</label>
+				@components.FieldErrors("confirmed", data.FormErrors)
+			</div>
+			<button type="submit" class="btn w-full" data-variant="destructive">
+				{ templates.T(ctx, "settings_withdrawal_new_submit") }
+			</button>
+		</form>
+	</div>
+}
