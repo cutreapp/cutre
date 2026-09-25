@@ -39,6 +39,11 @@ linters:
           - errcheck
           - ineffassign
           - unused
+      # sqlcの生成ファイルは、複数行を返すクエリで defer rows.Close() の戻り値を捨てる形を出力する。
+      # 正常に読み終えた経路では同じ関数が rows.Close() と rows.Err() のエラーを返しているため、errcheckだけを外す。
+      - path: 'internal/query/(.+)\.sql\.go'
+        linters:
+          - errcheck
     paths:
       - bin/.*
       - vendor/.*
