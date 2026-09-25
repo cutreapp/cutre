@@ -64,6 +64,6 @@
   /* 画面の内容を入れるカード。見出しや補足の文はカードの外 (bg-pageの地の上) に置く。
      md未満は横幅いっぱいに広げて上下にだけ線を引き、md以上は角を丸めて四辺に線を引く。 */
   .page-card {
-    @apply border-y bg-card p-4 text-card-foreground md:rounded-lg md:border;
+    @apply bg-card text-card-foreground border-y p-4 md:rounded-lg md:border;
   }
 }
