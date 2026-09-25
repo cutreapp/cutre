@@ -134,13 +134,13 @@ func TestShow_Description(t *testing.T) {
 			name:            "日本語",
 			path:            "/",
 			locale:          i18n.LangJa,
-			wantDescription: "Cutreはキャラクターグッズの物々交換を簡単にするサービスです。欲しいグッズと譲れるグッズを登録して、交換相手を見つけられます",
+			wantDescription: "Cutreはキャラクターグッズの物々交換を簡単にするサービスです。欲しいグッズと譲れるグッズを登録して、交換相手を見つけられます。登録は、実際に会ったことのある人からの招待制です",
 		},
 		{
 			name:            "英語",
 			path:            "/en",
 			locale:          i18n.LangEn,
-			wantDescription: "Cutre makes trading character goods simple. Register the goods you want and the ones you can part with, and find someone to trade with.",
+			wantDescription: "Cutre makes trading character goods simple. Register the goods you want and the ones you can part with, and find someone to trade with. Sign-up is by invitation from someone you have met in person.",
 		},
 	}
 
