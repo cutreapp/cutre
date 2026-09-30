@@ -17,7 +17,7 @@ run: ## サーバーを起動
 	$(OP_RUN_DEV) go run ./cmd/cutre serve
 
 .PHONY: seed
-seed: ## seed-users.toml の開発用アカウントを作る (既にあるものは飛ばす)
+seed: ## seed-users.toml の開発用アカウントとマスタの見本を作る (既にあるものは飛ばす)
 	$(OP_RUN_DEV) go run ./cmd/cutre seed
 
 .PHONY: browse-check

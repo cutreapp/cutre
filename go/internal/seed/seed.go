@@ -1,8 +1,9 @@
-// Package seed は開発環境へ、画面を確かめるためのアカウントを作る。
+// Package seed は開発環境へ、画面を確かめるためのアカウントとマスタの見本を作る。
 //
 // 作るアカウントは名簿のファイル (go/seed-users.toml) で決める。
 // 名簿は開発者が自分でメールを読めるアドレスを持つためバージョン管理に入れず、
 // 形式は見本 (go/seed-users.example.toml) で示す。
+// マスタの見本は個人の情報を含まず開発者ごとに変える必要も無いため、名簿にせずコードに持つ (DefaultMasters)。
 package seed
 
 import (
@@ -101,6 +102,7 @@ func CreateUsers(ctx context.Context, db *sql.DB, roster *Roster, out io.Writer)
 }
 
 // createUser はアカウント1件を、ユーザーとパスワードの組で作る。
+// 画面からの登録と同じく、メッセージの取り扱いへの同意も記録し、交換の画面をそのまま試せるようにする。
 func createUser(ctx context.Context, db *sql.DB, user RosterUser, passwordDigest string) (err error) {
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
@@ -131,6 +133,10 @@ func createUser(ctx context.Context, db *sql.DB, user RosterUser, passwordDigest
 		UserID:         created.ID,
 		PasswordDigest: passwordDigest,
 	}); err != nil {
+		return err
+	}
+
+	if _, err := repository.NewMessageConsentRepository(db).WithTx(tx).Create(ctx, created.ID, model.CurrentMessageConsentVersion); err != nil {
 		return err
 	}
 
