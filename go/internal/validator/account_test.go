@@ -13,8 +13,8 @@ import (
 	"github.com/cutreapp/cutre/go/internal/validator"
 )
 
-// TestAccountCreateValidator_Validate は、アットネームとパスワードの形式の誤りと、アットネーム・メールアドレスの重なりを
-// それぞれのエラーにすることを検証する。
+// TestAccountCreateValidator_Validate は、アットネームとパスワードの形式の誤り・同意のチェックの無さと、
+// アットネーム・メールアドレスの重なりを、それぞれのエラーにすることを検証する。
 func TestAccountCreateValidator_Validate(t *testing.T) {
 	t.Parallel()
 
@@ -37,6 +37,9 @@ func TestAccountCreateValidator_Validate(t *testing.T) {
 		wantAtnameErr string
 		wantPassErr   string
 		wantGlobalErr string
+		// withoutConsent はメッセージの取り扱いへの同意のチェックを外す。
+		withoutConsent bool
+		wantConsentErr string
 	}{
 		{name: "使える入力", atname: testutil.UniqueAtname(), password: password},
 		{name: "20文字のアットネーム", atname: "a" + strings.Repeat("_", 19), password: password},
@@ -52,6 +55,7 @@ func TestAccountCreateValidator_Validate(t *testing.T) {
 		{name: "7文字のパスワード", atname: testutil.UniqueAtname(), password: "abcdefg", wantPassErr: "8文字以上で入力してください"},
 		{name: "73バイトのパスワード", atname: testutil.UniqueAtname(), password: strings.Repeat("a", 73), wantPassErr: "長すぎます"},
 		{name: "登録済みのメールアドレス", email: takenEmail, atname: testutil.UniqueAtname(), password: password, wantGlobalErr: "このメールアドレスのアカウントは既にあります"},
+		{name: "同意のチェックが無い", atname: testutil.UniqueAtname(), password: password, withoutConsent: true, wantConsentErr: "メッセージの取り扱いを確かめて、チェックを入れてください"},
 	}
 
 	for _, tt := range tests {
@@ -59,9 +63,9 @@ func TestAccountCreateValidator_Validate(t *testing.T) {
 		if email == "" {
 			email = testutil.UniqueEmail("account-new")
 		}
-		err := v.Validate(ctx, validator.AccountCreateValidatorInput{Email: email, Atname: tt.atname, Password: tt.password})
+		err := v.Validate(ctx, validator.AccountCreateValidatorInput{Email: email, Atname: tt.atname, Password: tt.password, MessageConsentAgreed: !tt.withoutConsent})
 
-		if tt.wantAtnameErr == "" && tt.wantPassErr == "" && tt.wantGlobalErr == "" {
+		if tt.wantAtnameErr == "" && tt.wantPassErr == "" && tt.wantGlobalErr == "" && tt.wantConsentErr == "" {
 			if err != nil {
 				t.Errorf("%s: エラー = %v、nilを期待", tt.name, err)
 			}
@@ -75,6 +79,7 @@ func TestAccountCreateValidator_Validate(t *testing.T) {
 		assertMessage(t, tt.name+" (atname)", ve.GetFieldErrors("atname"), tt.wantAtnameErr)
 		assertMessage(t, tt.name+" (password)", ve.GetFieldErrors("password"), tt.wantPassErr)
 		assertMessage(t, tt.name+" (global)", ve.Global, tt.wantGlobalErr)
+		assertMessage(t, tt.name+" (message_consent)", ve.GetFieldErrors("message_consent"), tt.wantConsentErr)
 	}
 }
 
@@ -89,7 +94,7 @@ func TestAccountCreateValidator_Validate_FormatBeforeLookup(t *testing.T) {
 	takenAtname := testutil.UniqueAtname()
 	testutil.NewUserBuilder(t, tx).WithAtname(takenAtname).Build()
 
-	err := v.Validate(ctx, validator.AccountCreateValidatorInput{Email: testutil.UniqueEmail("account-format"), Atname: takenAtname, Password: "short"})
+	err := v.Validate(ctx, validator.AccountCreateValidatorInput{Email: testutil.UniqueEmail("account-format"), Atname: takenAtname, Password: "short", MessageConsentAgreed: true})
 
 	ve := model.AsValidationError(err)
 	if ve == nil || !ve.HasFieldError("password") || ve.HasFieldError("atname") {

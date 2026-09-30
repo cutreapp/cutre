@@ -19,7 +19,7 @@ func TestWithdrawalDeleteValidator_Validate(t *testing.T) {
 
 	db, tx := testutil.SetupTx(t)
 	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
-	v := validator.NewWithdrawalDeleteValidator(repository.NewUserPasswordRepository(db).WithTx(tx))
+	v := validator.NewWithdrawalDeleteValidator(repository.NewUserPasswordRepository(db), repository.NewTradeRepository(db)).WithTx(tx)
 
 	userID := testutil.NewUserBuilder(t, tx).Build()
 	testutil.NewUserPasswordBuilder(t, tx).WithUserID(userID).Build()
@@ -62,6 +62,40 @@ func TestWithdrawalDeleteValidator_Validate(t *testing.T) {
 		}
 		if got := ve.GetFieldErrors("confirmed"); !slices.Equal(got, tt.wantConfirmed) {
 			t.Errorf("%s: confirmedのエラー = %v、期待値 = %v", tt.name, got, tt.wantConfirmed)
+		}
+	}
+}
+
+// TestWithdrawalDeleteValidator_Validate_TradeInProgress は、返事待ちかマッチ成立の交換があるときは、
+// パスワードとチェックがそろっていてもフォーム全体のエラーにし、終わった交換だけなら受け付けることを検証する。
+func TestWithdrawalDeleteValidator_Validate_TradeInProgress(t *testing.T) {
+	t.Parallel()
+
+	db, tx := testutil.SetupTx(t)
+	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	v := validator.NewWithdrawalDeleteValidator(repository.NewUserPasswordRepository(db), repository.NewTradeRepository(db)).WithTx(tx)
+
+	for _, tt := range []struct {
+		status model.TradeStatus
+		want   []string
+	}{
+		{status: model.TradeStatusPending, want: []string{"進行中の交換があるため、退会できません。交換がすべて終わってから、もう一度お試しください"}},
+		{status: model.TradeStatusMatched, want: []string{"進行中の交換があるため、退会できません。交換がすべて終わってから、もう一度お試しください"}},
+		{status: model.TradeStatusCompleted},
+	} {
+		userID := testutil.NewUserBuilder(t, tx).Build()
+		testutil.NewUserPasswordBuilder(t, tx).WithUserID(userID).Build()
+		testutil.NewTradeBuilder(t, tx, testutil.NewUserBuilder(t, tx).Build(), userID).WithStatus(tt.status).Build()
+
+		err := v.Validate(ctx, validator.WithdrawalDeleteValidatorInput{UserID: userID, CurrentPassword: testutil.DefaultBuilderPassword, Confirmed: true})
+		if tt.want == nil {
+			if err != nil {
+				t.Errorf("%s: Validate()のエラー = %v、nilを期待", tt.status, err)
+			}
+			continue
+		}
+		if ve := model.AsValidationError(err); ve == nil || !slices.Equal(ve.Global, tt.want) {
+			t.Errorf("%s: Validate()のエラー = %v、%v を期待", tt.status, err, tt.want)
 		}
 	}
 }
