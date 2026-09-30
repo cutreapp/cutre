@@ -47,7 +47,7 @@ templ New(data NewPageData) {
 				<button type="submit" class="btn w-full" data-size="lg">{ templates.T(ctx, "sign_in_two_factor_recovery_new_submit") }</button>
 			</form>
 			<div class="border-t pt-3">
-				@components.HelpContact()
+				@components.HelpContact(templates.T(ctx, "help_contact_lead"))
 			</div>
 		</div>
 		<p class="text-center"><a href={ templ.SafeURL(templates.WithReturnTo(templates.LocalePath(ctx, templates.SignInTwoFactorPath), data.ReturnTo)) } class="underline">{ templates.T(ctx, "sign_in_two_factor_recovery_new_back") }</a></p>

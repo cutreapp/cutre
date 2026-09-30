@@ -47,8 +47,8 @@ func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	layoutData := layouts.DefaultLayoutData{
-		Meta:   meta,
-		Header: &components.HeaderData{Atname: user.Atname, CurrentPath: templates.SettingsInvitationPath},
+		Meta:    meta,
+		MainNav: &components.MainNavData{Atname: user.Atname, Current: components.MainNavMyPage, CurrentPath: templates.SettingsInvitationPath},
 	}
 	if err := layouts.Default(layoutData, page.Show(*data)).Render(ctx, w); err != nil {
 		slog.ErrorContext(ctx, "招待の画面の描画に失敗しました", "error", err)

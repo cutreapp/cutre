@@ -224,7 +224,7 @@ func New(data NewPageData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = components.HelpContact().Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = components.HelpContact(templates.T(ctx, "help_contact_lead")).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

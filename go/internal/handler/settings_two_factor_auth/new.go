@@ -72,16 +72,17 @@ func (h *Handler) renderNew(
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
 	layoutData := layouts.DefaultLayoutData{
-		Meta:   meta,
-		Header: &components.HeaderData{Atname: user.Atname, CurrentPath: templates.NewSettingsTwoFactorAuthPath},
+		Meta:    meta,
+		MainNav: &components.MainNavData{Atname: user.Atname, Current: components.MainNavMyPage, CurrentPath: templates.NewSettingsTwoFactorAuthPath},
 	}
 	data := page.NewPageData{
-		CSRFToken:  middleware.CSRFTokenFromContext(ctx),
-		Secret:     setup.Secret,
-		OTPAuthURL: setup.OTPAuthURL,
-		QRCode:     qrCode,
-		Code:       code,
-		FormErrors: formErrors,
+		CSRFToken:   middleware.CSRFTokenFromContext(ctx),
+		ProfilePath: templates.ProfilePath(user.Atname),
+		Secret:      setup.Secret,
+		OTPAuthURL:  setup.OTPAuthURL,
+		QRCode:      qrCode,
+		Code:        code,
+		FormErrors:  formErrors,
 	}
 	if err := layouts.Default(layoutData, page.New(data)).Render(ctx, w); err != nil {
 		// ステータスとヘッダーは送出済みのため、500には変えられずログに残すだけになる。

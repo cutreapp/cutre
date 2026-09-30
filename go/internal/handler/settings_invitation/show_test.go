@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strconv"
 	"strings"
 	"testing"
@@ -112,10 +113,19 @@ func TestShow(t *testing.T) {
 	url := "https://cutre.example.com/i/" + invitation.Token
 
 	body := rec.Body.String()
+	// マイページから辿った画面のため、メインメニューのマイページの項目を選択中 (aria-current="true") にする。
+	// ホームの項目を選択中にしても aria-current="true" は出るため、マイページのリンクに付いていることまで確かめる。
+	myPageLink := regexp.MustCompile(`href="/@` + regexp.QuoteMeta(user.Atname) + `" class="[^"]*" aria-current="true"`)
+	if !myPageLink.MatchString(body) {
+		t.Error("メインメニューのマイページの項目に aria-current=\"true\" が付いていない")
+	}
 	assertContains(t, body,
 		"<title>招待 | Cutre</title>",
 		`<meta name="robots" content="noindex">`,
+		`<html lang="ja" data-main-nav>`,
+		`<nav aria-label="パンくずリスト">`,
 		`href="/@`+user.Atname+`"`,
+		`<h1 class="text-xl font-semibold">招待</h1>`,
 		"実際に会ったことがある人だけを招待してください",
 		"QRコードを読み取ると招待の受け取り画面が開きます",
 		"あと5人招待できます",

@@ -12,6 +12,8 @@ import (
 // NewPageData は二要素認証を有効にする画面の描画に使うデータ。
 type NewPageData struct {
 	CSRFToken string
+	// ProfilePath はパンくずに置くマイページ (自分のプロフィール) のパス。
+	ProfilePath string
 	// Secret は認証アプリへ手で入力するbase32の秘密鍵。
 	Secret string
 	// OTPAuthURL は秘密鍵を認証アプリへ登録するotpauth URI。
@@ -34,10 +36,16 @@ var newSummaryFields = []components.FormErrorSummaryField{
 // QRコードと手入力用のキーをその下に回す。md以上ではQRコードを先頭にする。
 templ New(data NewPageData) {
 	<div class="flex w-full flex-1 flex-col gap-3 py-4 md:mx-auto md:max-w-180">
-		@pageHeading(templates.SettingsTwoFactorAuthPath, templates.T(ctx, "settings_two_factor_auth_new_back"), templates.T(ctx, "settings_two_factor_auth_new_heading"))
+		@components.PageHeading(components.PageHeadingData{
+			Title: templates.T(ctx, "settings_two_factor_auth_new_heading"),
+			Breadcrumbs: []components.Breadcrumb{
+				{Label: templates.T(ctx, "settings_two_factor_auth_new_breadcrumb_my_page"), Path: data.ProfilePath},
+				{Label: templates.T(ctx, "settings_two_factor_auth_new_breadcrumb_two_factor_auth"), Path: templates.SettingsTwoFactorAuthPath},
+			},
+		})
 		<section class="page-card flex flex-col gap-3" aria-labelledby="two-factor-auth-register-heading">
 			@stepHeading("1", "two-factor-auth-register-heading", templates.T(ctx, "settings_two_factor_auth_new_register_heading"))
-			<a href={ templ.SafeURL(data.OTPAuthURL) } class="btn w-full md:order-last" data-variant="brand">
+			<a href={ templ.SafeURL(data.OTPAuthURL) } class="btn w-full md:order-last">
 				<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"></path><path d="M20 4l-9 9"></path><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"></path></svg>
 				{ templates.T(ctx, "settings_two_factor_auth_new_open_app") }
 			</a>
