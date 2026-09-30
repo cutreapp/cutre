@@ -77,9 +77,3 @@ make -C go tokens-generate  # web/tokens.json から web/tokens.css を生成
 
 実行するコマンドは `Makefile` で管理しています。
 [Makefile](./Makefile), [go/Makefile](./go/Makefile) を参照してください。
-
-## Pull Requestのガイドライン
-
-- 1つのPull Requestの変更ファイル数は20以下を目安にする
-- 実装コードの変更は300行以下を目安にする (テストコードの行数は制限しない)
-- 実装とそのテストは同じPull Requestに含める
