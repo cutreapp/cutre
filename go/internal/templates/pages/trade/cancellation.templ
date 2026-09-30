@@ -1,0 +1,108 @@
+package trade
+
+import (
+	"github.com/cutreapp/cutre/go/internal/model"
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+	"github.com/cutreapp/cutre/go/internal/viewmodel"
+)
+
+// cancellationSummaryFields はエラーの要約に並べるフィールドを、フォームに現れる順で持つ。
+var cancellationSummaryFields = []components.FormErrorSummaryField{
+	{Name: "reason", LabelKey: "trade_cancellation_reason_label"},
+	{Name: "note", LabelKey: "trade_cancellation_note_label"},
+}
+
+// CancellationPageData は交換をやめる画面の描画に使うデータ。
+type CancellationPageData struct {
+	// CSRFToken は交換をやめるフォームに載せるトークン。
+	CSRFToken string
+	// Trade は開いたユーザーから見た、やめる交換。
+	Trade viewmodel.TradeDetail
+	// Reason・Note は理由とひとことの欄に入れる値。入力の誤りで描き直すときは送られた値を戻す。
+	Reason string
+	Note   string
+	// FormErrors は交換をやめるのを受け付けなかったときのエラー。
+	FormErrors *model.ValidationError
+}
+
+// cancellationReasonChoices は交換をやめる理由の選択肢を、画面に並べる順で返す。
+func cancellationReasonChoices() []reasonChoice {
+	reasons := model.TradeCancellationReasons()
+	choices := make([]reasonChoice, len(reasons))
+	for i, reason := range reasons {
+		choices[i] = reasonChoice{Value: string(reason), LabelKey: viewmodel.TradeCancellationReasonLabelKey(reason)}
+	}
+
+	return choices
+}
+
+// Cancellation は、どちらも「交換できた」を押していないマッチ成立の交換を、理由とひとことを入れてやめる画面を描画する。
+//
+// やめると元に戻せないことを伝える文の下に、理由 (必須) とひとこと (必須) のフォームを置く。
+// 理由とひとことはメッセージの流れで相手に届く。ひとことが必須のため、メッセージの取り扱いへの有効な同意が無ければ、
+// フォームの代わりにメッセージの利用の画面へ案内する。
+templ Cancellation(data CancellationPageData) {
+	<div class="flex w-full flex-1 flex-col gap-3 py-4 md:mx-auto md:max-w-180">
+		@components.PageHeading(components.PageHeadingData{
+			Title: templates.T(ctx, "trade_cancellation_heading"),
+			Breadcrumbs: []components.Breadcrumb{
+				{Label: templates.T(ctx, "trade_show_breadcrumb_trades"), Path: templates.TradesPath},
+				{Label: templates.T(ctx, "trade_show_heading", map[string]any{"Name": data.Trade.PartnerName}), Path: templates.TradePath(data.Trade.ID)},
+			},
+		})
+		<p class="px-4 text-sm md:px-0">{ templates.T(ctx, "trade_cancellation_lead", map[string]any{"Name": data.Trade.PartnerName}) }</p>
+		if data.Trade.MessageConsentValid {
+			<form
+				action={ templ.SafeURL(templates.TradeCancellationPath(data.Trade.ID)) }
+				method="post"
+				class="page-card flex flex-col gap-4"
+				data-disable-on-submit
+			>
+				@components.FormErrors(data.FormErrors)
+				@components.FormErrorSummary(components.FormErrorSummaryData{Fields: cancellationSummaryFields, Errors: data.FormErrors})
+				<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+				@reasonField(templates.T(ctx, "trade_cancellation_reason_label"), cancellationReasonChoices(), data.Reason, data.FormErrors)
+				@cancellationNoteField(data)
+				<button type="submit" class="btn w-full" data-variant="destructive">{ templates.T(ctx, "trade_cancellation_submit") }</button>
+			</form>
+		} else {
+			@consentRequired(templates.T(ctx, "trade_cancellation_consent_required"))
+		}
+	</div>
+}
+
+// cancellationNoteField は、メッセージで相手に届く、必須のひとことの入力欄を描画する。
+templ cancellationNoteField(data CancellationPageData) {
+	<div
+		role="group"
+		class="field"
+		if data.FormErrors.HasFieldError("note") {
+			data-invalid
+		}
+	>
+		@components.RequiredFieldLabel("note", templates.T(ctx, "trade_cancellation_note_label"))
+		<textarea
+			id="note"
+			name="note"
+			rows="3"
+			maxlength="1000"
+			required
+			aria-describedby={ cancellationNoteDescribedBy(data.FormErrors) }
+			if data.FormErrors.HasFieldError("note") {
+				aria-invalid="true"
+			}
+		>{ data.Note }</textarea>
+		<p id="note-hint" class="text-sm">{ templates.T(ctx, "trade_cancellation_note_hint", map[string]any{"Name": data.Trade.PartnerName}) }</p>
+		@components.FieldErrors("note", data.FormErrors)
+	</div>
+}
+
+// cancellationNoteDescribedBy はひとことの欄の aria-describedby を、補足とエラーメッセージのidから組み立てる。
+func cancellationNoteDescribedBy(formErrors *model.ValidationError) string {
+	if !formErrors.HasFieldError("note") {
+		return "note-hint"
+	}
+
+	return "note-hint " + components.FieldErrorsDescribedBy("note", formErrors)
+}

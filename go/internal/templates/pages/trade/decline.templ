@@ -1,0 +1,109 @@
+package trade
+
+import (
+	"github.com/cutreapp/cutre/go/internal/model"
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+	"github.com/cutreapp/cutre/go/internal/viewmodel"
+)
+
+// declineSummaryFields はエラーの要約に並べるフィールドを、フォームに現れる順で持つ。
+var declineSummaryFields = []components.FormErrorSummaryField{
+	{Name: "reason", LabelKey: "trade_decline_reason_label"},
+	{Name: "note", LabelKey: "trade_decline_note_label"},
+}
+
+// DeclinePageData はお断りの画面の描画に使うデータ。
+type DeclinePageData struct {
+	// CSRFToken はお断りのフォームに載せるトークン。
+	CSRFToken string
+	// Trade は申し込まれた人から見た、お断りする交換。
+	Trade viewmodel.TradeDetail
+	// Reason・Note は理由とひとことの欄に入れる値。入力の誤りで描き直すときは送られた値を戻す。
+	Reason string
+	Note   string
+	// FormErrors はお断りを受け付けなかったときのエラー。
+	FormErrors *model.ValidationError
+}
+
+// declineReasonChoices はお断りの理由の選択肢を、画面に並べる順で返す。
+func declineReasonChoices() []reasonChoice {
+	reasons := model.TradeDeclineReasons()
+	choices := make([]reasonChoice, len(reasons))
+	for i, reason := range reasons {
+		choices[i] = reasonChoice{Value: string(reason), LabelKey: viewmodel.TradeDeclineReasonLabelKey(reason)}
+	}
+
+	return choices
+}
+
+// Decline は、申し込まれた人が理由とひとことを入れて申し込みをお断りする画面を描画する。
+//
+// 上のカードに申し込みの内容 (渡す品・もらう品) を置き、下のカードに理由 (必須) とひとこと (任意) のフォームを置く。
+// 理由とひとことはメッセージの流れで相手に届く。メッセージの取り扱いへの有効な同意が無ければ、ひとことの欄を出さない。
+templ Decline(data DeclinePageData) {
+	<div class="flex w-full flex-1 flex-col gap-3 py-4 md:mx-auto md:max-w-180">
+		@components.PageHeading(components.PageHeadingData{
+			Title: templates.T(ctx, "trade_decline_heading"),
+			Breadcrumbs: []components.Breadcrumb{
+				{Label: templates.T(ctx, "trade_show_breadcrumb_trades"), Path: templates.TradesPath},
+				{Label: templates.T(ctx, "trade_show_heading", map[string]any{"Name": data.Trade.PartnerName}), Path: templates.TradePath(data.Trade.ID)},
+			},
+		})
+		<section class="page-card flex flex-col gap-4" aria-labelledby="trade-decline-proposal-heading">
+			<h2 id="trade-decline-proposal-heading" class="text-sm text-muted-foreground">
+				{ templates.T(ctx, "trade_decline_proposal_heading", map[string]any{"Name": data.Trade.PartnerName}) }
+			</h2>
+			@tradeItems("trade-decline-give-heading", templates.T(ctx, "trade_show_give_heading"), data.Trade.Give)
+			@tradeItems("trade-decline-receive-heading", templates.T(ctx, "trade_show_receive_heading", map[string]any{"Name": data.Trade.PartnerName}), data.Trade.Receive)
+		</section>
+		<form
+			action={ templ.SafeURL(templates.TradeDeclinePath(data.Trade.ID)) }
+			method="post"
+			class="page-card flex flex-col gap-4"
+			data-disable-on-submit
+		>
+			@components.FormErrors(data.FormErrors)
+			@components.FormErrorSummary(components.FormErrorSummaryData{Fields: declineSummaryFields, Errors: data.FormErrors})
+			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+			@reasonField(templates.T(ctx, "trade_decline_reason_label"), declineReasonChoices(), data.Reason, data.FormErrors)
+			if data.Trade.MessageConsentValid {
+				@declineNoteField(data)
+			}
+			<div class="flex flex-col gap-2">
+				<button type="submit" class="btn w-full" aria-describedby="trade-decline-submit-hint">{ templates.T(ctx, "trade_decline_submit") }</button>
+				<p id="trade-decline-submit-hint" class="text-center text-sm">
+					if data.Trade.MessageConsentValid {
+						{ templates.T(ctx, "trade_decline_submit_hint", map[string]any{"Name": data.Trade.PartnerName}) }
+					} else {
+						{ templates.T(ctx, "trade_decline_submit_hint_without_note", map[string]any{"Name": data.Trade.PartnerName}) }
+					}
+				</p>
+			</div>
+		</form>
+	</div>
+}
+
+// declineNoteField は、メッセージで相手に届くひとことの入力欄を描画する。
+templ declineNoteField(data DeclinePageData) {
+	<div
+		role="group"
+		class="field"
+		if data.FormErrors.HasFieldError("note") {
+			data-invalid
+		}
+	>
+		@components.OptionalFieldLabel("note", templates.T(ctx, "trade_decline_note_label"))
+		<textarea
+			id="note"
+			name="note"
+			rows="3"
+			maxlength="1000"
+			if data.FormErrors.HasFieldError("note") {
+				aria-describedby={ components.FieldErrorsDescribedBy("note", data.FormErrors) }
+				aria-invalid="true"
+			}
+		>{ data.Note }</textarea>
+		@components.FieldErrors("note", data.FormErrors)
+	</div>
+}

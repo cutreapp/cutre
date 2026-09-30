@@ -1,0 +1,270 @@
+package trade
+
+import (
+	"context"
+	"strconv"
+
+	"github.com/cutreapp/cutre/go/internal/model"
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+	"github.com/cutreapp/cutre/go/internal/viewmodel"
+)
+
+// MessagesPageData は交換のメッセージのページの描画に使うデータ。
+type MessagesPageData struct {
+	// CSRFToken は送信のフォームに載せるトークン。
+	CSRFToken string
+	// Thread は開いたユーザーから見た交換と、メッセージと出来事の流れ。
+	Thread viewmodel.TradeMessageThread
+	// MessageConsentValid は、メッセージの取り扱いへの有効な同意があるか。無ければ送る代わりに同意の案内を出す。
+	MessageConsentValid bool
+	// Body は本文の欄に入れる値。送信を受け付けなかったときは送られた値を戻す。
+	Body string
+	// FormErrors は送信を受け付けなかったときのエラー。
+	FormErrors *model.ValidationError
+}
+
+// Messages は交換のメッセージのページを描画する。交換の2人だけが開ける。
+//
+// 上の行に段階のバッジと交換の品の点数を置き、交換のページへ送る。交換の操作はこのページに置かず、交換のページで行う。
+// メッセージと出来事のお知らせを時刻順に日ごとに並べ、最新のものを下に置く。流れの末尾をアンカーにし、送ったあとはそこへ戻す。
+// 前に開いたときより後に相手が送ったメッセージの前には、未読の境目を置く。
+// 自分が送ったメッセージには、確認のダイアログを経て取り消すボタンを添える。交換が終わったあとも取り消せる。
+// 進行中の交換では画面の下に送信の欄を置き、終わった交換では送れないことを伝えて読むだけにする。
+// 本文は自動でリンクにせず、改行だけを保って出す。外の連絡先への誘導をしやすくしないため。
+// 問題の報告は通報の画面を作るまで、ヘルプのお問い合わせで受ける。
+templ Messages(data MessagesPageData) {
+	<div class="flex w-full flex-1 flex-col gap-3 pt-4 md:mx-auto md:max-w-180">
+		@components.PageHeading(components.PageHeadingData{
+			Title: templates.T(ctx, "trade_message_index_heading", map[string]any{"Name": data.Thread.PartnerName}),
+			Breadcrumbs: []components.Breadcrumb{
+				{Label: templates.T(ctx, "trade_message_index_breadcrumb_messages"), Path: templates.MessagesPath},
+			},
+		})
+		<a href={ templ.SafeURL(templates.TradePath(data.Thread.ID)) } class="page-card flex min-h-12 items-center gap-2 py-1.5">
+			@statusBadge(data.Thread.Status)
+			<span class="min-w-0 flex-1 truncate text-sm">
+				{ templates.T(ctx, "trade_message_index_quantities", map[string]any{"Receive": data.Thread.ReceiveQuantity, "Give": data.Thread.GiveQuantity}) }
+			</span>
+			<span class="flex shrink-0 items-center text-sm font-medium text-brand-strong">
+				{ templates.T(ctx, "trade_message_index_trade_link") }
+				@chevronIcon()
+			</span>
+		</a>
+		<div class="flex flex-1 flex-col gap-3 px-4 pb-4 md:px-0">
+			<p class="flex items-start gap-2 rounded-lg bg-muted px-3 py-2.5 text-sm">
+				<svg aria-hidden="true" class="mt-0.5 shrink-0" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect height="10" rx="2" width="18" x="3" y="11"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+				{ templates.T(ctx, "trade_message_index_privacy", map[string]any{"Name": data.Thread.PartnerName}) }
+			</p>
+			for i, day := range data.Thread.Days {
+				@messageDay("trade-message-day-"+strconv.Itoa(i), day, data.CSRFToken, data.Thread)
+			}
+			if !data.Thread.InProgress {
+				<p class="flex items-start gap-2 rounded-lg border border-dashed border-muted-foreground px-3 py-2.5 text-sm">
+					<svg aria-hidden="true" class="mt-0.5 shrink-0" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>
+					{ templates.T(ctx, "trade_message_index_ended") }
+				</p>
+			}
+			<div id={ templates.TradeMessagesLatestAnchor }>
+				@components.HelpContact(templates.T(ctx, "trade_message_index_help_contact_lead"))
+			</div>
+		</div>
+		if data.Thread.InProgress {
+			if !data.MessageConsentValid {
+				<div class="pb-4">
+					@consentRequired(templates.T(ctx, "trade_message_index_consent_required_message"))
+				</div>
+			} else {
+				@messageForm(data)
+			}
+		}
+	</div>
+}
+
+// messageDay は、流れの1日分を、日付の見出し (id は headingID) とともに描画する。thread は流れを含む交換で、送信先と相手に使う。
+templ messageDay(headingID string, day viewmodel.TradeMessageDay, csrfToken string, thread viewmodel.TradeMessageThread) {
+	<section class="flex flex-col gap-2.5" aria-labelledby={ headingID }>
+		<h2 id={ headingID } class="self-center text-sm font-medium">{ day.Date }</h2>
+		<ol class="flex flex-col gap-2.5">
+			for _, entry := range day.Entries {
+				if entry.UnreadStart {
+					<li class="flex items-center gap-2 text-brand-strong">
+						<span aria-hidden="true" class="h-px flex-1 bg-brand-border"></span>
+						<span class="text-sm font-semibold">{ templates.T(ctx, "trade_message_index_unread_start") }</span>
+						<span aria-hidden="true" class="h-px flex-1 bg-brand-border"></span>
+					</li>
+				}
+				if entry.IsEvent() {
+					<li class="self-center rounded-full bg-muted px-3 py-1 text-center text-sm">
+						{ templates.T(ctx, entry.EventTextKey, map[string]any{"Name": entry.ActorName}) }
+						if entry.ReasonKey != "" {
+							<span class="block">{ templates.T(ctx, "trade_event_reason", map[string]any{"Reason": templates.T(ctx, entry.ReasonKey)}) }</span>
+						}
+					</li>
+				} else {
+					@messageEntry(entry, csrfToken, thread)
+				}
+			}
+		</ol>
+	</section>
+}
+
+// messageEntry はメッセージを1つ描画する。自分が送ったものは右に、相手が送ったものは左に寄せる。
+// 送った人は見た目では位置で分かるため、支援技術にだけ読ませる。
+// 取り消したメッセージは本文を出さず、取り消したことだけを出す。
+templ messageEntry(entry viewmodel.TradeMessageEntry, csrfToken string, thread viewmodel.TradeMessageThread) {
+	<li
+		class={
+			"flex max-w-[86%] flex-col gap-0.5",
+			templ.KV("items-end self-end", entry.Mine),
+			templ.KV("items-start self-start", !entry.Mine),
+		}
+	>
+		<p
+			class={
+				"whitespace-pre-wrap wrap-break-word rounded-2xl border px-3 py-2 text-sm",
+				templ.KV("rounded-br-sm border-brand-line bg-brand text-brand-foreground", entry.Mine && !entry.Retracted),
+				templ.KV("rounded-bl-sm bg-card", !entry.Mine && !entry.Retracted),
+				templ.KV("border-dashed border-muted-foreground", entry.Retracted),
+			}
+		>
+			// 本文は改行と空白を保って出すため、送った人と本文の間に空白を入れないよう1行に書く。
+			<span class="sr-only">{ senderLabel(ctx, entry, thread.PartnerName) }</span>{ messageText(ctx, entry, thread.PartnerName) }
+		</p>
+		<span class="flex items-center gap-1">
+			<time datetime={ entry.DateTime } class="text-xs">{ entry.Time }</time>
+			if entry.CanRetract() {
+				<button type="button" class="btn h-6 px-1.5 text-xs" data-variant="ghost" data-size="sm" commandfor={ retractDialogID(entry) } command="show-modal">
+					{ templates.T(ctx, "trade_message_index_retract_button") }
+				</button>
+				}
+		</span>
+		if entry.CanRetract() {
+			@retractDialog(csrfToken, thread, entry)
+		}
+	</li>
+}
+
+// retractDialogID はメッセージ entry を取り消す前の確認ダイアログのid。
+func retractDialogID(entry viewmodel.TradeMessageEntry) string {
+	return "trade-message-retract-dialog-" + entry.ID
+}
+
+// retractDialog はメッセージ entry を取り消す前の確認ダイアログを描画する。
+// 取り消すと元に戻せず、相手の画面からも本文が消えるため、押し間違いで取り消さないよう確かめる。
+// 取り消した内容を運営が保管することも、同意の文面と同じく伝える。
+// 開閉はボタンの commandfor / command で行い、対応していないブラウザではJavaScriptが補う。
+templ retractDialog(csrfToken string, thread viewmodel.TradeMessageThread, entry viewmodel.TradeMessageEntry) {
+	<dialog
+		id={ retractDialogID(entry) }
+		class="alert-dialog"
+		aria-labelledby={ retractDialogID(entry) + "-title" }
+		aria-describedby={ retractDialogID(entry) + "-description" }
+	>
+		<div>
+			<header>
+				<h2 id={ retractDialogID(entry) + "-title" }>{ templates.T(ctx, "trade_message_index_retract_confirm_title") }</h2>
+				<p id={ retractDialogID(entry) + "-description" }>{ templates.T(ctx, "trade_message_index_retract_confirm_message", map[string]any{"Name": thread.PartnerName}) }</p>
+			</header>
+			<footer>
+				<button type="button" class="btn" data-variant="outline" commandfor={ retractDialogID(entry) } command="close">
+					{ templates.T(ctx, "trade_message_index_retract_cancel") }
+				</button>
+				<form action={ templ.SafeURL(templates.TradeMessageRetractionPath(thread.ID, entry.ID)) } method="post" class="contents" data-disable-on-submit>
+					<input type="hidden" name="csrf_token" value={ csrfToken }/>
+					<button type="submit" class="btn">
+						{ templates.T(ctx, "trade_message_index_retract_submit") }
+					</button>
+				</form>
+			</footer>
+		</div>
+	</dialog>
+}
+
+// messageForm は、画面の下に留める送信の欄を描画する。
+// data-sticky-composer を目印に、style.css がフォーカスした要素を欄に隠さないための scroll-padding を取る。段階の案内を出すときは、欄が高くなるため値を with-guide にする。
+// Enterは改行とし、送信はボタンだけで行う。IMEの変換の確定を送信と取り違えないため。
+// 欄の下には、交換の段階に合わせた案内 (ある段階だけ) と、どの段階でも出す禁止事項を置く。
+// 入力欄の補足 (aria-describedby) にするのは禁止事項だけとし、段階の案内は入力欄に移るたびに読み上げない。
+templ messageForm(data MessagesPageData) {
+	<form
+		action={ templ.SafeURL(templates.TradeMessagesPath(data.Thread.ID)) }
+		method="post"
+		class="sticky bottom-0 z-10 flex flex-col gap-1.5 border-t bg-card px-3 pt-2 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:rounded-t-xl md:border-x"
+		data-disable-on-submit
+		if data.Thread.GuideKey != "" {
+			data-sticky-composer="with-guide"
+		} else {
+			data-sticky-composer
+		}
+	>
+		<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+		@components.FormErrors(data.FormErrors)
+		<div
+			role="group"
+			class="flex flex-col gap-1"
+			if data.FormErrors.HasFieldError("body") {
+				data-invalid
+			}
+		>
+			<label for="body" class="sr-only">{ templates.T(ctx, "trade_message_index_body_label") }</label>
+			<div class="flex items-end gap-2">
+				<textarea
+					id="body"
+					name="body"
+					rows="2"
+					class="textarea min-h-9 flex-1 resize-none"
+					placeholder={ templates.T(ctx, "trade_message_index_body_placeholder") }
+					aria-describedby={ bodyDescribedBy(data.FormErrors) }
+					if data.FormErrors.HasFieldError("body") {
+						aria-invalid="true"
+						autofocus
+					}
+				>{ data.Body }</textarea>
+				<button type="submit" class="btn" data-size="icon" aria-label={ templates.T(ctx, "trade_message_index_submit") }>
+					<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5"></path><path d="M5 12l7-7 7 7"></path></svg>
+				</button>
+			</div>
+			@components.FieldErrors("body", data.FormErrors)
+		</div>
+		if data.Thread.GuideKey != "" {
+			<p class="text-xs">{ templates.T(ctx, data.Thread.GuideKey) }</p>
+		}
+		<p id="body-hint" class="text-xs">{ templates.T(ctx, "trade_message_index_body_hint") }</p>
+	</form>
+}
+
+// bodyDescribedBy は本文の欄の aria-describedby を、補足とエラーメッセージのidから組み立てる。
+func bodyDescribedBy(formErrors *model.ValidationError) string {
+	if !formErrors.HasFieldError("body") {
+		return "body-hint"
+	}
+
+	return "body-hint " + components.FieldErrorsDescribedBy("body", formErrors)
+}
+
+// senderLabel は、メッセージの前に読み上げる送った人を返す。
+// 相手が取り消したメッセージは、出す文が相手を主語にしているため、空を返す。
+func senderLabel(ctx context.Context, entry viewmodel.TradeMessageEntry, partnerName string) string {
+	if entry.Retracted && !entry.Mine {
+		return ""
+	}
+	if entry.Mine {
+		return templates.T(ctx, "trade_message_index_sender_self")
+	}
+
+	return templates.T(ctx, "trade_message_index_sender_partner", map[string]any{"Name": partnerName})
+}
+
+// messageText はメッセージの本文を返す。取り消したメッセージでは、本文の代わりに取り消したことを返す。
+// 相手が取り消したものは、相手 (partnerName) が取り消したことを返す。
+func messageText(ctx context.Context, entry viewmodel.TradeMessageEntry, partnerName string) string {
+	if entry.Retracted && !entry.Mine {
+		return templates.T(ctx, "trade_message_index_retracted_partner", map[string]any{"Name": partnerName})
+	}
+	if entry.Retracted {
+		return templates.T(ctx, "trade_message_index_retracted")
+	}
+
+	return entry.Body
+}
