@@ -8,7 +8,7 @@ import (
 
 // NewPageData は退会の画面の描画に使うデータ。
 type NewPageData struct {
-	// ProfilePath は戻り先の自分のプロフィールのパス。
+	// ProfilePath はパンくずに置くマイページ (自分のプロフィール) のパス。
 	ProfilePath string
 	// CSRFToken は退会のフォームに載せるトークン。
 	CSRFToken string
@@ -16,6 +16,13 @@ type NewPageData struct {
 	Confirmed bool
 	// FormErrors は退会のフォームを受け付けなかったときのエラー。
 	FormErrors *model.ValidationError
+	// InProgressTradeCount は進行中 (返事待ち・マッチ成立) の交換の数。1件以上あれば退会できない。
+	InProgressTradeCount int64
+}
+
+// canWithdraw は、進行中の交換が無く、退会するボタンを押せるかを返す。
+func (d NewPageData) canWithdraw() bool {
+	return d.InProgressTradeCount == 0
 }
 
 // summaryFields はエラーの要約に並べるフィールドを、フォームに現れる順で持つ。
@@ -27,27 +34,23 @@ var summaryFields = []components.FormErrorSummaryField{
 // New は退会の画面を描画する。退会すると何が起きるかを示し、今のパスワードと理解したことのチェックを求める。
 //
 // チェックを required にし、チェックするまで送信できないようにする (送信時の最終確認)。
+// 進行中の交換があるときは、その数と交換への案内をフォームの冒頭に出し、退会するボタンを押せないようにする。
+// ボタンの下に押せない理由を添え、ボタンの説明として結び付ける。
 // 二要素認証を有効にしていても、認証アプリのコードは求めない。
 // フォームはDELETEで送る。HTMLのフォームはDELETEを送れないため、POSTに _method を載せて上書きする。
 templ New(data NewPageData) {
 	<div class="flex w-full flex-1 flex-col gap-3 py-4 md:mx-auto md:max-w-180">
-		<div class="flex items-center gap-1 px-2 md:px-0">
-			<a
-				href={ templ.SafeURL(data.ProfilePath) }
-				class="btn"
-				data-variant="ghost"
-				data-size="icon"
-				aria-label={ templates.T(ctx, "settings_withdrawal_new_back") }
-			>
-				<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>
-			</a>
-			<h1 class="text-base font-semibold">{ templates.T(ctx, "settings_withdrawal_new_heading") }</h1>
-		</div>
+		@components.PageHeading(components.PageHeadingData{
+			Title:       templates.T(ctx, "settings_withdrawal_new_heading"),
+			Breadcrumbs: []components.Breadcrumb{{Label: templates.T(ctx, "settings_withdrawal_new_breadcrumb_my_page"), Path: data.ProfilePath}},
+		})
 		<section class="flex flex-col gap-2" aria-labelledby="withdrawal-consequences-heading">
 			<h2 id="withdrawal-consequences-heading" class="px-4 font-semibold md:px-0">{ templates.T(ctx, "settings_withdrawal_new_consequences_heading") }</h2>
 			<div class="page-card">
 				<ul class="flex list-disc flex-col gap-1 pl-5 text-sm">
 					<li>{ templates.T(ctx, "settings_withdrawal_new_consequence_account") }</li>
+					<li>{ templates.T(ctx, "settings_withdrawal_new_consequence_list") }</li>
+					<li>{ templates.T(ctx, "settings_withdrawal_new_consequence_trade") }</li>
 					<li>{ templates.T(ctx, "settings_withdrawal_new_consequence_invitation") }</li>
 					<li>{ templates.T(ctx, "settings_withdrawal_new_consequence_record") }</li>
 					<li>{ templates.T(ctx, "settings_withdrawal_new_consequence_sign_up") }</li>
@@ -63,6 +66,15 @@ templ New(data NewPageData) {
 		>
 			@components.FormErrors(data.FormErrors)
 			@components.FormErrorSummary(components.FormErrorSummaryData{Fields: summaryFields, Errors: data.FormErrors})
+			if !data.canWithdraw() {
+				<div class="alert" data-variant="warning">
+					<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v5"></path><path d="M12 16h.01"></path><circle cx="12" cy="12" r="9"></circle></svg>
+					<h2>{ templates.T(ctx, "settings_withdrawal_new_trade_in_progress_heading", map[string]any{"Count": data.InProgressTradeCount}) }</h2>
+					<section>
+						<a href={ templ.SafeURL(templates.TradesPath) } class="font-semibold underline">{ templates.T(ctx, "settings_withdrawal_new_trade_in_progress_link") }</a>
+					</section>
+				</div>
+			}
 			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
 			<input type="hidden" name="_method" value="DELETE"/>
 			<div
@@ -113,9 +125,18 @@ templ New(data NewPageData) {
 				</label>
 				@components.FieldErrors("confirmed", data.FormErrors)
 			</div>
-			<button type="submit" class="btn w-full" data-variant="destructive">
-				{ templates.T(ctx, "settings_withdrawal_new_submit") }
-			</button>
+			if data.canWithdraw() {
+				<button type="submit" class="btn w-full" data-variant="destructive">
+					{ templates.T(ctx, "settings_withdrawal_new_submit") }
+				</button>
+			} else {
+				<div class="flex flex-col gap-2">
+					<button type="submit" class="btn w-full" data-variant="destructive" disabled aria-describedby="withdrawal-submit-hint">
+						{ templates.T(ctx, "settings_withdrawal_new_submit") }
+					</button>
+					<p id="withdrawal-submit-hint" class="text-muted-foreground text-center text-sm">{ templates.T(ctx, "settings_withdrawal_new_submit_hint_trade_in_progress") }</p>
+				</div>
+			}
 		</form>
 	</div>
 }

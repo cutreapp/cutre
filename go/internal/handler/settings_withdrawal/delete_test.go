@@ -194,3 +194,26 @@ func TestDelete_WithoutUser(t *testing.T) {
 		t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusInternalServerError)
 	}
 }
+
+// TestDelete_TradeInProgress は、進行中の交換があるときは、パスワードとチェックがそろっていても退会させず、
+// 画面を422で描き直して、退会できない理由と、押せない退会するボタンを出すことを検証する。
+func TestDelete_TradeInProgress(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.GetTestDB()
+	user := signedInUser(t, model.LocaleJa)
+	testutil.NewTradeBuilder(t, db, testutil.NewUserBuilder(t, db).Build(), user.ID).Build()
+
+	rec := deleteAccount(t, user, testutil.DefaultBuilderPassword, true)
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusUnprocessableEntity)
+	}
+	assertContains(t, rec.Body.String(),
+		"進行中の交換があるため、退会できません。交換がすべて終わってから、もう一度お試しください",
+		"進行中の交換が1件あります。すべて終わるまで退会できません",
+		`disabled aria-describedby="withdrawal-submit-hint"`,
+	)
+	if withdrawn(t, user.ID) {
+		t.Error("退会した、退会しないことを期待")
+	}
+}
