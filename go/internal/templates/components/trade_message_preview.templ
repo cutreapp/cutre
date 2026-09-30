@@ -1,0 +1,47 @@
+package components
+
+import (
+	"context"
+	"strconv"
+
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/viewmodel"
+)
+
+// TradeMessagePreview は、交換の最新のメッセージを1行に抜き出して描画する。partnerName は交換の相手の名前 (@アットネームか、退会したユーザー)。
+// 自分が送ったものは「あなた: 」を前に付け、取り消したものは本文の代わりに取り消したことを出す。メッセージが無ければ、そのことを出す。
+// 本文は1行に収め、あふれた分は省く。unread が真なら、未読があることが目に留まるよう太くする。
+templ TradeMessagePreview(preview *viewmodel.TradeMessagePreview, partnerName string, unread bool) {
+	<span
+		class={
+			"min-w-0 truncate text-sm",
+			templ.KV("font-semibold", unread),
+			templ.KV("text-muted-foreground", !unread),
+		}
+	>{ tradeMessagePreviewText(ctx, preview, partnerName) }</span>
+}
+
+// tradeMessagePreviewText は、交換の最新のメッセージの抜き出しの文を返す。
+func tradeMessagePreviewText(ctx context.Context, preview *viewmodel.TradeMessagePreview, partnerName string) string {
+	switch {
+	case preview == nil:
+		return templates.T(ctx, "trade_message_preview_empty")
+	case preview.Retracted && preview.Mine:
+		return templates.T(ctx, "trade_message_preview_retracted_self")
+	case preview.Retracted:
+		return templates.T(ctx, "trade_message_preview_retracted_partner", map[string]any{"Name": partnerName})
+	case preview.Mine:
+		return templates.T(ctx, "trade_message_preview_self", map[string]any{"Body": preview.Body})
+	default:
+		return preview.Body
+	}
+}
+
+// UnreadMessageCount は、未読のメッセージの数を数字のバッジで描画する。count が0なら何も出さない。
+// 数字だけでは何の数か分からないため、読み上げには数を含めた文を渡し、バッジは読み上げない。
+templ UnreadMessageCount(count int64) {
+	if count > 0 {
+		<span class="sr-only">{ templates.T(ctx, "trade_message_unread_count", map[string]any{"Count": count}) }</span>
+		<span aria-hidden="true" class="badge shrink-0" data-variant="count">{ strconv.FormatInt(count, 10) }</span>
+	}
+}

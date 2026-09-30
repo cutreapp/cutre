@@ -1,0 +1,52 @@
+package components
+
+import (
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/viewmodel"
+)
+
+// AdminMasterListData は管理画面で、マスタの配下のカテゴリー・グッズを並べる欄の描画に使うデータ。
+type AdminMasterListData struct {
+	// ID は欄の見出しのid。欄の aria-labelledby に使う。
+	ID string
+	// Heading は欄の見出し。
+	Heading string
+	// Rows は並べる行。並び順に並べたものを渡す。
+	Rows []viewmodel.AdminMasterRow
+	// EditPath は行のIDから、その行の編集の画面のパスを返す。
+	EditPath func(id string) string
+	// NewPath は配下に作成する画面のパス。
+	NewPath string
+	// NewLabel は作成する画面へのリンクの文言。
+	NewLabel string
+	// EmptyMessage は行が1つも無いときの文言。
+	EmptyMessage string
+}
+
+// AdminMasterList は管理画面の編集の画面に、配下のカテゴリー・グッズを並び順に並べる欄を描画する。
+// 各行は編集の画面へのリンクにし、アーカイブしたものにはバッジを添える。欄の下に作成する画面へのリンクを置く。
+templ AdminMasterList(data AdminMasterListData) {
+	<section class="flex flex-col gap-2" aria-labelledby={ data.ID }>
+		<h2 id={ data.ID } class="px-4 font-semibold md:px-0">{ data.Heading }</h2>
+		if len(data.Rows) == 0 {
+			<p class="page-card text-sm text-muted-foreground">{ data.EmptyMessage }</p>
+		} else {
+			<ul class="page-card divide-y py-0">
+				for _, row := range data.Rows {
+					<li>
+						<a href={ templ.SafeURL(data.EditPath(row.ID)) } class="-mx-4 flex min-h-12 items-center gap-3 px-4 py-2">
+							<span class="min-w-0 flex-1 text-sm font-medium">{ row.Name }</span>
+							if row.Archived {
+								<span class="badge" data-variant="warning">{ templates.T(ctx, "admin_master_list_archived_badge") }</span>
+							}
+							<svg aria-hidden="true" class="shrink-0 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"></path></svg>
+						</a>
+					</li>
+				}
+			</ul>
+		}
+		<div class="flex justify-end px-4 md:px-0">
+			<a href={ templ.SafeURL(data.NewPath) } class="btn" data-variant="outline">{ data.NewLabel }</a>
+		</div>
+	</section>
+}

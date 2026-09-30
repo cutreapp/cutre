@@ -11,12 +11,13 @@ import (
 	"github.com/cutreapp/cutre/go/internal/templates"
 )
 
-// HelpContact は、認証アプリもリカバリーコードも無くした人を、ヘルプのお問い合わせのページへ案内する。
-// ログインで認証アプリのコードを入力する画面と、リカバリーコードを入力する画面で共有する。
+// HelpContact は、前置き lead に続けて、ヘルプのお問い合わせのページへ案内する。
+// ログインのコードを入力する画面では認証アプリもリカバリーコードも無くした人を、
+// 交換のページでは交換で困ったことがあった人を案内する。
 //
 // ヘルプは別のサイト (Wikino) のため新しいタブで開き、入力途中の画面を残す。
 // 新しいタブで開くことは補足の文で見えるように伝え、リンクの説明として読み上げにも結び付ける。
-func HelpContact() templ.Component {
+func HelpContact(lead string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -42,9 +43,9 @@ func HelpContact() templ.Component {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
-		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "help_contact_lead"))
+		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(lead)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/help_contact.templ`, Line: 12, Col: 60}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/help_contact.templ`, Line: 13, Col: 27}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -57,7 +58,7 @@ func HelpContact() templ.Component {
 		var templ_7745c5c3_Var3 templ.SafeURL
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(templates.HelpContactURL))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/help_contact.templ`, Line: 14, Col: 49}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/help_contact.templ`, Line: 15, Col: 49}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -70,7 +71,7 @@ func HelpContact() templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "help_contact_link"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/help_contact.templ`, Line: 20, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/help_contact.templ`, Line: 21, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -83,7 +84,7 @@ func HelpContact() templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "help_contact_new_tab"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/help_contact.templ`, Line: 23, Col: 111}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/components/help_contact.templ`, Line: 24, Col: 111}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {

@@ -1,0 +1,44 @@
+package components
+
+import (
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/viewmodel"
+)
+
+// MatchItems は、もらえるもの・渡せるものの一方について、見出し heading と交換できるアイテムの一覧を描画する。
+//
+// アイテムの写真はまだ持たないため、代わりの絵を添える。2点以上交換できるアイテムには数量を添える。
+// アイテムが無いときは一覧の代わりに empty を出す。
+templ MatchItems(heading string, rows viewmodel.MatchItemRows, empty string) {
+	<div class="flex min-w-0 flex-col gap-2">
+		<h3 class="text-sm font-medium">{ heading }</h3>
+		if len(rows.Items) == 0 {
+			<p class="text-sm text-muted-foreground">{ empty }</p>
+		} else {
+			<ul class="flex flex-col gap-2">
+				for _, row := range rows.Items {
+					<li class="flex items-center gap-2">
+						<span aria-hidden="true" class="flex size-9 shrink-0 items-center justify-center rounded-xl border bg-muted text-muted-foreground">
+							<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect height="18" rx="3" width="18" x="3" y="3"></rect><circle cx="9" cy="9" r="1.5"></circle><path d="M21 15l-5-4-4.5 4"></path></svg>
+						</span>
+						<span class="min-w-0 text-sm">
+							{ templates.T(ctx, "match_item_name", map[string]any{"Category": row.EventCategoryName, "Goods": row.GoodsName}) }
+							if row.Quantity > 1 {
+								<span class="text-muted-foreground">{ templates.T(ctx, "match_item_quantity", map[string]any{"Quantity": row.Quantity}) }</span>
+							}
+						</span>
+					</li>
+				}
+			</ul>
+		}
+	</div>
+}
+
+// PlaceGroups は、ほかのユーザーの交換場所を、都道府県ごとに「東京都 新宿・渋谷」の形で並べて描画する。
+templ PlaceGroups(groups []viewmodel.PlaceGroup) {
+	<span class="flex flex-wrap gap-x-3">
+		for _, group := range groups {
+			<span>{ group.PrefectureName } { group.StationNames }</span>
+		}
+	</span>
+}

@@ -1,0 +1,11 @@
+package components
+
+import "github.com/cutreapp/cutre/go/internal/templates"
+
+// CompletedTradeCount は、プロフィールのユーザーが「交換できた」で終えた交換の件数をカードに描画する。
+templ CompletedTradeCount(count int64) {
+	<dl class="page-card flex items-baseline gap-2">
+		<dt class="flex-1 text-sm font-medium">{ templates.T(ctx, "completed_trade_count_label") }</dt>
+		<dd class="text-lg font-semibold">{ templates.T(ctx, "completed_trade_count_value", map[string]any{"Count": count}) }</dd>
+	</dl>
+}

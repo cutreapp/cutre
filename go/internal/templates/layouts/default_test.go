@@ -9,6 +9,7 @@ import (
 	"github.com/a-h/templ"
 
 	"github.com/cutreapp/cutre/go/internal/i18n"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
 	"github.com/cutreapp/cutre/go/internal/templates/layouts"
 	"github.com/cutreapp/cutre/go/internal/viewmodel"
 )
@@ -127,5 +128,43 @@ func TestDefault_LanguageVersions(t *testing.T) {
 	footer := html[strings.Index(html, "<footer"):]
 	if !strings.Contains(footer, "English") {
 		t.Error("フッターに言語スイッチャーが出力されていない")
+	}
+}
+
+// TestDefault_MainNav は、メインメニューを渡したページだけがメニューと、メニューのぶんの余白を取る目印 (data-main-nav) を持つことを検証する。
+func TestDefault_MainNav(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name        string
+		mainNav     *components.MainNavData
+		want        bool
+		wantPadding bool
+	}{
+		{name: "メインメニューあり", mainNav: &components.MainNavData{Atname: "cutre_user", Current: components.MainNavHome, CurrentPath: "/home"}, want: true, wantPadding: true},
+		{name: "下のメインメニューを隠す", mainNav: &components.MainNavData{Atname: "cutre_user", Current: components.MainNavTrade, CurrentPath: "/trades", BottomHidden: true}, want: true},
+		{name: "メインメニューなし", mainNav: nil, want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+			data := layouts.DefaultLayoutData{MainNav: tt.mainNav}
+
+			var buf bytes.Buffer
+			if err := layouts.Default(data, templ.Raw("<p>本文</p>")).Render(ctx, &buf); err != nil {
+				t.Fatalf("Render()のエラー = %v", err)
+			}
+
+			html := buf.String()
+			if got := strings.Contains(html, `<html lang="ja" data-main-nav>`); got != tt.wantPadding {
+				t.Errorf("data-main-nav の有無 = %v、期待値 = %v", got, tt.wantPadding)
+			}
+			if got := strings.Contains(html, `<nav aria-label="メインメニュー"`); got != tt.want {
+				t.Errorf("メインメニューの有無 = %v、期待値 = %v", got, tt.want)
+			}
+		})
 	}
 }

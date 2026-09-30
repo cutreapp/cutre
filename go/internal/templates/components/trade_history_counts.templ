@@ -1,0 +1,29 @@
+package components
+
+import (
+	"context"
+	"strings"
+
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/viewmodel"
+)
+
+// TradeHistoryCounts は、これまでの交換への行に添える、終わった交換の段階ごとの数を1行に描画する。
+// 終わった交換が無ければ、そのことを出す。
+templ TradeHistoryCounts(counts []viewmodel.TradeHistoryCount) {
+	<span class="text-sm text-muted-foreground">{ tradeHistoryCountsText(ctx, counts) }</span>
+}
+
+// tradeHistoryCountsText は、終わった交換の段階ごとの数を区切りでつないだ文を返す。
+func tradeHistoryCountsText(ctx context.Context, counts []viewmodel.TradeHistoryCount) string {
+	if len(counts) == 0 {
+		return templates.T(ctx, "trade_history_counts_empty")
+	}
+
+	labels := make([]string, len(counts))
+	for i, count := range counts {
+		labels[i] = templates.T(ctx, count.LabelKey, map[string]any{"Count": count.Count})
+	}
+
+	return strings.Join(labels, templates.T(ctx, "trade_history_counts_separator"))
+}

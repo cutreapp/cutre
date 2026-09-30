@@ -1,0 +1,17 @@
+package components
+
+import "github.com/cutreapp/cutre/go/internal/templates"
+
+// MessageConsentTerms は、メッセージの取り扱いの今の文面 (model.CurrentMessageConsentVersion の版) を箇条書きで描画する。
+// アカウントの作成とメッセージの利用の画面で同じ文面を出すため、1か所で持つ。
+// 文面の意味を変えるときは、翻訳ファイルと一緒に model.CurrentMessageConsentVersion を上げる。
+//
+// id は同意のチェックボックスから aria-describedby で結び付けるための、箇条書きのid。
+templ MessageConsentTerms(id string) {
+	<ul id={ id } class="flex list-disc flex-col gap-1 pl-5 text-sm">
+		<li>{ templates.T(ctx, "message_consent_term_participants") }</li>
+		<li>{ templates.T(ctx, "message_consent_term_review") }</li>
+		<li>{ templates.T(ctx, "message_consent_term_retracted") }</li>
+		<li>{ templates.T(ctx, "message_consent_term_withdrawal") }</li>
+	</ul>
+}

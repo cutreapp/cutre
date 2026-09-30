@@ -13,15 +13,24 @@ import (
 // 引数を構造体にまとめるのは、レイアウトが運ぶものが増えてもシグネチャを変えずに済むようにするため。
 type DefaultLayoutData struct {
 	Meta viewmodel.PageMeta
-	// Header はログイン後のページのヘッダー。nilのとき (ログイン前のページ) はヘッダーを出力しない。
-	Header *components.HeaderData
+	// MainNav はログイン後のページのメインメニュー。nilのとき (ログイン前のページと、
+	// リカバリーコードの保存を終えるまでの画面のようにメニューから離れさせない画面) はメニューを出力しない。
+	MainNav *components.MainNavData
 }
 
 // Default はページの内容を共通の<head>・フッター・ボディの外枠で包む基本のHTMLレイアウト。
 // lang属性はリクエストのロケールを反映する。
+//
+// md未満で画面の下に固定するメインメニューを出すページでは<html>に data-main-nav を付ける。メニューに
+// 本文の最後・フォーカスした要素・トーストが隠れないよう、style.css がこれを目印に余白を取る。
 templ Default(data DefaultLayoutData, content templ.Component) {
 	<!DOCTYPE html>
-	<html lang={ templates.Locale(ctx) }>
+	<html
+		lang={ templates.Locale(ctx) }
+		if data.MainNav != nil && !data.MainNav.BottomHidden {
+			data-main-nav
+		}
+	>
 		<head>
 			@components.Head(data.Meta)
 		</head>
@@ -34,8 +43,8 @@ templ Default(data DefaultLayoutData, content templ.Component) {
 			>
 				{ templates.T(ctx, "skip_to_main_content") }
 			</a>
-			if data.Header != nil {
-				@components.Header(*data.Header)
+			if data.MainNav != nil {
+				@components.MainNav(*data.MainNav)
 			}
 			@components.LocaleSuggestion(data.Meta)
 			<main id="main" tabindex="-1" class="flex flex-1 flex-col">

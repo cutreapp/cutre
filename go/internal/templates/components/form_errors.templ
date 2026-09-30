@@ -73,3 +73,12 @@ templ RequiredFieldLabel(field string, label string) {
 		<span class="text-xs font-normal text-muted-foreground">({ templates.T(ctx, "field_required") })</span>
 	</label>
 }
+
+// OptionalFieldLabel は任意の入力欄のラベルを、任意であることの注記付きで描画する。
+// 必須の欄 (RequiredFieldLabel) と並ぶフォームで、どちらの欄かを同じ形で示す。
+templ OptionalFieldLabel(field string, label string) {
+	<label for={ field } class="items-baseline gap-1">
+		<span>{ label }</span>
+		<span class="text-xs font-normal text-muted-foreground">({ templates.T(ctx, "field_optional") })</span>
+	</label>
+}

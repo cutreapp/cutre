@@ -1,0 +1,50 @@
+package components
+
+import "github.com/cutreapp/cutre/go/internal/templates"
+
+// Breadcrumb はパンくずの1段。
+type Breadcrumb struct {
+	// Label はリンクの文言。
+	Label string
+	// Path はリンク先のパス。
+	Path string
+}
+
+// PageHeadingData はログイン後のページの上部の描画に使うデータ。
+type PageHeadingData struct {
+	// Title はページのタイトル。<h1> に出す。
+	Title string
+	// Breadcrumbs はタイトルの上に並べるパンくずで、メインメニューの項目から始まる。
+	// メインメニューの行き先の画面では空にし、タイトルだけを出す。
+	Breadcrumbs []Breadcrumb
+}
+
+// PageHeading はログイン後のページの上部に、タイトルを、メインメニューの行き先以外の画面ではパンくずとタイトルを描画する。
+//
+// もどるボタンは置かず、上の階層へはパンくずで戻る。
+// パンくずは今のページを経路の最後に aria-current="page" で置く。見た目ではすぐ下のタイトルと重なるため、
+// 支援技術にだけ読ませる。
+// 文字が小さいパンくずのリンクは、上下の余白と最小幅で押せる領域を24px四方以上にする。
+// 長い名前の段から省略されるよう、短いメインメニューの項目の段 (先頭) は縮めず、それより後ろの段を縮める。
+templ PageHeading(data PageHeadingData) {
+	<div class="flex flex-col px-4 md:px-0">
+		if len(data.Breadcrumbs) == 0 {
+			<h1 class="text-2xl font-bold">{ data.Title }</h1>
+		} else {
+			<nav aria-label={ templates.T(ctx, "breadcrumb_label") }>
+				<ol class="flex min-w-0 items-center overflow-hidden">
+					for i, breadcrumb := range data.Breadcrumbs {
+						<li class={ "flex items-center", templ.KV("shrink-0", i == 0), templ.KV("min-w-0", i > 0) }>
+							<a href={ templ.SafeURL(breadcrumb.Path) } class="block min-w-6 max-w-[150px] truncate py-1 text-xs font-medium text-primary">
+								{ breadcrumb.Label }
+							</a>
+							<svg aria-hidden="true" class="mx-0.5 size-3 shrink-0 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"></path></svg>
+						</li>
+					}
+					<li class="sr-only" aria-current="page">{ data.Title }</li>
+				</ol>
+			</nav>
+			<h1 class="text-xl font-semibold">{ data.Title }</h1>
+		}
+	</div>
+}

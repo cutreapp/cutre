@@ -7,12 +7,12 @@ import (
 	"github.com/cutreapp/cutre/go/internal/templates/components"
 )
 
-// TestHelpContact は、ヘルプのお問い合わせのページを新しいタブで開くリンクを置き、
+// TestHelpContact は、前置きに続けてヘルプのお問い合わせのページを新しいタブで開くリンクを置き、
 // 新しいタブで開くことを伝える補足をリンクの説明に結び付けることを検証する。
 func TestHelpContact(t *testing.T) {
 	t.Parallel()
 
-	got := render(t, components.HelpContact())
+	got := render(t, components.HelpContact("認証アプリもリカバリーコードもないときは"))
 
 	for _, want := range []string{
 		"認証アプリもリカバリーコードもないときは",
