@@ -5,10 +5,405 @@
 package query
 
 import (
+	"database/sql/driver"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 )
+
+type EventCategoryStatus string
+
+const (
+	EventCategoryStatusPublished EventCategoryStatus = "published"
+	EventCategoryStatusArchived  EventCategoryStatus = "archived"
+	EventCategoryStatusDeleted   EventCategoryStatus = "deleted"
+)
+
+func (e *EventCategoryStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = EventCategoryStatus(s)
+	case string:
+		*e = EventCategoryStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for EventCategoryStatus: %T", src)
+	}
+	return nil
+}
+
+type NullEventCategoryStatus struct {
+	EventCategoryStatus EventCategoryStatus
+	Valid               bool // Valid is true if EventCategoryStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullEventCategoryStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.EventCategoryStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.EventCategoryStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullEventCategoryStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.EventCategoryStatus), nil
+}
+
+type EventStatus string
+
+const (
+	EventStatusPublished EventStatus = "published"
+	EventStatusArchived  EventStatus = "archived"
+	EventStatusDeleted   EventStatus = "deleted"
+)
+
+func (e *EventStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = EventStatus(s)
+	case string:
+		*e = EventStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for EventStatus: %T", src)
+	}
+	return nil
+}
+
+type NullEventStatus struct {
+	EventStatus EventStatus
+	Valid       bool // Valid is true if EventStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullEventStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.EventStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.EventStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullEventStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.EventStatus), nil
+}
+
+type GoodsStatus string
+
+const (
+	GoodsStatusPublished GoodsStatus = "published"
+	GoodsStatusArchived  GoodsStatus = "archived"
+	GoodsStatusDeleted   GoodsStatus = "deleted"
+)
+
+func (e *GoodsStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = GoodsStatus(s)
+	case string:
+		*e = GoodsStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for GoodsStatus: %T", src)
+	}
+	return nil
+}
+
+type NullGoodsStatus struct {
+	GoodsStatus GoodsStatus
+	Valid       bool // Valid is true if GoodsStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullGoodsStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.GoodsStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.GoodsStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullGoodsStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.GoodsStatus), nil
+}
+
+type ItemKind string
+
+const (
+	ItemKindGive ItemKind = "give"
+	ItemKindWant ItemKind = "want"
+)
+
+func (e *ItemKind) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ItemKind(s)
+	case string:
+		*e = ItemKind(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ItemKind: %T", src)
+	}
+	return nil
+}
+
+type NullItemKind struct {
+	ItemKind ItemKind
+	Valid    bool // Valid is true if ItemKind is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullItemKind) Scan(value interface{}) error {
+	if value == nil {
+		ns.ItemKind, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ItemKind.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullItemKind) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ItemKind), nil
+}
+
+type ItemStatus string
+
+const (
+	ItemStatusListed  ItemStatus = "listed"
+	ItemStatusRemoved ItemStatus = "removed"
+)
+
+func (e *ItemStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ItemStatus(s)
+	case string:
+		*e = ItemStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ItemStatus: %T", src)
+	}
+	return nil
+}
+
+type NullItemStatus struct {
+	ItemStatus ItemStatus
+	Valid      bool // Valid is true if ItemStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullItemStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.ItemStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ItemStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullItemStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ItemStatus), nil
+}
+
+type StationStatus string
+
+const (
+	StationStatusPublished StationStatus = "published"
+	StationStatusArchived  StationStatus = "archived"
+	StationStatusDeleted   StationStatus = "deleted"
+)
+
+func (e *StationStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = StationStatus(s)
+	case string:
+		*e = StationStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for StationStatus: %T", src)
+	}
+	return nil
+}
+
+type NullStationStatus struct {
+	StationStatus StationStatus
+	Valid         bool // Valid is true if StationStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullStationStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.StationStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.StationStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullStationStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.StationStatus), nil
+}
+
+type TradeEventKind string
+
+const (
+	TradeEventKindProposed  TradeEventKind = "proposed"
+	TradeEventKindWithdrawn TradeEventKind = "withdrawn"
+	TradeEventKindApproved  TradeEventKind = "approved"
+	TradeEventKindDeclined  TradeEventKind = "declined"
+	TradeEventKindCompleted TradeEventKind = "completed"
+	TradeEventKindFailed    TradeEventKind = "failed"
+	TradeEventKindCancelled TradeEventKind = "cancelled"
+)
+
+func (e *TradeEventKind) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = TradeEventKind(s)
+	case string:
+		*e = TradeEventKind(s)
+	default:
+		return fmt.Errorf("unsupported scan type for TradeEventKind: %T", src)
+	}
+	return nil
+}
+
+type NullTradeEventKind struct {
+	TradeEventKind TradeEventKind
+	Valid          bool // Valid is true if TradeEventKind is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullTradeEventKind) Scan(value interface{}) error {
+	if value == nil {
+		ns.TradeEventKind, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.TradeEventKind.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullTradeEventKind) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.TradeEventKind), nil
+}
+
+type TradeStatus string
+
+const (
+	TradeStatusPending   TradeStatus = "pending"
+	TradeStatusWithdrawn TradeStatus = "withdrawn"
+	TradeStatusDeclined  TradeStatus = "declined"
+	TradeStatusMatched   TradeStatus = "matched"
+	TradeStatusCompleted TradeStatus = "completed"
+	TradeStatusFailed    TradeStatus = "failed"
+	TradeStatusCancelled TradeStatus = "cancelled"
+)
+
+func (e *TradeStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = TradeStatus(s)
+	case string:
+		*e = TradeStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for TradeStatus: %T", src)
+	}
+	return nil
+}
+
+type NullTradeStatus struct {
+	TradeStatus TradeStatus
+	Valid       bool // Valid is true if TradeStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullTradeStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.TradeStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.TradeStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullTradeStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.TradeStatus), nil
+}
+
+type UserRole string
+
+const (
+	UserRoleUser   UserRole = "user"
+	UserRoleEditor UserRole = "editor"
+	UserRoleAdmin  UserRole = "admin"
+)
+
+func (e *UserRole) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = UserRole(s)
+	case string:
+		*e = UserRole(s)
+	default:
+		return fmt.Errorf("unsupported scan type for UserRole: %T", src)
+	}
+	return nil
+}
+
+type NullUserRole struct {
+	UserRole UserRole
+	Valid    bool // Valid is true if UserRole is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullUserRole) Scan(value interface{}) error {
+	if value == nil {
+		ns.UserRole, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.UserRole.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullUserRole) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.UserRole), nil
+}
 
 type EmailConfirmation struct {
 	ID                  uuid.UUID
@@ -19,6 +414,42 @@ type EmailConfirmation struct {
 	ConfirmedAt         *time.Time
 	CreatedAt           time.Time
 	UpdatedAt           time.Time
+}
+
+type Event struct {
+	ID             uuid.UUID
+	Name           string
+	StartsOn       time.Time
+	EndsOn         *time.Time
+	Status         EventStatus
+	ArchiveMessage *string
+	LockVersion    int32
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+type EventCategory struct {
+	ID             uuid.UUID
+	EventID        uuid.UUID
+	Name           string
+	Position       int32
+	Status         EventCategoryStatus
+	ArchiveMessage *string
+	LockVersion    int32
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+type Goods struct {
+	ID              uuid.UUID
+	EventCategoryID uuid.UUID
+	Name            string
+	Position        int32
+	Status          GoodsStatus
+	ArchiveMessage  *string
+	LockVersion     int32
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }
 
 type Invitation struct {
@@ -39,6 +470,29 @@ type InvitationRedemption struct {
 	UpdatedAt    time.Time
 }
 
+type Item struct {
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	GoodsID     uuid.UUID
+	Kind        ItemKind
+	Status      ItemStatus
+	Quantity    int32
+	Note        string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	LockVersion int32
+}
+
+type MessageConsent struct {
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	Version     int32
+	AgreedAt    time.Time
+	WithdrawnAt *time.Time
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
 type PasswordResetToken struct {
 	ID          uuid.UUID
 	UserID      uuid.UUID
@@ -57,15 +511,81 @@ type RateLimit struct {
 	UpdatedAt   time.Time
 }
 
-type User struct {
+type Station struct {
+	ID             uuid.UUID
+	PrefectureCode int16
+	Name           string
+	Position       int32
+	Status         StationStatus
+	ArchiveMessage *string
+	LockVersion    int32
+	CreatedAt      time.Time
+	UpdatedAt      time.Time
+}
+
+type Trade struct {
+	ID                  uuid.UUID
+	ProposerUserID      uuid.UUID
+	ReceiverUserID      uuid.UUID
+	Status              TradeStatus
+	ProposerCompletedAt *time.Time
+	ReceiverCompletedAt *time.Time
+	MatchedAt           *time.Time
+	EndedAt             *time.Time
+	CreatedAt           time.Time
+	UpdatedAt           time.Time
+}
+
+type TradeEvent struct {
+	ID          uuid.UUID
+	TradeID     uuid.UUID
+	ActorUserID uuid.UUID
+	Kind        TradeEventKind
+	Reason      *string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+}
+
+type TradeItem struct {
 	ID        uuid.UUID
-	Email     string
-	Atname    string
-	Locale    string
-	TimeZone  string
-	DeletedAt *time.Time
+	TradeID   uuid.UUID
+	ItemID    uuid.UUID
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+type TradeMessage struct {
+	ID           uuid.UUID
+	TradeID      uuid.UUID
+	SenderUserID uuid.UUID
+	Body         string
+	RetractedAt  *time.Time
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
+}
+
+type TradeMessageRead struct {
+	ID                uuid.UUID
+	TradeID           uuid.UUID
+	UserID            uuid.UUID
+	LastReadAt        time.Time
+	LastReadMessageID uuid.UUID
+	CreatedAt         time.Time
+	UpdatedAt         time.Time
+}
+
+type User struct {
+	ID               uuid.UUID
+	Email            string
+	Atname           string
+	Locale           string
+	TimeZone         string
+	DeletedAt        *time.Time
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+	Role             UserRole
+	PlaceNote        string
+	PlaceLockVersion int32
 }
 
 type UserPassword struct {

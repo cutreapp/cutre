@@ -9,12 +9,13 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (email, atname, locale, time_zone)
 VALUES ($1, $2, $3, $4)
-RETURNING id, email, atname, locale, time_zone, deleted_at, created_at, updated_at
+RETURNING id, email, atname, locale, time_zone, deleted_at, created_at, updated_at, role, place_note, place_lock_version
 `
 
 type CreateUserParams struct {
@@ -41,12 +42,15 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Role,
+		&i.PlaceNote,
+		&i.PlaceLockVersion,
 	)
 	return i, err
 }
 
 const getUserByAtname = `-- name: GetUserByAtname :one
-SELECT id, email, atname, locale, time_zone, deleted_at, created_at, updated_at FROM users WHERE atname = $1 AND deleted_at IS NULL LIMIT 1
+SELECT id, email, atname, locale, time_zone, deleted_at, created_at, updated_at, role, place_note, place_lock_version FROM users WHERE atname = $1 AND deleted_at IS NULL LIMIT 1
 `
 
 func (q *Queries) GetUserByAtname(ctx context.Context, atname string) (User, error) {
@@ -61,12 +65,15 @@ func (q *Queries) GetUserByAtname(ctx context.Context, atname string) (User, err
 		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Role,
+		&i.PlaceNote,
+		&i.PlaceLockVersion,
 	)
 	return i, err
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, atname, locale, time_zone, deleted_at, created_at, updated_at FROM users WHERE email = $1 AND deleted_at IS NULL LIMIT 1
+SELECT id, email, atname, locale, time_zone, deleted_at, created_at, updated_at, role, place_note, place_lock_version FROM users WHERE email = $1 AND deleted_at IS NULL LIMIT 1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -81,12 +88,15 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Role,
+		&i.PlaceNote,
+		&i.PlaceLockVersion,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, email, atname, locale, time_zone, deleted_at, created_at, updated_at FROM users WHERE id = $1 AND deleted_at IS NULL LIMIT 1
+SELECT id, email, atname, locale, time_zone, deleted_at, created_at, updated_at, role, place_note, place_lock_version FROM users WHERE id = $1 AND deleted_at IS NULL LIMIT 1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
@@ -101,12 +111,115 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Role,
+		&i.PlaceNote,
+		&i.PlaceLockVersion,
 	)
 	return i, err
 }
 
+const listMatchCandidateUsers = `-- name: ListMatchCandidateUsers :many
+SELECT users.id, users.email, users.atname, users.locale, users.time_zone, users.deleted_at, users.created_at, users.updated_at, users.role, users.place_note, users.place_lock_version FROM users
+WHERE users.id IN (
+    SELECT theirs.user_id FROM items AS mine
+    JOIN items AS theirs ON theirs.goods_id = mine.goods_id AND theirs.kind = 'give' AND theirs.status = 'listed'
+    WHERE mine.user_id = $1 AND mine.kind = 'want' AND mine.status = 'listed'
+    INTERSECT
+    SELECT theirs.user_id FROM items AS mine
+    JOIN items AS theirs ON theirs.goods_id = mine.goods_id AND theirs.kind = 'want' AND theirs.status = 'listed'
+    WHERE mine.user_id = $1 AND mine.kind = 'give' AND mine.status = 'listed'
+    INTERSECT
+    SELECT their_places.user_id FROM user_stations AS my_places
+    JOIN stations AS my_stations ON my_stations.id = my_places.station_id
+    JOIN stations AS their_stations ON their_stations.prefecture_code = my_stations.prefecture_code
+    JOIN user_stations AS their_places ON their_places.station_id = their_stations.id
+    WHERE my_places.user_id = $1
+)
+  AND users.id <> $1
+  AND users.deleted_at IS NULL
+ORDER BY users.atname, users.id
+`
+
+// ユーザー $1 のマッチ候補。退会しておらず、交換場所の都道府県が1つ以上同じで、
+// 「相手の譲れる ∩ 自分のほしい」と「自分の譲れる ∩ 相手のほしい」がどちらも1つ以上あるユーザー。
+// アイテムはリストにあるものだけを数え、マスタと駅の状態は問わない (リストと交換場所からの参照と同じ)。
+func (q *Queries) ListMatchCandidateUsers(ctx context.Context, userID uuid.UUID) ([]User, error) {
+	rows, err := q.db.QueryContext(ctx, listMatchCandidateUsers, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []User{}
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Email,
+			&i.Atname,
+			&i.Locale,
+			&i.TimeZone,
+			&i.DeletedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Role,
+			&i.PlaceNote,
+			&i.PlaceLockVersion,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listUsersByIDs = `-- name: ListUsersByIDs :many
+SELECT id, email, atname, locale, time_zone, deleted_at, created_at, updated_at, role, place_note, place_lock_version FROM users WHERE id = ANY($1::uuid[])
+`
+
+// 交換の相手をまとめて引く。交換の記録は相手が退会しても残すため、退会したユーザーも含める。
+func (q *Queries) ListUsersByIDs(ctx context.Context, ids []uuid.UUID) ([]User, error) {
+	rows, err := q.db.QueryContext(ctx, listUsersByIDs, pq.Array(ids))
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []User{}
+	for rows.Next() {
+		var i User
+		if err := rows.Scan(
+			&i.ID,
+			&i.Email,
+			&i.Atname,
+			&i.Locale,
+			&i.TimeZone,
+			&i.DeletedAt,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Role,
+			&i.PlaceNote,
+			&i.PlaceLockVersion,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockUserByID = `-- name: LockUserByID :one
-SELECT id, email, atname, locale, time_zone, deleted_at, created_at, updated_at FROM users WHERE id = $1 AND deleted_at IS NULL FOR NO KEY UPDATE
+SELECT id, email, atname, locale, time_zone, deleted_at, created_at, updated_at, role, place_note, place_lock_version FROM users WHERE id = $1 AND deleted_at IS NULL FOR NO KEY UPDATE
 `
 
 func (q *Queries) LockUserByID(ctx context.Context, id uuid.UUID) (User, error) {
@@ -121,8 +234,36 @@ func (q *Queries) LockUserByID(ctx context.Context, id uuid.UUID) (User, error) 
 		&i.DeletedAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Role,
+		&i.PlaceNote,
+		&i.PlaceLockVersion,
 	)
 	return i, err
+}
+
+const updateUserPlaces = `-- name: UpdateUserPlaces :execrows
+UPDATE users
+SET place_note = $2,
+    place_lock_version = place_lock_version + 1,
+    updated_at = NOW()
+WHERE id = $1
+  AND deleted_at IS NULL
+  AND place_lock_version = $3
+`
+
+type UpdateUserPlacesParams struct {
+	ID               uuid.UUID
+	PlaceNote        string
+	PlaceLockVersion int32
+}
+
+// 駅の置換と同じトランザクションで、フォームの版を照合して「ほかに出られるところ」と版を書き換える。
+func (q *Queries) UpdateUserPlaces(ctx context.Context, arg UpdateUserPlacesParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, updateUserPlaces, arg.ID, arg.PlaceNote, arg.PlaceLockVersion)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const withdrawUser = `-- name: WithdrawUser :execrows
@@ -132,6 +273,7 @@ SET deleted_at = NOW(),
     atname = $3,
     locale = 'ja',
     time_zone = 'Etc/UTC',
+    place_note = '',
     updated_at = NOW()
 WHERE id = $1
   AND deleted_at IS NULL
@@ -144,7 +286,7 @@ type WithdrawUserParams struct {
 }
 
 // 退会した時刻を入れ、メールアドレスとアットネームを匿名の値に置き換える。
-// ロケールとタイムゾーンも全員共通の値にし、退会前の属性を残さない。
+// ロケールとタイムゾーンも全員共通の値にし、交換場所の「ほかに出られるところ」も空にして、退会前の属性を残さない。
 // 退会済みの行は更新せず、同じユーザーの退会が重なっても2度目は0行になる。
 func (q *Queries) WithdrawUser(ctx context.Context, arg WithdrawUserParams) (int64, error) {
 	result, err := q.db.ExecContext(ctx, withdrawUser, arg.ID, arg.Email, arg.Atname)
