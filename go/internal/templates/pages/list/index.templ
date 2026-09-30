@@ -1,0 +1,130 @@
+package list
+
+import (
+	"strconv"
+
+	"github.com/cutreapp/cutre/go/internal/model"
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+	"github.com/cutreapp/cutre/go/internal/viewmodel"
+)
+
+// IndexPageData はユーザー向けのリストの描画に使うデータ。
+type IndexPageData struct {
+	// Kind は表示中のリスト。
+	Kind model.ItemKind
+	// Quantities は、譲れる・ほしいのリストそれぞれのアイテムの数量の合計。リストを切り替えるリンクに出す。
+	Quantities model.ItemQuantities
+	// Sections は表示中のリストのアイテムを、イベントごとにまとめたもの。
+	Sections []viewmodel.ListSection
+}
+
+// Index はユーザー向けのリストを描画する。
+//
+// 譲れる・ほしいのリストはリンクで切り替え、表示中のほうを押した状態で示す。
+// リストに追加する入口 (イベントから追加) を置き、アイテムはイベントごとの欄に並べて、各行をアイテムの編集の画面へのリンクにする。
+// 手動で追加は作るまで置かない。
+templ Index(data IndexPageData) {
+	<div class="flex w-full flex-1 flex-col gap-3 py-4 md:mx-auto md:max-w-180">
+		@components.PageHeading(components.PageHeadingData{Title: templates.T(ctx, "list_index_heading")})
+		<nav aria-label={ templates.T(ctx, "list_index_kind_nav_label") } class="px-4 md:px-0">
+			<ul class="flex gap-2 rounded-full border bg-card p-1">
+				for _, kind := range model.ItemKinds() {
+					<li class="flex-1">
+						@kindLink(kind, quantityOf(data.Quantities, kind), kind == data.Kind)
+					</li>
+				}
+			</ul>
+		</nav>
+		<section class="page-card flex flex-col gap-2" aria-labelledby="list-add-heading">
+			<h2 id="list-add-heading" class="text-sm font-semibold">{ templates.T(ctx, addHeadingKey(data.Kind)) }</h2>
+			<a href={ templ.SafeURL(templates.EventsPath) } class="btn w-full">{ templates.T(ctx, "list_index_add_from_events") }</a>
+		</section>
+		if len(data.Sections) == 0 {
+			<p class="page-card text-sm text-muted-foreground">{ templates.T(ctx, emptyKey(data.Kind)) }</p>
+		}
+		for i, section := range data.Sections {
+			@listSection(i, section)
+		}
+	</div>
+}
+
+// kindLink はリスト kind に切り替えるリンクを描画する。表示中のリストは aria-current="page" を付けて押した状態で示す。
+// 文言はリストの名前と数量の合計にする。
+templ kindLink(kind model.ItemKind, quantity int64, current bool) {
+	<a
+		href={ templ.SafeURL(templates.ListKindPath(string(kind))) }
+		class="btn w-full rounded-full"
+		data-variant="ghost"
+		if current {
+			aria-current="page"
+		}
+	>
+		{ templates.T(ctx, viewmodel.ItemKindLabelKey(kind)) }
+		<span class="tabular-nums">{ quantity }</span>
+	</a>
+}
+
+// listSection はイベントごとの欄を描画する。見出しにイベントの名前と数量の合計を置き、アイテムを行に並べる。
+templ listSection(index int, section viewmodel.ListSection) {
+	<section class="flex flex-col gap-2" aria-labelledby={ sectionHeadingID(index) }>
+		<div class="flex items-baseline gap-2 px-4 md:px-0">
+			<h2 id={ sectionHeadingID(index) } class="flex-1 font-semibold">{ section.EventName }</h2>
+			<span class="text-sm text-muted-foreground">{ templates.T(ctx, "list_index_quantity", map[string]any{"Quantity": section.Quantity}) }</span>
+		</div>
+		<ul class="page-card divide-y py-0">
+			for _, row := range section.Items {
+				<li>
+					<a href={ templ.SafeURL(templates.EditItemPath(row.ID)) } class="-mx-4 flex min-h-12 items-center gap-3 px-4 py-2.5">
+						<span aria-hidden="true" class="flex size-11 shrink-0 items-center justify-center rounded-xl border bg-muted text-muted-foreground">
+							<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect height="18" rx="3" width="18" x="3" y="3"></rect><circle cx="9" cy="9" r="1.5"></circle><path d="M21 15l-5-4-4.5 4"></path></svg>
+						</span>
+						<span class="flex min-w-0 flex-1 flex-col gap-0.5">
+							<span class="text-sm font-medium">{ templates.T(ctx, "list_index_item_name", map[string]any{"Category": row.EventCategoryName, "Goods": row.GoodsName}) }</span>
+							<span class="truncate text-sm text-muted-foreground">
+								if row.Note == "" {
+									{ templates.T(ctx, "list_index_quantity", map[string]any{"Quantity": row.Quantity}) }
+								} else {
+									{ templates.T(ctx, "list_index_quantity_with_note", map[string]any{"Quantity": row.Quantity, "Note": row.Note}) }
+								}
+							</span>
+						</span>
+						<svg aria-hidden="true" class="shrink-0 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"></path></svg>
+					</a>
+				</li>
+			}
+		</ul>
+	</section>
+}
+
+// quantityOf はリスト kind の数量の合計を返す。
+func quantityOf(quantities model.ItemQuantities, kind model.ItemKind) int64 {
+	if kind == model.ItemKindWant {
+		return quantities.Want
+	}
+
+	return quantities.Give
+}
+
+// addHeadingKey は、リスト kind に追加する入口の見出しの翻訳キーを返す。
+func addHeadingKey(kind model.ItemKind) string {
+	if kind == model.ItemKindWant {
+		return "list_index_add_want_heading"
+	}
+
+	return "list_index_add_give_heading"
+}
+
+// emptyKey は、リスト kind にアイテムが無いときの文言の翻訳キーを返す。
+func emptyKey(kind model.ItemKind) string {
+	if kind == model.ItemKindWant {
+		return "list_index_want_empty"
+	}
+
+	return "list_index_give_empty"
+}
+
+// sectionHeadingID は、index 番目のイベントの欄の見出しのidを返す。
+func sectionHeadingID(index int) string {
+	return "list-section-" + strconv.Itoa(index)
+}

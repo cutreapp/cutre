@@ -15,14 +15,17 @@ type NewPageData struct {
 	// Email は確認を済ませたメールアドレス。入力は受け付けず、登録するアドレスとして示す。
 	Email string
 	// Atname は再描画のときに入力欄へ戻すアットネーム。パスワードは戻さない。
-	Atname     string
-	FormErrors *model.ValidationError
+	Atname string
+	// MessageConsentAgreed は再描画のときに戻す、メッセージの取り扱いへの同意のチェック。
+	MessageConsentAgreed bool
+	FormErrors           *model.ValidationError
 }
 
 // summaryFields はエラーの要約に並べるフィールドを、フォームに現れる順で持つ。
 var summaryFields = []components.FormErrorSummaryField{
 	{Name: "atname", LabelKey: "account_new_atname_label"},
 	{Name: "password", LabelKey: "account_new_password_label"},
+	{Name: "message_consent", LabelKey: "account_new_message_consent_heading"},
 }
 
 // New はアカウントの作成画面 (アットネームとパスワードの設定) を描画する。
@@ -32,6 +35,9 @@ var summaryFields = []components.FormErrorSummaryField{
 // ログインで入力するメールアドレスと新しいパスワードの組で覚えさせられる。
 // アットネームは公開のIDであってログインの識別子ではないため、autocomplete="nickname" にする。
 // 入力欄の maxlength・pattern・minlength は validator.AtnameMaxLength などの規則と揃える。
+//
+// メッセージの取り扱いへの同意は、文面を読んでから入れる別のチェックにする。
+// 同意しないとアカウントを作れないが、送信ボタンは押せるままにし、チェックが無ければ理由をエラーで示す。
 templ New(data NewPageData) {
 	<div class="flex w-full flex-1 flex-col justify-center gap-6 py-10 md:mx-auto md:max-w-md">
 		if data.InvitationUnusable {
@@ -110,12 +116,62 @@ templ New(data NewPageData) {
 					<p id="password-hint" class="text-sm">{ templates.T(ctx, "account_new_password_hint") }</p>
 					@components.FieldErrors("password", data.FormErrors)
 				</div>
+				@messageConsentField(data)
 				<button type="submit" class="btn w-full" data-size="lg">
 					{ templates.T(ctx, "account_new_submit") }
 				</button>
 			</form>
 		}
 	</div>
+}
+
+// messageConsentField は、メッセージの取り扱いの文面と、それへの同意のチェックを描画する。
+// チェックの説明として文面の箇条書きを結び付け、チェックに移ったときに内容も読み上げられるようにする。
+templ messageConsentField(data NewPageData) {
+	<div
+		role="group"
+		class="field"
+		aria-labelledby="message-consent-heading"
+		if data.FormErrors.HasFieldError("message_consent") {
+			data-invalid
+		}
+	>
+		<div class="flex flex-col gap-2.5 rounded-lg bg-muted p-3">
+			<h2 id="message-consent-heading" class="text-sm font-semibold">{ templates.T(ctx, "account_new_message_consent_heading") }</h2>
+			<p class="text-sm">{ templates.T(ctx, "account_new_message_consent_lead") }</p>
+			@components.MessageConsentTerms("message-consent-terms")
+			<label for="message_consent" class="flex min-h-11 items-center gap-2.5 border-t pt-2.5 text-sm font-medium">
+				<input
+					id="message_consent"
+					name="message_consent"
+					type="checkbox"
+					class="input"
+					value="1"
+					required
+					aria-describedby={ consentDescribedBy(data.FormErrors) }
+					if data.MessageConsentAgreed {
+						checked
+					}
+					if data.FormErrors.HasFieldError("message_consent") {
+						aria-invalid="true"
+					}
+				/>
+				{ templates.T(ctx, "account_new_message_consent_label") }
+				<span class="text-xs font-normal text-muted-foreground">({ templates.T(ctx, "field_required") })</span>
+			</label>
+		</div>
+		@components.FieldErrors("message_consent", data.FormErrors)
+	</div>
+}
+
+// consentDescribedBy は同意のチェックを説明する要素のidを返す。
+// 文面の箇条書きは常に結び付け、エラーがあるときはそのメッセージも続けて読ませる。
+func consentDescribedBy(formErrors *model.ValidationError) string {
+	if !formErrors.HasFieldError("message_consent") {
+		return "message-consent-terms"
+	}
+
+	return "message-consent-terms " + components.FieldErrorsDescribedBy("message_consent", formErrors)
 }
 
 // describedBy は入力欄を説明する要素のidを返す。

@@ -22,26 +22,55 @@ import (
 	"github.com/cutreapp/cutre/go/internal/database"
 	"github.com/cutreapp/cutre/go/internal/dispatcher"
 	"github.com/cutreapp/cutre/go/internal/handler/account"
+	"github.com/cutreapp/cutre/go/internal/handler/admin"
+	"github.com/cutreapp/cutre/go/internal/handler/admin_event"
+	"github.com/cutreapp/cutre/go/internal/handler/admin_event_archive"
+	"github.com/cutreapp/cutre/go/internal/handler/admin_event_category"
+	"github.com/cutreapp/cutre/go/internal/handler/admin_event_category_archive"
+	"github.com/cutreapp/cutre/go/internal/handler/admin_goods"
+	"github.com/cutreapp/cutre/go/internal/handler/admin_goods_archive"
+	"github.com/cutreapp/cutre/go/internal/handler/admin_station"
+	"github.com/cutreapp/cutre/go/internal/handler/admin_station_archive"
 	"github.com/cutreapp/cutre/go/internal/handler/email_confirmation"
+	"github.com/cutreapp/cutre/go/internal/handler/event"
+	"github.com/cutreapp/cutre/go/internal/handler/event_category"
 	"github.com/cutreapp/cutre/go/internal/handler/health"
 	"github.com/cutreapp/cutre/go/internal/handler/home"
 	"github.com/cutreapp/cutre/go/internal/handler/invitation_acceptance"
+	"github.com/cutreapp/cutre/go/internal/handler/item"
+	"github.com/cutreapp/cutre/go/internal/handler/list"
+	"github.com/cutreapp/cutre/go/internal/handler/match"
+	"github.com/cutreapp/cutre/go/internal/handler/message"
 	"github.com/cutreapp/cutre/go/internal/handler/password"
 	"github.com/cutreapp/cutre/go/internal/handler/password_reset"
 	"github.com/cutreapp/cutre/go/internal/handler/password_reset_sent"
 	"github.com/cutreapp/cutre/go/internal/handler/profile"
 	"github.com/cutreapp/cutre/go/internal/handler/settings_invitation"
+	"github.com/cutreapp/cutre/go/internal/handler/settings_message_consent"
+	"github.com/cutreapp/cutre/go/internal/handler/settings_place"
 	"github.com/cutreapp/cutre/go/internal/handler/settings_two_factor_auth"
 	"github.com/cutreapp/cutre/go/internal/handler/settings_withdrawal"
 	"github.com/cutreapp/cutre/go/internal/handler/sign_in"
 	"github.com/cutreapp/cutre/go/internal/handler/sign_in_two_factor"
 	"github.com/cutreapp/cutre/go/internal/handler/sign_in_two_factor_recovery"
 	"github.com/cutreapp/cutre/go/internal/handler/sign_up"
+	"github.com/cutreapp/cutre/go/internal/handler/trade"
+	"github.com/cutreapp/cutre/go/internal/handler/trade_approval"
+	"github.com/cutreapp/cutre/go/internal/handler/trade_cancellation"
+	"github.com/cutreapp/cutre/go/internal/handler/trade_completion"
+	"github.com/cutreapp/cutre/go/internal/handler/trade_confirmation"
+	"github.com/cutreapp/cutre/go/internal/handler/trade_decline"
+	"github.com/cutreapp/cutre/go/internal/handler/trade_failure"
+	"github.com/cutreapp/cutre/go/internal/handler/trade_history"
+	"github.com/cutreapp/cutre/go/internal/handler/trade_message"
+	"github.com/cutreapp/cutre/go/internal/handler/trade_message_retraction"
+	"github.com/cutreapp/cutre/go/internal/handler/trade_withdrawal"
 	"github.com/cutreapp/cutre/go/internal/handler/user_session"
 	"github.com/cutreapp/cutre/go/internal/handler/welcome"
 	"github.com/cutreapp/cutre/go/internal/httperror"
 	"github.com/cutreapp/cutre/go/internal/i18n"
 	"github.com/cutreapp/cutre/go/internal/middleware"
+	"github.com/cutreapp/cutre/go/internal/model"
 	"github.com/cutreapp/cutre/go/internal/ratelimit"
 	"github.com/cutreapp/cutre/go/internal/repository"
 	"github.com/cutreapp/cutre/go/internal/session"
@@ -165,7 +194,6 @@ func newRouter(cfg *config.Config, db *sql.DB, staticDir string) *chi.Mux {
 
 	healthHandler := health.NewHandler()
 	welcomeHandler := welcome.NewHandler(cfg)
-	homeHandler := home.NewHandler(cfg)
 
 	userTwoFactorAuthRepo := repository.NewUserTwoFactorAuthRepository(db)
 	createSignInUC := usecase.NewCreateSignInUsecase(validator.NewSignInCreateValidator(userRepo, userPasswordRepo), userTwoFactorAuthRepo)
@@ -205,6 +233,8 @@ func newRouter(cfg *config.Config, db *sql.DB, staticDir string) *chi.Mux {
 		usecase.NewVerifyEmailConfirmationUsecase(validator.NewEmailConfirmationCreateValidator(), emailConfirmationRepo),
 		usecase.NewCreateSignUpUsecase(db, invitationRepo, invitationRedemptionRepo, validator.NewSignUpCreateValidator(userRepo), emailConfirmationRepo, jobDispatcher),
 	)
+	messageConsentRepo := repository.NewMessageConsentRepository(db)
+	tradeRepo := repository.NewTradeRepository(db)
 	accountHandler := account.NewHandler(
 		cfg,
 		continuationMgr,
@@ -220,6 +250,7 @@ func newRouter(cfg *config.Config, db *sql.DB, staticDir string) *chi.Mux {
 			validator.NewAccountCreateValidator(userRepo),
 			userRepo,
 			userPasswordRepo,
+			messageConsentRepo,
 		),
 		createSessionUC,
 	)
@@ -248,7 +279,32 @@ func newRouter(cfg *config.Config, db *sql.DB, staticDir string) *chi.Mux {
 	}
 	userTwoFactorRecoveryCodeRepo := repository.NewUserTwoFactorRecoveryCodeRepository(db)
 	getTwoFactorAuthStatusUC := usecase.NewGetTwoFactorAuthStatusUsecase(userTwoFactorAuthRepo, userTwoFactorRecoveryCodeRepo)
-	profileHandler := profile.NewHandler(cfg, errorRenderer, getInvitationRedemptionsUC, getTwoFactorAuthStatusUC)
+	getMessageConsentUC := usecase.NewGetMessageConsentUsecase(messageConsentRepo)
+	stationRepo := repository.NewStationRepository(db)
+	userStationRepo := repository.NewUserStationRepository(db)
+	getPlacesUC := usecase.NewGetPlacesUsecase(stationRepo, userRepo)
+	settingsPlaceHandler := settings_place.NewHandler(
+		cfg,
+		errorRenderer,
+		flashMgr,
+		getPlacesUC,
+		usecase.NewGetPublishedStationsUsecase(stationRepo),
+		usecase.NewUpdatePlacesUsecase(
+			db,
+			validator.NewPlaceUpdateValidator(),
+			validator.NewPlaceStationUpdateValidator(stationRepo),
+			stationRepo,
+			userStationRepo,
+			userRepo,
+		),
+	)
+	settingsMessageConsentHandler := settings_message_consent.NewHandler(
+		cfg,
+		flashMgr,
+		getMessageConsentUC,
+		usecase.NewCreateMessageConsentUsecase(messageConsentRepo),
+		usecase.NewWithdrawMessageConsentUsecase(db, validator.NewMessageConsentWithdrawValidator(tradeRepo), messageConsentRepo, userRepo),
+	)
 	settingsInvitationHandler := settings_invitation.NewHandler(
 		cfg,
 		errorRenderer,
@@ -280,14 +336,16 @@ func newRouter(cfg *config.Config, db *sql.DB, staticDir string) *chi.Mux {
 			userTwoFactorRecoveryCodeRepo,
 		),
 	)
+	itemRepo := repository.NewItemRepository(db)
 	settingsWithdrawalHandler := settings_withdrawal.NewHandler(
 		cfg,
 		sessionMgr,
 		flashMgr,
 		limiter,
+		usecase.NewGetWithdrawalUsecase(tradeRepo),
 		usecase.NewDeleteAccountUsecase(
 			db,
-			validator.NewWithdrawalDeleteValidator(userPasswordRepo),
+			validator.NewWithdrawalDeleteValidator(userPasswordRepo, tradeRepo),
 			userRepo,
 			userPasswordRepo,
 			userSessionRepo,
@@ -296,7 +354,204 @@ func newRouter(cfg *config.Config, db *sql.DB, staticDir string) *chi.Mux {
 			passwordResetTokenRepo,
 			emailConfirmationRepo,
 			invitationRepo,
+			itemRepo,
+			userStationRepo,
 		),
+	)
+
+	eventRepo := repository.NewEventRepository(db)
+	eventCategoryRepo := repository.NewEventCategoryRepository(db)
+	goodsRepo := repository.NewGoodsRepository(db)
+	profileHandler := profile.NewHandler(
+		cfg,
+		errorRenderer,
+		getInvitationRedemptionsUC,
+		getTwoFactorAuthStatusUC,
+		getMessageConsentUC,
+		getPlacesUC,
+		usecase.NewGetProfileUsecase(eventCategoryRepo, goodsRepo, itemRepo, stationRepo, tradeRepo, userRepo),
+		usecase.NewGetEndedTradeCountsUsecase(tradeRepo),
+	)
+
+	// 管理画面を使えるかは各UseCaseが役割で確かめ、使えないユーザーにはハンドラーが404を返す。
+	getAdminMenuUC := usecase.NewGetAdminMenuUsecase()
+	getAdminEventUC := usecase.NewGetAdminEventUsecase(eventRepo, eventCategoryRepo)
+	getAdminEventCategoryUC := usecase.NewGetAdminEventCategoryUsecase(eventRepo, eventCategoryRepo, goodsRepo)
+	getAdminGoodsUC := usecase.NewGetAdminGoodsUsecase(eventRepo, eventCategoryRepo, goodsRepo)
+	adminHandler := admin.NewHandler(cfg, errorRenderer, getAdminMenuUC)
+	adminEventHandler := admin_event.NewHandler(
+		cfg,
+		errorRenderer,
+		flashMgr,
+		getAdminMenuUC,
+		usecase.NewGetAdminEventsUsecase(eventRepo),
+		getAdminEventUC,
+		usecase.NewCreateEventUsecase(validator.NewEventCreateValidator(), eventRepo),
+		usecase.NewUpdateEventUsecase(validator.NewEventUpdateValidator(), eventRepo),
+		usecase.NewDeleteEventUsecase(db, validator.NewEventDeleteValidator(itemRepo), eventRepo),
+	)
+	adminEventArchiveHandler := admin_event_archive.NewHandler(
+		cfg,
+		errorRenderer,
+		flashMgr,
+		getAdminEventUC,
+		usecase.NewArchiveEventUsecase(validator.NewEventArchiveCreateValidator(), eventRepo),
+		usecase.NewUnarchiveEventUsecase(eventRepo),
+	)
+	adminEventCategoryHandler := admin_event_category.NewHandler(
+		cfg,
+		errorRenderer,
+		flashMgr,
+		getAdminEventUC,
+		getAdminEventCategoryUC,
+		usecase.NewCreateEventCategoryUsecase(validator.NewEventCategoryCreateValidator(), eventRepo, eventCategoryRepo),
+		usecase.NewUpdateEventCategoryUsecase(validator.NewEventCategoryUpdateValidator(), eventRepo, eventCategoryRepo),
+		usecase.NewDeleteEventCategoryUsecase(db, validator.NewEventCategoryDeleteValidator(itemRepo), eventRepo, eventCategoryRepo),
+	)
+	adminEventCategoryArchiveHandler := admin_event_category_archive.NewHandler(
+		cfg,
+		errorRenderer,
+		flashMgr,
+		getAdminEventCategoryUC,
+		usecase.NewArchiveEventCategoryUsecase(validator.NewEventCategoryArchiveCreateValidator(), eventRepo, eventCategoryRepo),
+		usecase.NewUnarchiveEventCategoryUsecase(eventRepo, eventCategoryRepo),
+	)
+	adminGoodsHandler := admin_goods.NewHandler(
+		cfg,
+		errorRenderer,
+		flashMgr,
+		getAdminEventCategoryUC,
+		getAdminGoodsUC,
+		usecase.NewCreateGoodsUsecase(validator.NewGoodsCreateValidator(), eventRepo, eventCategoryRepo, goodsRepo),
+		usecase.NewUpdateGoodsUsecase(validator.NewGoodsUpdateValidator(), eventRepo, eventCategoryRepo, goodsRepo),
+		usecase.NewDeleteGoodsUsecase(db, validator.NewGoodsDeleteValidator(itemRepo), eventRepo, eventCategoryRepo, goodsRepo),
+	)
+	adminGoodsArchiveHandler := admin_goods_archive.NewHandler(
+		cfg,
+		errorRenderer,
+		flashMgr,
+		getAdminGoodsUC,
+		usecase.NewArchiveGoodsUsecase(validator.NewGoodsArchiveCreateValidator(), eventRepo, eventCategoryRepo, goodsRepo),
+		usecase.NewUnarchiveGoodsUsecase(eventRepo, eventCategoryRepo, goodsRepo),
+	)
+	eventHandler := event.NewHandler(
+		cfg,
+		errorRenderer,
+		usecase.NewGetEventsUsecase(eventRepo, goodsRepo, itemRepo),
+		usecase.NewGetEventUsecase(eventRepo, eventCategoryRepo, goodsRepo, itemRepo),
+	)
+	eventCategoryHandler := event_category.NewHandler(cfg, errorRenderer, usecase.NewGetEventCategoryUsecase(eventRepo, eventCategoryRepo, goodsRepo, itemRepo))
+	itemHandler := item.NewHandler(
+		cfg,
+		errorRenderer,
+		flashMgr,
+		usecase.NewGetGoodsUsecase(eventRepo, eventCategoryRepo, goodsRepo),
+		usecase.NewCreateItemUsecase(db, validator.NewItemCreateValidator(), eventRepo, eventCategoryRepo, goodsRepo, itemRepo),
+		usecase.NewGetItemUsecase(eventRepo, eventCategoryRepo, goodsRepo, itemRepo),
+		usecase.NewUpdateItemUsecase(validator.NewItemUpdateValidator(), itemRepo),
+		usecase.NewDeleteItemUsecase(itemRepo),
+	)
+	listHandler := list.NewHandler(cfg, usecase.NewGetListUsecase(eventRepo, eventCategoryRepo, goodsRepo, itemRepo))
+	homeHandler := home.NewHandler(cfg, usecase.NewGetHomeUsecase(itemRepo, userRepo, userStationRepo))
+	getMatchesUC := usecase.NewGetMatchesUsecase(eventCategoryRepo, goodsRepo, itemRepo, stationRepo, userRepo, userStationRepo)
+	matchHandler := match.NewHandler(cfg, getMatchesUC)
+	getTradeProposalUC := usecase.NewGetTradeProposalUsecase(eventCategoryRepo, goodsRepo, itemRepo, messageConsentRepo, userRepo)
+	tradeEventRepo := repository.NewTradeEventRepository(db)
+	tradeItemRepo := repository.NewTradeItemRepository(db)
+	tradeMessageRepo := repository.NewTradeMessageRepository(db)
+	tradeMessageReadRepo := repository.NewTradeMessageReadRepository(db)
+	getTradeUC := usecase.NewGetTradeUsecase(eventCategoryRepo, goodsRepo, itemRepo, messageConsentRepo, tradeRepo, tradeEventRepo, tradeItemRepo, tradeMessageRepo, userRepo)
+	tradeHandler := trade.NewHandler(
+		cfg,
+		errorRenderer,
+		flashMgr,
+		limiter,
+		usecase.NewGetTradesUsecase(itemRepo, tradeRepo, tradeItemRepo, userRepo),
+		getMatchesUC,
+		getTradeUC,
+		getTradeProposalUC,
+		usecase.NewCreateTradeUsecase(
+			db,
+			validator.NewTradeCreateValidator(itemRepo),
+			messageConsentRepo,
+			tradeRepo,
+			tradeEventRepo,
+			tradeItemRepo,
+			tradeMessageRepo,
+			userRepo,
+		),
+	)
+	tradeHistoryHandler := trade_history.NewHandler(cfg, usecase.NewGetTradeHistoryUsecase(itemRepo, tradeRepo, tradeItemRepo, userRepo))
+	tradeConfirmationHandler := trade_confirmation.NewHandler(cfg, errorRenderer, getTradeProposalUC)
+	tradeWithdrawalHandler := trade_withdrawal.NewHandler(errorRenderer, flashMgr, usecase.NewWithdrawTradeUsecase(db, tradeRepo, tradeEventRepo))
+	tradeApprovalHandler := trade_approval.NewHandler(errorRenderer, flashMgr, usecase.NewApproveTradeUsecase(db, messageConsentRepo, tradeRepo, tradeEventRepo))
+	tradeDeclineHandler := trade_decline.NewHandler(
+		cfg,
+		errorRenderer,
+		flashMgr,
+		getTradeUC,
+		usecase.NewDeclineTradeUsecase(db, validator.NewTradeDeclineValidator(), messageConsentRepo, tradeRepo, tradeEventRepo, tradeMessageRepo),
+	)
+	tradeCompletionHandler := trade_completion.NewHandler(
+		cfg,
+		errorRenderer,
+		flashMgr,
+		getTradeUC,
+		usecase.NewCompleteTradeUsecase(db, validator.NewTradeCompletionValidator(), itemRepo, messageConsentRepo, tradeRepo, tradeEventRepo, tradeMessageRepo),
+	)
+	tradeFailureHandler := trade_failure.NewHandler(
+		cfg,
+		errorRenderer,
+		flashMgr,
+		getTradeUC,
+		usecase.NewFailTradeUsecase(db, validator.NewTradeFailureValidator(), messageConsentRepo, tradeRepo, tradeEventRepo, tradeMessageRepo),
+	)
+	tradeCancellationHandler := trade_cancellation.NewHandler(
+		cfg,
+		errorRenderer,
+		flashMgr,
+		getTradeUC,
+		usecase.NewCancelTradeUsecase(db, validator.NewTradeCancellationValidator(), messageConsentRepo, tradeRepo, tradeEventRepo, tradeMessageRepo),
+	)
+	tradeMessageHandler := trade_message.NewHandler(
+		cfg,
+		errorRenderer,
+		flashMgr,
+		limiter,
+		usecase.NewGetTradeMessagesUsecase(itemRepo, messageConsentRepo, tradeRepo, tradeEventRepo, tradeItemRepo, tradeMessageRepo, tradeMessageReadRepo, userRepo),
+		usecase.NewMarkTradeMessagesReadUsecase(tradeRepo, tradeMessageReadRepo),
+		usecase.NewCreateTradeMessageUsecase(validator.NewTradeMessageCreateValidator(), messageConsentRepo, tradeRepo, tradeMessageRepo),
+	)
+	tradeMessageRetractionHandler := trade_message_retraction.NewHandler(errorRenderer, flashMgr, usecase.NewRetractTradeMessageUsecase(tradeRepo, tradeMessageRepo))
+	messageHandler := message.NewHandler(cfg, usecase.NewGetMessagesUsecase(itemRepo, tradeRepo, tradeItemRepo, tradeMessageRepo, userRepo))
+	// メインメニューの数字は、ログイン後のページのすべてで出すため、ルートのグループに掛けたミドルウェアが引く。
+	getMainNavUC := usecase.NewGetMainNavUsecase(tradeRepo, tradeMessageRepo)
+	mainNavBadges := middleware.NewMainNavBadges(func(ctx context.Context, userID model.UserID) (templates.MainNavBadges, error) {
+		output, err := getMainNavUC.Execute(ctx, usecase.GetMainNavInput{UserID: userID})
+		if err != nil {
+			return templates.MainNavBadges{}, err
+		}
+
+		return templates.MainNavBadges{AwaitingTradeCount: output.AwaitingTradeCount, UnreadMessageCount: output.UnreadMessageCount}, nil
+	})
+	getAdminStationUC := usecase.NewGetAdminStationUsecase(stationRepo)
+	adminStationHandler := admin_station.NewHandler(
+		cfg,
+		errorRenderer,
+		flashMgr,
+		usecase.NewGetAdminStationsUsecase(stationRepo),
+		getAdminStationUC,
+		usecase.NewCreateStationUsecase(validator.NewStationCreateValidator(), stationRepo),
+		usecase.NewUpdateStationUsecase(validator.NewStationUpdateValidator(), stationRepo),
+		usecase.NewDeleteStationUsecase(db, validator.NewStationDeleteValidator(userStationRepo), stationRepo),
+	)
+	adminStationArchiveHandler := admin_station_archive.NewHandler(
+		cfg,
+		errorRenderer,
+		flashMgr,
+		getAdminStationUC,
+		usecase.NewArchiveStationUsecase(validator.NewStationArchiveCreateValidator(), stationRepo),
+		usecase.NewUnarchiveStationUsecase(stationRepo),
 	)
 
 	signInTwoFactorHandler := sign_in_two_factor.NewHandler(
@@ -444,8 +699,9 @@ func newRouter(cfg *config.Config, db *sql.DB, staticDir string) *chi.Mux {
 
 	// ログイン後のページは言語版のURLを持たず、users.locale の言語で表示する。
 	// ログイン後のページはHTTPキャッシュに保存させない。
+	// メインメニューに出す数字 (返事や確認を待っている交換の数) は、ここで1回引いてページに渡す。
 	r.Group(func(r chi.Router) {
-		r.Use(middleware.NoStore, authMiddleware.RequireAuth, middleware.UserLocale)
+		r.Use(middleware.NoStore, authMiddleware.RequireAuth, middleware.UserLocale, mainNavBadges.Middleware)
 		r.Get(templates.HomePath, homeHandler.Show)
 		r.Get(templates.ProfilePath("{atname}"), profileHandler.Show)
 		r.Get(templates.SettingsInvitationPath, settingsInvitationHandler.Show)
@@ -454,8 +710,93 @@ func newRouter(cfg *config.Config, db *sql.DB, staticDir string) *chi.Mux {
 		r.Get(templates.NewSettingsTwoFactorAuthPath, settingsTwoFactorAuthHandler.New)
 		r.Post(templates.SettingsTwoFactorAuthPath, settingsTwoFactorAuthHandler.Create)
 		r.Delete(templates.SettingsTwoFactorAuthPath, settingsTwoFactorAuthHandler.Delete)
+		r.Get(templates.SettingsMessageConsentPath, settingsMessageConsentHandler.Show)
+		r.Post(templates.SettingsMessageConsentPath, settingsMessageConsentHandler.Create)
+		r.Delete(templates.SettingsMessageConsentPath, settingsMessageConsentHandler.Delete)
+		r.Get(templates.SettingsPlacesPath, settingsPlaceHandler.Show)
+		r.Patch(templates.SettingsPlacesPath, settingsPlaceHandler.Update)
 		r.Get(templates.SettingsWithdrawalPath, settingsWithdrawalHandler.New)
 		r.Delete(templates.SettingsWithdrawalPath, settingsWithdrawalHandler.Delete)
+
+		// リストに追加するグッズを、イベント → カテゴリー → グッズの順にたどる。公開中のマスタだけを出す。
+		r.Get(templates.EventsPath, eventHandler.Index)
+		r.Get(templates.EventPath("{event_id}"), eventHandler.Show)
+		r.Get(templates.EventCategoryPath("{event_id}", "{category_id}"), eventCategoryHandler.Show)
+		r.Get(templates.NewItemPath, itemHandler.New)
+		r.Post(templates.ItemsPath, itemHandler.Create)
+
+		// マッチ候補。交換場所の都道府県が同じで、おたがいのほしいリストに相手の譲れるアイテムがある人を出す。
+		r.Get(templates.MatchesPath, matchHandler.Index)
+
+		// 交換の申し込み。組み合わせを選び、申し込み内容を確かめてから申し込む。
+		r.Get(templates.NewTradePath("{atname}"), tradeHandler.New)
+		r.Get(templates.NewTradeConfirmationPath("{atname}"), tradeConfirmationHandler.New)
+		r.Post(templates.TradesPath, tradeHandler.Create)
+
+		// 交換の画面と交換のページ・交換のメッセージ。交換のページ・メッセージとその操作は、交換の2人以外には存在しないページとして404を返す。
+		r.Get(templates.TradesPath, tradeHandler.Index)
+		r.Get(templates.TradeHistoryPath, tradeHistoryHandler.Index)
+		r.Get(templates.TradePath("{id}"), tradeHandler.Show)
+		r.Post(templates.TradeWithdrawalPath("{id}"), tradeWithdrawalHandler.Create)
+		r.Post(templates.TradeApprovalPath("{id}"), tradeApprovalHandler.Create)
+		r.Get(templates.TradeDeclinePath("{id}"), tradeDeclineHandler.New)
+		r.Post(templates.TradeDeclinePath("{id}"), tradeDeclineHandler.Create)
+		r.Get(templates.TradeCompletionPath("{id}"), tradeCompletionHandler.New)
+		r.Post(templates.TradeCompletionPath("{id}"), tradeCompletionHandler.Create)
+		r.Get(templates.TradeFailurePath("{id}"), tradeFailureHandler.New)
+		r.Post(templates.TradeFailurePath("{id}"), tradeFailureHandler.Create)
+		r.Get(templates.TradeCancellationPath("{id}"), tradeCancellationHandler.New)
+		r.Post(templates.TradeCancellationPath("{id}"), tradeCancellationHandler.Create)
+		r.Get(templates.TradeMessagesPath("{id}"), tradeMessageHandler.Index)
+		r.Post(templates.TradeMessagesPath("{id}"), tradeMessageHandler.Create)
+		r.Post(templates.TradeMessageRetractionPath("{id}", "{message_id}"), tradeMessageRetractionHandler.Create)
+
+		// メッセージの一覧。交換ごとのメッセージを、最新のメッセージが新しい順に出す。
+		r.Get(templates.MessagesPath, messageHandler.Index)
+
+		// 譲れる・ほしいのリストと、リストにあるアイテムの編集・リストから外す操作。
+		r.Get(templates.ListPath, listHandler.Index)
+		r.Get(templates.EditItemPath("{id}"), itemHandler.Edit)
+		r.Patch(templates.ItemPath("{id}"), itemHandler.Update)
+		r.Delete(templates.ItemPath("{id}"), itemHandler.Delete)
+
+		// 管理画面。編集者と管理者だけが使え、それ以外の人には存在しないページとして404を返す。
+		r.Get(templates.AdminPath, adminHandler.Show)
+		r.Get(templates.AdminEventsPath, adminEventHandler.Index)
+		r.Get(templates.NewAdminEventPath, adminEventHandler.New)
+		r.Post(templates.AdminEventsPath, adminEventHandler.Create)
+		r.Get(templates.EditAdminEventPath("{id}"), adminEventHandler.Edit)
+		r.Patch(templates.AdminEventPath("{id}"), adminEventHandler.Update)
+		r.Delete(templates.AdminEventPath("{id}"), adminEventHandler.Delete)
+		r.Get(templates.NewAdminEventArchivePath("{id}"), adminEventArchiveHandler.New)
+		r.Post(templates.AdminEventArchivePath("{id}"), adminEventArchiveHandler.Create)
+		r.Delete(templates.AdminEventArchivePath("{id}"), adminEventArchiveHandler.Delete)
+		// カテゴリーとグッズの作成は親 (イベント・カテゴリー) のパスの下に置き、作成したあとはそれぞれのIDだけのパスで扱う。
+		r.Get(templates.NewAdminEventCategoryPath("{id}"), adminEventCategoryHandler.New)
+		r.Post(templates.AdminEventCategoriesPath("{id}"), adminEventCategoryHandler.Create)
+		r.Get(templates.EditAdminEventCategoryPath("{id}"), adminEventCategoryHandler.Edit)
+		r.Patch(templates.AdminEventCategoryPath("{id}"), adminEventCategoryHandler.Update)
+		r.Delete(templates.AdminEventCategoryPath("{id}"), adminEventCategoryHandler.Delete)
+		r.Get(templates.NewAdminEventCategoryArchivePath("{id}"), adminEventCategoryArchiveHandler.New)
+		r.Post(templates.AdminEventCategoryArchivePath("{id}"), adminEventCategoryArchiveHandler.Create)
+		r.Delete(templates.AdminEventCategoryArchivePath("{id}"), adminEventCategoryArchiveHandler.Delete)
+		r.Get(templates.NewAdminGoodsPath("{id}"), adminGoodsHandler.New)
+		r.Post(templates.AdminEventCategoryGoodsPath("{id}"), adminGoodsHandler.Create)
+		r.Get(templates.EditAdminGoodsPath("{id}"), adminGoodsHandler.Edit)
+		r.Patch(templates.AdminGoodsPath("{id}"), adminGoodsHandler.Update)
+		r.Delete(templates.AdminGoodsPath("{id}"), adminGoodsHandler.Delete)
+		r.Get(templates.NewAdminGoodsArchivePath("{id}"), adminGoodsArchiveHandler.New)
+		r.Post(templates.AdminGoodsArchivePath("{id}"), adminGoodsArchiveHandler.Create)
+		r.Delete(templates.AdminGoodsArchivePath("{id}"), adminGoodsArchiveHandler.Delete)
+		r.Get(templates.AdminStationsPath, adminStationHandler.Index)
+		r.Get(templates.NewAdminStationPath, adminStationHandler.New)
+		r.Post(templates.AdminStationsPath, adminStationHandler.Create)
+		r.Get(templates.EditAdminStationPath("{id}"), adminStationHandler.Edit)
+		r.Patch(templates.AdminStationPath("{id}"), adminStationHandler.Update)
+		r.Delete(templates.AdminStationPath("{id}"), adminStationHandler.Delete)
+		r.Get(templates.NewAdminStationArchivePath("{id}"), adminStationArchiveHandler.New)
+		r.Post(templates.AdminStationArchivePath("{id}"), adminStationArchiveHandler.Create)
+		r.Delete(templates.AdminStationArchivePath("{id}"), adminStationArchiveHandler.Delete)
 	})
 
 	// どのルートにも一致しないリクエストは共通の404ページで応える。

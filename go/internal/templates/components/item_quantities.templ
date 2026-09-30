@@ -1,0 +1,21 @@
+package components
+
+import (
+	"github.com/cutreapp/cutre/go/internal/model"
+	"github.com/cutreapp/cutre/go/internal/templates"
+)
+
+// ItemQuantities は、イベントやカテゴリーの中でユーザーがリストに入れたアイテムの数量を、リストごとのバッジで右端に描画する。
+// 数量が0のリストのバッジは出さず、どちらも0なら何も描画しない。
+templ ItemQuantities(quantities model.ItemQuantities) {
+	if quantities.Give > 0 || quantities.Want > 0 {
+		<span class="flex shrink-0 flex-col items-end gap-1">
+			if quantities.Give > 0 {
+				<span class="badge" data-variant="brand">{ templates.T(ctx, "item_quantities_give", map[string]any{"Quantity": quantities.Give}) }</span>
+			}
+			if quantities.Want > 0 {
+				<span class="badge" data-variant="secondary">{ templates.T(ctx, "item_quantities_want", map[string]any{"Quantity": quantities.Want}) }</span>
+			}
+		</span>
+	}
+}

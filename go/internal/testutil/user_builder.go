@@ -27,6 +27,7 @@ type UserBuilder struct {
 	atname    string
 	locale    model.Locale
 	timeZone  string
+	role      model.UserRole
 	deletedAt *time.Time
 }
 
@@ -43,6 +44,7 @@ func NewUserBuilder(t *testing.T, db queryRower) *UserBuilder {
 		atname:   UniqueAtname(),
 		locale:   model.DefaultLocale,
 		timeZone: "Asia/Tokyo",
+		role:     model.UserRoleUser,
 	}
 }
 
@@ -70,6 +72,12 @@ func (b *UserBuilder) WithTimeZone(timeZone string) *UserBuilder {
 	return b
 }
 
+// WithRole は役割を設定する。未設定なら一般のユーザーを作る。
+func (b *UserBuilder) WithRole(role model.UserRole) *UserBuilder {
+	b.role = role
+	return b
+}
+
 // WithDeletedAt は指定した時刻で退会したユーザーにする。
 // 未設定なら在籍中のユーザー (deleted_atがNULL) を作る。
 func (b *UserBuilder) WithDeletedAt(deletedAt time.Time) *UserBuilder {
@@ -84,14 +92,29 @@ func (b *UserBuilder) Build() model.UserID {
 
 	var id uuid.UUID
 	err := b.db.QueryRowContext(context.Background(),
-		`INSERT INTO users (email, atname, locale, time_zone, deleted_at)
-		 VALUES ($1, $2, $3, $4, $5)
+		`INSERT INTO users (email, atname, locale, time_zone, role, deleted_at)
+		 VALUES ($1, $2, $3, $4, $5, $6)
 		 RETURNING id`,
-		b.email, b.atname, string(b.locale), b.timeZone, b.deletedAt,
+		b.email, b.atname, string(b.locale), b.timeZone, string(b.role), b.deletedAt,
 	).Scan(&id)
 	if err != nil {
 		b.t.Fatalf("テスト用ユーザーの作成に失敗しました: %v", err)
 	}
 
 	return model.UserID(id)
+}
+
+// WithdrawUser は作ったユーザーを、退会と同じくアットネームとメールアドレスを匿名の値に置き換えて退会したことにする。
+// 交換の相手が後から退会した状態を作るのに使う。
+func WithdrawUser(t *testing.T, db queryRower, id model.UserID) {
+	t.Helper()
+
+	var withdrawnID uuid.UUID
+	err := db.QueryRowContext(context.Background(),
+		`UPDATE users SET deleted_at = NOW(), email = $2, atname = $3 WHERE id = $1 RETURNING id`,
+		uuid.UUID(id), model.AnonymizedEmail(id), model.AnonymizedAtname(id),
+	).Scan(&withdrawnID)
+	if err != nil {
+		t.Fatalf("テスト用ユーザーの退会に失敗しました: %v", err)
+	}
 }

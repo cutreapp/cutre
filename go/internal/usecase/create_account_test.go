@@ -33,6 +33,7 @@ func newCreateAccountUsecase() *usecase.CreateAccountUsecase {
 		validator.NewAccountCreateValidator(userRepo),
 		userRepo,
 		repository.NewUserPasswordRepository(db),
+		repository.NewMessageConsentRepository(db),
 	)
 }
 
@@ -47,7 +48,7 @@ func confirmedEmail(t *testing.T) (model.EmailConfirmationID, string) {
 }
 
 // TestCreateAccountUsecase_Execute は、確認のメールアドレスでユーザーとパスワードを作り、
-// 招待の使用を記録して確認を消すことを検証する。
+// メッセージの取り扱いへの同意と招待の使用を記録して確認を消すことを検証する。
 func TestCreateAccountUsecase_Execute(t *testing.T) {
 	t.Parallel()
 
@@ -58,11 +59,12 @@ func TestCreateAccountUsecase_Execute(t *testing.T) {
 	atname := testutil.UniqueAtname()
 
 	output, err := newCreateAccountUsecase().Execute(i18n.SetLocale(ctx, i18n.LangEn), usecase.CreateAccountInput{
-		InvitationID:        invitationID,
-		EmailConfirmationID: confirmationID,
-		Atname:              atname,
-		Password:            accountPassword,
-		Locale:              model.LocaleEn,
+		InvitationID:         invitationID,
+		EmailConfirmationID:  confirmationID,
+		Atname:               atname,
+		Password:             accountPassword,
+		Locale:               model.LocaleEn,
+		MessageConsentAgreed: true,
 	})
 	if err != nil {
 		t.Fatalf("Execute()のエラー = %v", err)
@@ -79,6 +81,11 @@ func TestCreateAccountUsecase_Execute(t *testing.T) {
 	}
 	if err := auth.CheckPassword(password.PasswordDigest, accountPassword); err != nil {
 		t.Errorf("保存したパスワードが入力と一致しない: %v", err)
+	}
+
+	consent, err := repository.NewMessageConsentRepository(db).FindLatestByUserID(ctx, user.ID)
+	if err != nil || consent == nil || !consent.IsValid() {
+		t.Errorf("メッセージの取り扱いへの同意 = (%+v, %v)、今の版の有効な同意を期待", consent, err)
 	}
 
 	var redeemedInvitationID uuid.UUID
@@ -112,6 +119,7 @@ func TestCreateAccountUsecase_Execute_Rejected(t *testing.T) {
 		invitationID     model.InvitationID
 		confirmationID   model.EmailConfirmationID
 		atname           string
+		withoutConsent   bool
 		wantValidation   bool
 		wantCode         model.AppErrorCode
 		wantConfirmation bool
@@ -120,6 +128,13 @@ func TestCreateAccountUsecase_Execute_Rejected(t *testing.T) {
 			name:             "形式の誤り",
 			invitationID:     testutil.NewInvitationBuilder(t, db).Build(),
 			atname:           "cutre-user",
+			wantValidation:   true,
+			wantConfirmation: true,
+		},
+		{
+			name:             "同意のチェックが無い",
+			invitationID:     testutil.NewInvitationBuilder(t, db).Build(),
+			withoutConsent:   true,
 			wantValidation:   true,
 			wantConfirmation: true,
 		},
@@ -166,11 +181,12 @@ func TestCreateAccountUsecase_Execute_Rejected(t *testing.T) {
 		}
 
 		_, err := uc.Execute(ctx, usecase.CreateAccountInput{
-			InvitationID:        invitationID,
-			EmailConfirmationID: confirmationID,
-			Atname:              atname,
-			Password:            accountPassword,
-			Locale:              model.LocaleJa,
+			InvitationID:         invitationID,
+			EmailConfirmationID:  confirmationID,
+			Atname:               atname,
+			Password:             accountPassword,
+			Locale:               model.LocaleJa,
+			MessageConsentAgreed: !tt.withoutConsent,
 		})
 
 		if tt.wantValidation {
@@ -249,6 +265,7 @@ func TestCreateAccountUsecase_Execute_Concurrent(t *testing.T) {
 			inputs[i].EmailConfirmationID, _ = confirmedEmail(t)
 			inputs[i].Password = accountPassword
 			inputs[i].Locale = model.LocaleJa
+			inputs[i].MessageConsentAgreed = true
 		}
 
 		uc := newCreateAccountUsecase()

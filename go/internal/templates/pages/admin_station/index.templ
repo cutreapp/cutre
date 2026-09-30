@@ -1,0 +1,49 @@
+package admin_station
+
+import (
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+	"github.com/cutreapp/cutre/go/internal/viewmodel"
+)
+
+// IndexPageData は管理画面の駅の一覧の描画に使うデータ。
+type IndexPageData struct {
+	// ProfilePath はパンくずに置くマイページ (自分のプロフィール) のパス。
+	ProfilePath string
+	// Groups は削除していない駅を都道府県ごとにまとめ、都道府県コードの順に並べたもの。
+	Groups []viewmodel.AdminStationGroup
+}
+
+// Index は管理画面の駅の一覧を描画する。
+// 駅のある都道府県ごとに欄を分けて駅を並び順に並べ、各行は駅の編集の画面へのリンクにする。
+// 欄の下には、その都道府県を選んだ状態の作成の画面へのリンクを置く。
+templ Index(data IndexPageData) {
+	<div class="flex w-full flex-1 flex-col gap-3 py-4 md:mx-auto md:max-w-180">
+		@components.PageHeading(components.PageHeadingData{
+			Title: templates.T(ctx, "admin_station_index_heading"),
+			Breadcrumbs: []components.Breadcrumb{
+				{Label: templates.T(ctx, "admin_station_index_breadcrumb_my_page"), Path: data.ProfilePath},
+				{Label: templates.T(ctx, "admin_station_index_breadcrumb_admin"), Path: templates.AdminPath},
+			},
+		})
+		<div class="flex justify-end px-4 md:px-0">
+			<a href={ templ.SafeURL(templates.NewAdminStationPath) } class="btn">
+				{ templates.T(ctx, "admin_station_index_new_link") }
+			</a>
+		</div>
+		if len(data.Groups) == 0 {
+			<p class="page-card text-sm text-muted-foreground">{ templates.T(ctx, "admin_station_index_empty") }</p>
+		} else {
+			for _, group := range data.Groups {
+				@components.AdminMasterList(components.AdminMasterListData{
+					ID:       "prefecture-" + group.PrefectureCode + "-heading",
+					Heading:  group.PrefectureName,
+					Rows:     group.Stations,
+					EditPath: templates.EditAdminStationPath,
+					NewPath:  templates.NewAdminStationInPrefecturePath(group.PrefectureCode),
+					NewLabel: templates.T(ctx, "admin_station_index_new_in_prefecture_link", map[string]any{"Prefecture": group.PrefectureName}),
+				})
+			}
+		}
+	</div>
+}

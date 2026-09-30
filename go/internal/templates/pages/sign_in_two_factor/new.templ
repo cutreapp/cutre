@@ -82,7 +82,7 @@ templ New(data NewPageData) {
 						{ templates.T(ctx, "sign_in_two_factor_new_recovery_link") }
 					</a>
 				</div>
-				@components.HelpContact()
+				@components.HelpContact(templates.T(ctx, "help_contact_lead"))
 			</div>
 		</div>
 		<p class="text-center">

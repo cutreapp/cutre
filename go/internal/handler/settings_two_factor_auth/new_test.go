@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"testing"
 	"time"
 
@@ -51,10 +52,20 @@ func TestNew(t *testing.T) {
 	}
 	secret := pendingSecret(t, user)
 	body := rec.Body.String()
+	// マイページから辿った画面のため、メインメニューのマイページの項目を選択中 (aria-current="true") にする。
+	// ホームの項目を選択中にしても aria-current="true" は出るため、マイページのリンクに付いていることまで確かめる。
+	myPageLink := regexp.MustCompile(`href="/@` + regexp.QuoteMeta(user.Atname) + `" class="[^"]*" aria-current="true"`)
+	if !myPageLink.MatchString(body) {
+		t.Error("メインメニューのマイページの項目に aria-current=\"true\" が付いていない")
+	}
 	assertContains(t, body,
 		"<title>二要素認証を有効にする | Cutre</title>",
 		`<meta name="robots" content="noindex">`,
+		`<html lang="ja" data-main-nav>`,
+		`<nav aria-label="パンくずリスト">`,
+		`href="/@`+user.Atname+`"`,
 		`href="/settings/two_factor_auth"`,
+		`<h1 class="text-xl font-semibold">二要素認証を有効にする</h1>`,
 		`href="otpauth://totp/Cutre:`+user.Atname+`?`,
 		"secret="+secret,
 		`role="img" aria-label="認証アプリに追加するQRコード"`,

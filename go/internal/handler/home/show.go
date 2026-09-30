@@ -9,6 +9,7 @@ import (
 	"github.com/cutreapp/cutre/go/internal/templates/components"
 	"github.com/cutreapp/cutre/go/internal/templates/layouts"
 	homepage "github.com/cutreapp/cutre/go/internal/templates/pages/home"
+	"github.com/cutreapp/cutre/go/internal/usecase"
 	"github.com/cutreapp/cutre/go/internal/viewmodel"
 )
 
@@ -25,15 +26,22 @@ func (h *Handler) Show(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	output, err := h.getHomeUC.Execute(ctx, usecase.GetHomeInput{UserID: user.ID})
+	if err != nil {
+		slog.ErrorContext(ctx, "ホームの取得に失敗しました", "error", err, "user_id", user.ID)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
 	meta := viewmodel.SignedInPageMeta(ctx, h.cfg)
 	meta.SetTitle(ctx, "home_show_title")
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	layoutData := layouts.DefaultLayoutData{
-		Meta:   meta,
-		Header: &components.HeaderData{Atname: user.Atname, CurrentPath: templates.HomePath},
+		Meta:    meta,
+		MainNav: &components.MainNavData{Atname: user.Atname, Current: components.MainNavHome, CurrentPath: templates.HomePath},
 	}
-	if err := layouts.Default(layoutData, homepage.Show(homepage.ShowPageData{Atname: user.Atname})).Render(ctx, w); err != nil {
+	if err := layouts.Default(layoutData, homepage.Show(homepage.ShowPageData{Atname: user.Atname, Quantities: output.Quantities, HasPlaces: output.HasPlaces, MatchCount: output.MatchCount})).Render(ctx, w); err != nil {
 		slog.ErrorContext(ctx, "ホームの描画に失敗しました", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	}

@@ -1,0 +1,99 @@
+package trade
+
+import (
+	"github.com/cutreapp/cutre/go/internal/model"
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+	"github.com/cutreapp/cutre/go/internal/viewmodel"
+)
+
+// newSummaryFields はエラーの要約に並べるフィールドを、フォームに現れる順で持つ。
+var newSummaryFields = []components.FormErrorSummaryField{
+	{Name: "receive_item_ids", LabelKey: "trade_new_receive_legend"},
+	{Name: "give_item_ids", LabelKey: "trade_new_give_legend"},
+}
+
+// NewPageData は組み合わせを選ぶ画面の描画に使うデータ。
+type NewPageData struct {
+	// Proposal は申し込む相手と、組み合わせの選択肢。
+	Proposal viewmodel.TradeProposal
+	// MessageConsentValid は、メッセージの取り扱いへの有効な同意があるか。無ければ選ぶ代わりに同意の案内を出す。
+	MessageConsentValid bool
+	// FormErrors は、選んだ組み合わせを受け付けなかったときのエラー。
+	FormErrors *model.ValidationError
+}
+
+// New は、交換を申し込む組み合わせ (もらうもの・渡すもの) を選ぶ画面を描画する。
+//
+// 選択肢は相手との間で交換できるアイテムで、選んだ組み合わせはGETで申し込み内容の確認へ送る。
+// 状態を変えないため、確認の画面で組み合わせを変えに戻っても、URLのクエリから選んだ状態を戻せる。
+// もらうものか渡すものが1つも無いときは、申し込めないことを伝えてリストへ案内する。
+templ New(data NewPageData) {
+	<div class="flex w-full flex-1 flex-col gap-3 py-4 md:mx-auto md:max-w-180">
+		@components.PageHeading(components.PageHeadingData{
+			Title:       templates.T(ctx, "trade_new_heading"),
+			Breadcrumbs: breadcrumbs(ctx, data.Proposal.Atname),
+		})
+		if !data.MessageConsentValid {
+			@consentRequired(templates.T(ctx, "trade_consent_required_message"))
+		} else if len(data.Proposal.Receivable) == 0 || len(data.Proposal.Givable) == 0 {
+			<div class="page-card flex flex-col gap-3">
+				<p class="text-sm">{ templates.T(ctx, "trade_new_not_tradable", map[string]any{"Atname": data.Proposal.Atname}) }</p>
+				<a href={ templ.SafeURL(templates.ListPath) } class="btn" data-variant="outline">{ templates.T(ctx, "trade_new_not_tradable_link") }</a>
+			</div>
+		} else {
+			<p class="px-4 text-sm md:px-0">{ templates.T(ctx, "trade_new_lead", map[string]any{"Atname": data.Proposal.Atname}) }</p>
+			<form
+				action={ templ.SafeURL(templates.NewTradeConfirmationPath(data.Proposal.Atname)) }
+				method="get"
+				class="page-card flex flex-col gap-5"
+			>
+				@components.FormErrors(data.FormErrors)
+				@components.FormErrorSummary(components.FormErrorSummaryData{Fields: newSummaryFields, Errors: data.FormErrors})
+				@itemChoicesField("receive_item_ids", templates.T(ctx, "trade_new_receive_legend"), data.Proposal.Receivable, data.FormErrors)
+				@itemChoicesField("give_item_ids", templates.T(ctx, "trade_new_give_legend"), data.Proposal.Givable, data.FormErrors)
+				<button type="submit" class="btn w-full">{ templates.T(ctx, "trade_new_submit") }</button>
+			</form>
+		}
+	</div>
+}
+
+// itemChoicesField は、もらうもの・渡すものの一方について、交換の品にするアイテムを選ぶチェックボックスの欄を描画する。
+// チェックボックスはラベルごと押せるようにし、選んだアイテムの行を押した状態の色で示す。
+// エラーの無効状態は、fieldset (groupロール) ではaria-invalidを支援しないため、各チェックボックスに付ける。
+templ itemChoicesField(name string, legend string, choices []viewmodel.TradeItemChoice, formErrors *model.ValidationError) {
+	<fieldset
+		class="field"
+		if formErrors.HasFieldError(name) {
+			data-invalid
+			aria-describedby={ components.FieldErrorsDescribedBy(name, formErrors) }
+		}
+	>
+		<legend class="items-baseline gap-1">
+			<span>{ legend }</span>
+			<span class="text-xs font-normal text-muted-foreground">({ templates.T(ctx, "trade_new_choice_hint") })</span>
+		</legend>
+		<div class="flex flex-col gap-2">
+			for i, choice := range choices {
+				<label class="flex items-center gap-3 rounded-lg border px-3 py-2.5 has-checked:border-brand-line has-checked:bg-brand-soft">
+					<input
+						if i == 0 {
+							id={ name }
+						}
+						type="checkbox"
+						class="input"
+						name={ name }
+						value={ choice.ID }
+						checked?={ choice.Checked }
+						if formErrors.HasFieldError(name) {
+							aria-invalid="true"
+						}
+					/>
+					@itemThumbnail()
+					@itemName(choice.TradeItemRow)
+				</label>
+			}
+		</div>
+		@components.FieldErrors(name, formErrors)
+	</fieldset>
+}

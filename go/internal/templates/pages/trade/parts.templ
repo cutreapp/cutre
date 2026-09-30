@@ -1,0 +1,110 @@
+package trade
+
+import (
+	"context"
+
+	"github.com/cutreapp/cutre/go/internal/model"
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+	"github.com/cutreapp/cutre/go/internal/viewmodel"
+)
+
+// breadcrumbs は、交換を申し込む画面のパンくずを返す。マッチ候補から相手のプロフィールを経て来る画面として並べる。
+func breadcrumbs(ctx context.Context, atname string) []components.Breadcrumb {
+	return []components.Breadcrumb{
+		{Label: templates.T(ctx, "trade_breadcrumb_trades"), Path: templates.TradesPath},
+		{Label: templates.T(ctx, "trade_breadcrumb_matches"), Path: templates.MatchesPath},
+		{Label: templates.T(ctx, "trade_breadcrumb_profile", map[string]any{"Atname": atname}), Path: templates.ProfilePath(atname)},
+	}
+}
+
+// consentRequired は、メッセージの取り扱いへの有効な同意が無く申し込めない・メッセージを送れないときに、
+// できないことを伝える文 message を添えて、メッセージの利用の画面へ案内する。
+templ consentRequired(message string) {
+	<section class="page-card flex flex-col gap-3" aria-labelledby="trade-consent-required-heading">
+		<h2 id="trade-consent-required-heading" class="font-semibold">{ templates.T(ctx, "trade_consent_required_heading") }</h2>
+		<p class="text-sm">{ message }</p>
+		<a href={ templ.SafeURL(templates.SettingsMessageConsentPath) } class="btn">{ templates.T(ctx, "trade_consent_required_link") }</a>
+	</section>
+}
+
+// reasonChoice は、理由を選ぶ欄 (reasonField) の選択肢の1つ。
+type reasonChoice struct {
+	// Value はフォームで送る選択肢のキー。
+	Value string
+	// LabelKey は選択肢の文言の翻訳キー。
+	LabelKey string
+}
+
+// reasonField は、お断り・交換できなかった・交換をやめるで、理由を1つ選ぶ必須の欄を描画する。
+// ラジオボタンは見えなくし、それを包むラベルを選ぶボタンの見た目にして、選んだものを押した状態 (チェックの印) で示す。
+// selected は選んでいる選択肢のキーで、入力の誤りで描き直すときは送られた値を戻す。
+templ reasonField(label string, choices []reasonChoice, selected string, formErrors *model.ValidationError) {
+	<fieldset
+		class="field"
+		if formErrors.HasFieldError("reason") {
+			data-invalid
+		}
+	>
+		<legend class="items-baseline gap-1">
+			<span>{ label }</span>
+			<span class="text-xs font-normal text-muted-foreground">({ templates.T(ctx, "field_required") })</span>
+		</legend>
+		<div class="flex flex-col gap-2">
+			for i, choice := range choices {
+				<label class="btn group justify-start gap-2" data-variant="outline">
+					<input
+						if i == 0 {
+							id="reason"
+						}
+						type="radio"
+						name="reason"
+						value={ choice.Value }
+						class="sr-only"
+						required
+						checked?={ selected == choice.Value }
+						if formErrors.HasFieldError("reason") {
+							aria-describedby={ components.FieldErrorsDescribedBy("reason", formErrors) }
+							aria-invalid="true"
+						}
+					/>
+					<svg aria-hidden="true" class="hidden group-has-checked:block" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>
+					{ templates.T(ctx, choice.LabelKey) }
+				</label>
+			}
+		</div>
+		@components.FieldErrors("reason", formErrors)
+	</fieldset>
+}
+
+// itemThumbnail はアイテムの写真の代わりの絵を描画する。写真の保存先ができるまで使う。
+templ itemThumbnail() {
+	<span aria-hidden="true" class="flex size-11 shrink-0 items-center justify-center rounded-xl border bg-muted text-muted-foreground">
+		<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect height="18" rx="3" width="18" x="3" y="3"></rect><circle cx="9" cy="9" r="1.5"></circle><path d="M21 15l-5-4-4.5 4"></path></svg>
+	</span>
+}
+
+// itemName はアイテムのカテゴリーとグッズの名前と、アイテムのひとことを描画する。
+templ itemName(row viewmodel.TradeItemRow) {
+	<span class="flex min-w-0 flex-col">
+		<span class="text-sm font-medium">{ templates.T(ctx, "match_item_name", map[string]any{"Category": row.EventCategoryName, "Goods": row.GoodsName}) }</span>
+		if row.Note != "" {
+			<span class="text-sm text-muted-foreground">{ row.Note }</span>
+		}
+	</span>
+}
+
+// exchangeIcon は、渡すものともらうものを入れ替える交換の絵を描画する。
+templ exchangeIcon() {
+	<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3l4 4-4 4"></path><path d="M21 7H8"></path><path d="M7 21l-4-4 4-4"></path><path d="M3 17h13"></path></svg>
+}
+
+// statusBadge は、交換の段階を開いたユーザーから見た言葉のバッジで描画する。
+templ statusBadge(status viewmodel.TradeStatusBadge) {
+	<span class="badge shrink-0" data-variant={ status.Variant }>{ templates.T(ctx, status.LabelKey) }</span>
+}
+
+// chevronIcon は、行の右端に置く、先へ進むことを示す絵を描画する。
+templ chevronIcon() {
+	<svg aria-hidden="true" class="shrink-0 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"></path></svg>
+}

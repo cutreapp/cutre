@@ -1,0 +1,91 @@
+package item
+
+import (
+	"strconv"
+	"github.com/cutreapp/cutre/go/internal/model"
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+	"github.com/cutreapp/cutre/go/internal/viewmodel"
+)
+
+// editSummaryFields はアイテムの編集の画面で、エラーの要約に並べるフィールドを、フォームに現れる順で持つ。
+var editSummaryFields = []components.FormErrorSummaryField{
+	{Name: "quantity", LabelKey: "item_form_quantity_label"},
+	{Name: "note", LabelKey: "item_form_note_label"},
+}
+
+// EditPageData はリストのアイテムの編集の画面の描画に使うデータ。
+type EditPageData struct {
+	// CSRFToken は更新とリストから外すフォームに載せるトークン。
+	CSRFToken string
+	// ItemID と Kind は、編集するアイテムのIDと、アイテムを入れたリスト。
+	ItemID string
+	Kind   model.ItemKind
+	// EventName・EventCategoryName・GoodsName は、アイテムのグッズと、そのカテゴリー・イベントの名前。
+	EventName         string
+	EventCategoryName string
+	GoodsName         string
+	// Form はフォームに入れる値。入力の誤りで描き直すときは送られた値を戻す。
+	Form viewmodel.ItemForm
+	// FormErrors はフォームを受け付けなかったときのエラー。
+	FormErrors *model.ValidationError
+}
+
+// Edit はリストのアイテムの編集の画面を描画する。
+//
+// アイテムのグッズを見出しに示し、数量とひとことを編集させる。入れたリストは変えられない。
+// 更新のフォームのあとに、アイテムをリストから外すフォームを置く。外したあとも同じグッズをもう一度追加できるため、確認のダイアログは挟まない。
+// HTMLのフォームはPATCH・DELETEを送れないため、POSTに _method を載せて上書きする。写真は保存先ができるまで置かない。
+templ Edit(data EditPageData) {
+	<div class="flex w-full flex-1 flex-col gap-3 py-4 md:mx-auto md:max-w-180">
+		@components.PageHeading(components.PageHeadingData{
+			Title: templates.T(ctx, editHeadingKey(data.Kind)),
+			Breadcrumbs: []components.Breadcrumb{
+				{Label: templates.T(ctx, "item_edit_breadcrumb_list"), Path: templates.ListKindPath(string(data.Kind))},
+			},
+		})
+		<div class="page-card flex flex-col gap-4">
+			<form
+				action={ templ.SafeURL(templates.ItemPath(data.ItemID)) }
+				method="post"
+				class="flex flex-col gap-4"
+				data-disable-on-submit
+			>
+				@components.FormErrors(data.FormErrors)
+				@components.FormErrorSummary(components.FormErrorSummaryData{Fields: editSummaryFields, Errors: data.FormErrors})
+				<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+				<input type="hidden" name="_method" value="PATCH"/>
+				<input type="hidden" name="lock_version" value={ strconv.FormatInt(int64(data.Form.LockVersion), 10) }/>
+				<div class="flex flex-col gap-0.5">
+					<span class="text-sm text-muted-foreground">{ data.EventName }・{ data.EventCategoryName }</span>
+					<h2 class="text-lg font-semibold">{ data.GoodsName }</h2>
+				</div>
+				@quantityField(data.Form, data.FormErrors)
+				@noteField(data.Form, data.FormErrors)
+				<button type="submit" class="btn w-full">{ templates.T(ctx, "item_edit_submit") }</button>
+			</form>
+			<form
+				action={ templ.SafeURL(templates.ItemPath(data.ItemID)) }
+				method="post"
+				data-disable-on-submit
+			>
+				<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+				<input type="hidden" name="_method" value="DELETE"/>
+				<input type="hidden" name="lock_version" value={ strconv.FormatInt(int64(data.Form.LockVersion), 10) }/>
+				<button type="submit" class="btn w-full gap-1.5" data-variant="outline">
+					<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path></svg>
+					{ templates.T(ctx, "item_edit_remove") }
+				</button>
+			</form>
+		</div>
+	</div>
+}
+
+// editHeadingKey は、リスト kind のアイテムの編集の画面の見出しの翻訳キーを返す。
+func editHeadingKey(kind model.ItemKind) string {
+	if kind == model.ItemKindWant {
+		return "item_edit_want_heading"
+	}
+
+	return "item_edit_give_heading"
+}

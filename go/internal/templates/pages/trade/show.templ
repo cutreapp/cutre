@@ -1,0 +1,203 @@
+package trade
+
+import (
+	"context"
+
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+	"github.com/cutreapp/cutre/go/internal/viewmodel"
+)
+
+// ShowPageData は交換のページの描画に使うデータ。
+type ShowPageData struct {
+	// CSRFToken は取り下げと承認のフォームに載せるトークン。
+	CSRFToken string
+	// Trade は開いたユーザーから見た交換。
+	Trade viewmodel.TradeDetail
+}
+
+// Show は交換のページを描画する。交換の2人だけが開ける。
+//
+// 上のカードに段階のバッジと交換の品 (もらう・渡す) を置き、その交換でできる操作をカードの中に置く。
+// 申し込まれた人の返事待ちでは、承認 (主ボタン) とお断りの画面へのボタンを置く。
+// メッセージの取り扱いへの有効な同意が無ければ、承認の代わりにメッセージの利用の画面へ案内する。
+// マッチ成立で、開いたユーザーがまだ「交換できた」を押していなければ、ひとことを入れて記録する画面へのボタン (主ボタン) を置く。
+// その下に、メッセージのページへの行 (最新の1通と未読の数)・これまでの流れ・相手のプロフィールへの行・2人だけが見られることの案内・ヘルプのお問い合わせへの案内を並べる。
+// マッチ成立では、プロフィールへの行の下に「交換できなかった」の画面への行を、どちらも「交換できた」を押していなければ交換をやめる画面への行を並べる。
+// 交換を終える操作だが、主ボタン (「交換できた」) と並べて押し間違えないよう、カードの外の行にする。
+// 問題の報告は通報の画面を作るまで、ヘルプのお問い合わせで受ける。
+// 終わった交換 (26〜29) は、これまでの交換の中に置き、バッジの横にいつどう終わったかを添え、交換の品の見出しを過去の形にする。
+templ Show(data ShowPageData) {
+	<div class="flex w-full flex-1 flex-col gap-3 py-4 md:mx-auto md:max-w-180">
+		@components.PageHeading(components.PageHeadingData{
+			Title:       templates.T(ctx, "trade_show_heading", map[string]any{"Name": data.Trade.PartnerName}),
+			Breadcrumbs: showBreadcrumbs(ctx, data.Trade.Ended),
+		})
+		<section class="page-card flex flex-col gap-4" aria-labelledby="trade-show-status-heading">
+			<h2 id="trade-show-status-heading" class="sr-only">{ templates.T(ctx, "trade_show_status_heading") }</h2>
+			<div class="flex flex-wrap items-center gap-2">
+				@statusBadge(data.Trade.Status)
+				if data.Trade.StatusNoteKey != "" {
+					<span class="text-sm">{ templates.T(ctx, data.Trade.StatusNoteKey, map[string]any{"Name": data.Trade.PartnerName, "Date": data.Trade.EndedDate}) }</span>
+				}
+			</div>
+			@tradeItems("trade-show-receive-heading", templates.T(ctx, data.Trade.ReceiveHeadingKey, map[string]any{"Name": data.Trade.PartnerName}), data.Trade.Receive)
+			@tradeItems("trade-show-give-heading", templates.T(ctx, data.Trade.GiveHeadingKey), data.Trade.Give)
+			if data.Trade.CanWithdraw {
+				<button type="button" class="btn w-full" data-variant="outline" commandfor={ withdrawDialogID } command="show-modal">
+					{ templates.T(ctx, "trade_show_withdraw_button") }
+				</button>
+				@withdrawDialog(data.CSRFToken, data.Trade)
+			}
+			if data.Trade.CanReply {
+				@replyActions(data.CSRFToken, data.Trade)
+			}
+			if data.Trade.CanComplete {
+				<a href={ templ.SafeURL(templates.TradeCompletionPath(data.Trade.ID)) } class="btn w-full">
+					{ templates.T(ctx, "trade_show_complete_button") }
+				</a>
+			}
+		</section>
+		<div class="page-card py-0">
+			<a href={ templ.SafeURL(templates.TradeMessagesLatestPath(data.Trade.ID)) } class="-mx-4 flex min-h-12 items-center gap-3 px-4 py-2.5">
+				<span class="flex min-w-0 flex-1 flex-col gap-0.5">
+					<span class="text-sm font-medium">{ templates.T(ctx, "trade_show_messages_link", map[string]any{"Name": data.Trade.PartnerName}) }</span>
+					@components.TradeMessagePreview(data.Trade.LatestMessage, data.Trade.PartnerName, false)
+				</span>
+				@components.UnreadMessageCount(data.Trade.UnreadMessageCount)
+				@chevronIcon()
+			</a>
+		</div>
+		<section class="flex flex-col gap-2" aria-labelledby="trade-show-events-heading">
+			<h2 id="trade-show-events-heading" class="px-4 font-semibold md:px-0">{ templates.T(ctx, "trade_show_events_heading") }</h2>
+			<ol class="page-card flex flex-col gap-2 py-3">
+				for _, event := range data.Trade.Events {
+					<li class="flex gap-3 text-sm">
+						<span class="w-20 shrink-0 text-muted-foreground">{ event.Date }</span>
+						<span class="flex flex-col gap-1">
+							<span>{ templates.T(ctx, event.TextKey, map[string]any{"Name": event.ActorName}) }</span>
+							if event.ReasonKey != "" {
+								<span>{ templates.T(ctx, "trade_event_reason", map[string]any{"Reason": templates.T(ctx, event.ReasonKey)}) }</span>
+							}
+						</span>
+					</li>
+				}
+			</ol>
+		</section>
+		// 退会した相手とは、終わった交換しか残らない。プロフィールへの行も交換の操作も無いため、カードごと出さない。
+		if data.Trade.PartnerAtname != "" || data.Trade.CanFail || data.Trade.CanCancel {
+			<ul class="page-card divide-y py-0">
+				if data.Trade.PartnerAtname != "" {
+					<li>
+						@linkRow(templates.ProfilePath(data.Trade.PartnerAtname), templates.T(ctx, "trade_show_profile_link", map[string]any{"Name": data.Trade.PartnerName}))
+					</li>
+				}
+				if data.Trade.CanFail {
+					<li>
+						@linkRow(templates.TradeFailurePath(data.Trade.ID), templates.T(ctx, "trade_show_fail_link"))
+					</li>
+				}
+				if data.Trade.CanCancel {
+					<li>
+						@linkRow(templates.TradeCancellationPath(data.Trade.ID), templates.T(ctx, "trade_show_cancel_link"))
+					</li>
+				}
+			</ul>
+		}
+		<p class="flex items-start gap-2 px-4 text-sm md:px-0">
+			<svg aria-hidden="true" class="mt-0.5 shrink-0" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect height="10" rx="2" width="18" x="3" y="11"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg>
+			{ templates.T(ctx, "trade_show_privacy", map[string]any{"Name": data.Trade.PartnerName}) }
+		</p>
+		<div class="px-4 md:px-0">
+			@components.HelpContact(templates.T(ctx, "trade_show_help_contact_lead"))
+		</div>
+	</div>
+}
+
+// showBreadcrumbs は交換のページのパンくずを返す。終わった交換は、交換の中のこれまでの交換の中に置く。
+func showBreadcrumbs(ctx context.Context, ended bool) []components.Breadcrumb {
+	breadcrumbs := []components.Breadcrumb{
+		{Label: templates.T(ctx, "trade_show_breadcrumb_trades"), Path: templates.TradesPath},
+	}
+	if ended {
+		breadcrumbs = append(breadcrumbs, components.Breadcrumb{Label: templates.T(ctx, "trade_show_breadcrumb_history"), Path: templates.TradeHistoryPath})
+	}
+
+	return breadcrumbs
+}
+
+// linkRow は、カードの中に並べる、ほかの画面への1行のリンクを描画する。
+templ linkRow(path string, label string) {
+	<a href={ templ.SafeURL(path) } class="-mx-4 flex min-h-12 items-center gap-3 px-4 py-2.5">
+		<span class="flex-1 text-sm font-medium">{ label }</span>
+		@chevronIcon()
+	</a>
+}
+
+// tradeItems は、交換の品のもらう・渡すの一方を、見出し heading とともに描画する。
+templ tradeItems(headingID string, heading string, rows []viewmodel.TradeItemRow) {
+	<section class="flex flex-col gap-2" aria-labelledby={ headingID }>
+		<h3 id={ headingID } class="text-sm font-medium">{ heading }</h3>
+		<ul class="flex flex-col gap-2">
+			for _, row := range rows {
+				<li class="flex items-center gap-3">
+					@itemThumbnail()
+					@itemName(row)
+				</li>
+			}
+		</ul>
+	</section>
+}
+
+// withdrawDialogID は申し込みを取り下げる前の確認ダイアログのid。
+const withdrawDialogID = "trade-withdraw-dialog"
+
+// withdrawDialog は申し込みを取り下げる前の確認ダイアログを描画する。
+// 取り下げると交換は終わり、元に戻せないため、押し間違いで取り下げないよう確かめる。
+// 開閉はボタンの commandfor / command で行い、対応していないブラウザではJavaScriptが補う。
+templ withdrawDialog(csrfToken string, trade viewmodel.TradeDetail) {
+	<dialog
+		id={ withdrawDialogID }
+		class="alert-dialog"
+		aria-labelledby={ withdrawDialogID + "-title" }
+		aria-describedby={ withdrawDialogID + "-description" }
+	>
+		<div>
+			<header>
+				<h2 id={ withdrawDialogID + "-title" }>{ templates.T(ctx, "trade_show_withdraw_confirm_title") }</h2>
+				<p id={ withdrawDialogID + "-description" }>{ templates.T(ctx, "trade_show_withdraw_confirm_message", map[string]any{"Name": trade.PartnerName}) }</p>
+			</header>
+			<footer>
+				<button type="button" class="btn" data-variant="outline" commandfor={ withdrawDialogID } command="close">
+					{ templates.T(ctx, "trade_show_withdraw_cancel") }
+				</button>
+				<form action={ templ.SafeURL(templates.TradeWithdrawalPath(trade.ID)) } method="post" class="contents" data-disable-on-submit>
+					<input type="hidden" name="csrf_token" value={ csrfToken }/>
+					<button type="submit" class="btn">
+						{ templates.T(ctx, "trade_show_withdraw_submit") }
+					</button>
+				</form>
+			</footer>
+		</div>
+	</dialog>
+}
+
+// replyActions は、申し込まれた人が返事をする操作 (承認・お断り) を描画する。
+// 承認は確認をはさまずに送る。お断りは理由とひとことを入れる画面へ進む。
+// メッセージの取り扱いへの有効な同意が無ければ、承認の代わりにメッセージの利用の画面へ案内する。承認するとメッセージでやり取りするため。
+templ replyActions(csrfToken string, trade viewmodel.TradeDetail) {
+	<div class="flex flex-col gap-2">
+		if trade.MessageConsentValid {
+			<form action={ templ.SafeURL(templates.TradeApprovalPath(trade.ID)) } method="post" data-disable-on-submit>
+				<input type="hidden" name="csrf_token" value={ csrfToken }/>
+				<button type="submit" class="btn w-full">{ templates.T(ctx, "trade_show_approve_button") }</button>
+			</form>
+		} else {
+			<p class="text-sm">{ templates.T(ctx, "trade_show_approve_consent_required") }</p>
+			<a href={ templ.SafeURL(templates.SettingsMessageConsentPath) } class="btn w-full">{ templates.T(ctx, "trade_consent_required_link") }</a>
+		}
+		<a href={ templ.SafeURL(templates.TradeDeclinePath(trade.ID)) } class="btn w-full" data-variant="outline">
+			{ templates.T(ctx, "trade_show_decline_button") }
+		</a>
+	</div>
+}

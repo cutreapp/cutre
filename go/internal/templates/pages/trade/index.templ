@@ -1,0 +1,92 @@
+package trade
+
+import (
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+	"github.com/cutreapp/cutre/go/internal/viewmodel"
+)
+
+// IndexPageData は交換の画面の描画に使うデータ。
+type IndexPageData struct {
+	// Trades は進行中の交換で、新しく申し込まれた順に並ぶ。
+	Trades []viewmodel.TradeRow
+	// Candidates はマッチ候補のうち、交換の画面に先頭から出す人。
+	Candidates []viewmodel.MatchCandidate
+	// CandidateCount はマッチ候補の人数。マッチ候補の画面へのリンクに添える。
+	CandidateCount int
+	// HistoryCounts は終わった交換の段階ごとの数。これまでの交換の画面へのリンクに添える。
+	HistoryCounts []viewmodel.TradeHistoryCount
+}
+
+// Index は交換の画面を描画する。メインメニューの交換の行き先。
+//
+// 進行中の交換を上に並べ、各行を交換のページへのリンクにする。行には相手・もらう点数と渡す点数・段階のバッジを置く。
+// その下に、次の交換の相手を探す入口として、マッチ候補の先頭の何人かと、マッチ候補の画面へのリンクを置く。
+// いちばん下に、終わった交換の段階ごとの数を添えた、これまでの交換の画面への行を置く。
+templ Index(data IndexPageData) {
+	<div class="flex w-full flex-1 flex-col gap-4 py-4 md:mx-auto md:max-w-180">
+		@components.PageHeading(components.PageHeadingData{Title: templates.T(ctx, "trade_index_heading")})
+		<section class="flex flex-col gap-2" aria-labelledby="trade-index-in-progress-heading">
+			<div class="flex items-baseline gap-2 px-4 md:px-0">
+				<h2 id="trade-index-in-progress-heading" class="flex-1 text-xl font-semibold">{ templates.T(ctx, "trade_index_in_progress_heading") }</h2>
+				<span class="text-sm text-muted-foreground">{ templates.T(ctx, "trade_index_in_progress_count", map[string]any{"Count": len(data.Trades)}) }</span>
+			</div>
+			if len(data.Trades) == 0 {
+				<p class="page-card text-sm text-muted-foreground">{ templates.T(ctx, "trade_index_in_progress_empty") }</p>
+			} else {
+				<ul class="page-card divide-y py-0">
+					for _, trade := range data.Trades {
+						<li>
+							<a href={ templ.SafeURL(templates.TradePath(trade.ID)) } class="-mx-4 flex min-h-12 items-center gap-3 px-4 py-2.5">
+								<span class="flex min-w-0 flex-1 flex-col gap-0.5">
+									<span class="text-sm font-medium">{ trade.PartnerName }</span>
+									<span class="text-sm text-muted-foreground">{ templates.T(ctx, "trade_index_quantities", map[string]any{"Receive": trade.ReceiveQuantity, "Give": trade.GiveQuantity}) }</span>
+								</span>
+								@statusBadge(trade.Status)
+							</a>
+						</li>
+					}
+				</ul>
+			}
+		</section>
+		<section class="flex flex-col gap-2" aria-labelledby="trade-index-matches-heading">
+			<div class="flex items-baseline gap-2 px-4 md:px-0">
+				<h2 id="trade-index-matches-heading" class="flex-1 text-xl font-semibold">{ templates.T(ctx, "trade_index_matches_heading") }</h2>
+				<a href={ templ.SafeURL(templates.MatchesPath) } class="py-1 text-sm font-medium text-primary">
+					{ templates.T(ctx, "trade_index_matches_link", map[string]any{"Count": data.CandidateCount}) }
+				</a>
+			</div>
+			if len(data.Candidates) == 0 {
+				<p class="page-card text-sm text-muted-foreground">{ templates.T(ctx, "trade_index_matches_empty") }</p>
+			} else {
+				<ul class="page-card divide-y py-0">
+					for _, candidate := range data.Candidates {
+						<li>
+							<a href={ templ.SafeURL(templates.ProfilePath(candidate.Atname)) } class="-mx-4 flex min-h-12 items-center gap-3 px-4 py-2.5">
+								<span class="flex min-w-0 flex-1 flex-col gap-0.5">
+									<span class="text-sm font-medium">{ templates.T(ctx, "trade_index_partner", map[string]any{"Atname": candidate.Atname}) }</span>
+									<span class="text-sm text-muted-foreground">
+										{ templates.T(ctx, "trade_index_match_quantities", map[string]any{"Receive": candidate.Receivable.Quantity, "Give": candidate.Givable.Quantity}) }
+									</span>
+									<span class="text-sm text-muted-foreground">
+										@components.PlaceGroups(candidate.Places)
+									</span>
+								</span>
+								@chevronIcon()
+							</a>
+						</li>
+					}
+				</ul>
+			}
+		</section>
+		<div class="page-card py-0">
+			<a href={ templ.SafeURL(templates.TradeHistoryPath) } class="-mx-4 flex min-h-12 items-center gap-3 px-4 py-2.5">
+				<span class="flex min-w-0 flex-1 flex-col gap-0.5">
+					<span class="text-sm font-medium">{ templates.T(ctx, "trade_index_history_link") }</span>
+					@components.TradeHistoryCounts(data.HistoryCounts)
+				</span>
+				@chevronIcon()
+			</a>
+		</div>
+	</div>
+}

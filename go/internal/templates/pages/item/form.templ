@@ -1,0 +1,73 @@
+package item
+
+import (
+	"github.com/cutreapp/cutre/go/internal/model"
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+	"github.com/cutreapp/cutre/go/internal/viewmodel"
+)
+
+// quantityField は、リストに追加する画面とアイテムの編集の画面の、数量の入力欄を描画する。
+templ quantityField(form viewmodel.ItemForm, formErrors *model.ValidationError) {
+	<div
+		role="group"
+		class="field"
+		if formErrors.HasFieldError("quantity") {
+			data-invalid
+		}
+	>
+		@components.RequiredFieldLabel("quantity", templates.T(ctx, "item_form_quantity_label"))
+		<input
+			id="quantity"
+			name="quantity"
+			type="number"
+			inputmode="numeric"
+			min="1"
+			max="99"
+			step="1"
+			value={ form.Quantity }
+			required
+			class="max-w-32"
+			aria-describedby={ describedBy("quantity", formErrors) }
+			if formErrors.HasFieldError("quantity") {
+				aria-invalid="true"
+			}
+		/>
+		<p id="quantity-hint" class="text-sm">{ templates.T(ctx, "item_form_quantity_hint") }</p>
+		@components.FieldErrors("quantity", formErrors)
+	</div>
+}
+
+// noteField は、リストに追加する画面とアイテムの編集の画面の、ひとことの入力欄を描画する。
+templ noteField(form viewmodel.ItemForm, formErrors *model.ValidationError) {
+	<div
+		role="group"
+		class="field"
+		if formErrors.HasFieldError("note") {
+			data-invalid
+		}
+	>
+		@components.OptionalFieldLabel("note", templates.T(ctx, "item_form_note_label"))
+		<textarea
+			id="note"
+			name="note"
+			rows="2"
+			maxlength="200"
+			aria-describedby={ describedBy("note", formErrors) }
+			if formErrors.HasFieldError("note") {
+				aria-invalid="true"
+			}
+		>{ form.Note }</textarea>
+		<p id="note-hint" class="text-sm">{ templates.T(ctx, "item_form_note_hint") }</p>
+		@components.FieldErrors("note", formErrors)
+	</div>
+}
+
+// describedBy は補足を持つ入力欄の aria-describedby を、補足とエラーメッセージのidから組み立てる。
+func describedBy(field string, formErrors *model.ValidationError) string {
+	if !formErrors.HasFieldError(field) {
+		return field + "-hint"
+	}
+
+	return field + "-hint " + components.FieldErrorsDescribedBy(field, formErrors)
+}

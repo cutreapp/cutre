@@ -51,6 +51,7 @@ func newHandler() *account.Handler {
 			validator.NewAccountCreateValidator(userRepo),
 			userRepo,
 			repository.NewUserPasswordRepository(db),
+			repository.NewMessageConsentRepository(db),
 		),
 		usecase.NewCreateSessionUsecase(userSessionRepo),
 	)
@@ -108,19 +109,21 @@ func confirmedEmail(t *testing.T) (model.EmailConfirmationID, string) {
 }
 
 // TestNew は、両言語の入力画面に、確認したメールアドレスをログインの識別子として示し、
-// 入力補助の属性とnoindexを付けることを検証する。
+// 入力補助の属性とnoindex、チェックの入っていないメッセージの取り扱いへの同意の欄を付けることを検証する。
 func TestNew(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.GetTestDB()
 	tests := []struct {
-		path       string
-		locale     string
-		wantAction string
-		wantLabel  string
+		path             string
+		locale           string
+		wantAction       string
+		wantLabel        string
+		wantConsentLabel string
+		wantRequired     string
 	}{
-		{path: "/account", locale: i18n.LangJa, wantAction: `action="/account"`, wantLabel: "アットネーム"},
-		{path: "/en/account", locale: i18n.LangEn, wantAction: `action="/en/account"`, wantLabel: "Atname"},
+		{path: "/account", locale: i18n.LangJa, wantAction: `action="/account"`, wantLabel: "アットネーム", wantConsentLabel: "メッセージの取り扱いに同意します", wantRequired: "(必須)"},
+		{path: "/en/account", locale: i18n.LangEn, wantAction: `action="/en/account"`, wantLabel: "Atname", wantConsentLabel: "I agree to how messages are handled", wantRequired: "(required)"},
 	}
 	for _, tt := range tests {
 		confirmationID, email := confirmedEmail(t)
@@ -137,9 +140,27 @@ func TestNew(t *testing.T) {
 			`value="` + email + `" autocomplete="username" readonly`,
 			`autocomplete="nickname"`, `maxlength="20"`, `pattern="[A-Za-z0-9_]+"`,
 			`autocomplete="new-password"`, `minlength="8"`, `aria-describedby="password-hint"`,
+			`<ul id="message-consent-terms"`,
+			`<input id="message_consent" name="message_consent" type="checkbox" class="input" value="1" required aria-describedby="message-consent-terms">`,
 		} {
 			if !strings.Contains(body, want) {
 				t.Errorf("%s: 応答に %q が無い", tt.path, want)
+			}
+		}
+		labelStart := strings.Index(body, `<label for="message_consent"`)
+		if labelStart < 0 {
+			t.Errorf("%s: 同意チェックのラベルが無い", tt.path)
+			continue
+		}
+		labelEnd := strings.Index(body[labelStart:], "</label>")
+		if labelEnd < 0 {
+			t.Errorf("%s: 同意チェックのラベルが閉じられていない", tt.path)
+			continue
+		}
+		label := body[labelStart : labelStart+labelEnd]
+		for _, want := range []string{tt.wantConsentLabel, tt.wantRequired} {
+			if !strings.Contains(label, want) {
+				t.Errorf("%s: 同意チェックのラベルに %q が無い", tt.path, want)
 			}
 		}
 	}

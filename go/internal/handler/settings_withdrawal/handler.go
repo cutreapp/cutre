@@ -14,6 +14,7 @@ type Handler struct {
 	sessionMgr      *session.Manager
 	flashMgr        *session.FlashManager
 	limiter         *ratelimit.Limiter
+	getWithdrawalUC *usecase.GetWithdrawalUsecase
 	deleteAccountUC *usecase.DeleteAccountUsecase
 }
 
@@ -23,6 +24,7 @@ func NewHandler(
 	sessionMgr *session.Manager,
 	flashMgr *session.FlashManager,
 	limiter *ratelimit.Limiter,
+	getWithdrawalUC *usecase.GetWithdrawalUsecase,
 	deleteAccountUC *usecase.DeleteAccountUsecase,
 ) *Handler {
 	return &Handler{
@@ -30,6 +32,7 @@ func NewHandler(
 		sessionMgr:      sessionMgr,
 		flashMgr:        flashMgr,
 		limiter:         limiter,
+		getWithdrawalUC: getWithdrawalUC,
 		deleteAccountUC: deleteAccountUC,
 	}
 }

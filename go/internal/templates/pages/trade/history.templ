@@ -1,0 +1,46 @@
+package trade
+
+import (
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+	"github.com/cutreapp/cutre/go/internal/viewmodel"
+)
+
+// HistoryPageData はこれまでの交換の画面の描画に使うデータ。
+type HistoryPageData struct {
+	// Trades は終わった交換で、終わった時刻が新しい順に並ぶ。
+	Trades []viewmodel.TradeRow
+}
+
+// History はこれまでの交換の画面を描画する。交換の画面から辿る。
+//
+// 終わった交換を、各行を交換のページへのリンクにして並べる。行には相手・終わった日ともらう点数と渡す点数・段階のバッジを置く。
+templ History(data HistoryPageData) {
+	<div class="flex w-full flex-1 flex-col gap-4 py-4 md:mx-auto md:max-w-180">
+		@components.PageHeading(components.PageHeadingData{
+			Title: templates.T(ctx, "trade_history_index_heading"),
+			Breadcrumbs: []components.Breadcrumb{
+				{Label: templates.T(ctx, "trade_history_index_breadcrumb_trades"), Path: templates.TradesPath},
+			},
+		})
+		if len(data.Trades) == 0 {
+			<p class="page-card text-sm text-muted-foreground">{ templates.T(ctx, "trade_history_index_empty") }</p>
+		} else {
+			<ul class="page-card divide-y py-0">
+				for _, trade := range data.Trades {
+					<li>
+						<a href={ templ.SafeURL(templates.TradePath(trade.ID)) } class="-mx-4 flex min-h-12 items-center gap-3 px-4 py-2.5">
+							<span class="flex min-w-0 flex-1 flex-col gap-0.5">
+								<span class="text-sm font-medium">{ trade.PartnerName }</span>
+								<span class="text-sm text-muted-foreground">
+									{ templates.T(ctx, "trade_history_index_row_summary", map[string]any{"Date": trade.EndedDate, "Receive": trade.ReceiveQuantity, "Give": trade.GiveQuantity}) }
+								</span>
+							</span>
+							@statusBadge(trade.Status)
+						</a>
+					</li>
+				}
+			</ul>
+		}
+	</div>
+}

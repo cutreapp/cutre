@@ -13,8 +13,10 @@ import (
 // DeleteAccountUsecase は、今のパスワードで本人であることを確かめてから退会させる。
 //
 // usersの行は消さずに残し (tombstone)、メールアドレスとアットネームを匿名の値に置き換える。
-// 招待の経路 (誰が誰を招待したか) を退会の後も辿れるようにするため。
+// 招待の経路 (誰が誰を招待したか) と、交換の記録・メッセージを退会の後も相手が辿れるようにするため。
 // 認証の情報とメールアドレスを含む行は削除し、個人を特定できる情報を残さない。
+// リストのアイテムは交換の品から辿れるよう行を残して外し、交換場所は消す。
+// 進行中の交換があるときは退会させない。
 type DeleteAccountUsecase struct {
 	db                            *sql.DB
 	withdrawalDeleteValidator     *validator.WithdrawalDeleteValidator
@@ -26,6 +28,8 @@ type DeleteAccountUsecase struct {
 	passwordResetTokenRepo        *repository.PasswordResetTokenRepository
 	emailConfirmationRepo         *repository.EmailConfirmationRepository
 	invitationRepo                *repository.InvitationRepository
+	itemRepo                      *repository.ItemRepository
+	userStationRepo               *repository.UserStationRepository
 }
 
 // NewDeleteAccountUsecase は DeleteAccountUsecase を生成する。
@@ -40,6 +44,8 @@ func NewDeleteAccountUsecase(
 	passwordResetTokenRepo *repository.PasswordResetTokenRepository,
 	emailConfirmationRepo *repository.EmailConfirmationRepository,
 	invitationRepo *repository.InvitationRepository,
+	itemRepo *repository.ItemRepository,
+	userStationRepo *repository.UserStationRepository,
 ) *DeleteAccountUsecase {
 	return &DeleteAccountUsecase{
 		db:                            db,
@@ -52,6 +58,8 @@ func NewDeleteAccountUsecase(
 		passwordResetTokenRepo:        passwordResetTokenRepo,
 		emailConfirmationRepo:         emailConfirmationRepo,
 		invitationRepo:                invitationRepo,
+		itemRepo:                      itemRepo,
+		userStationRepo:               userStationRepo,
 	}
 }
 
@@ -66,41 +74,37 @@ type DeleteAccountInput struct {
 
 // Execute は退会のフォームを検証してから、ユーザーを退会させる。
 //
-// パスワードの不一致や未チェックは *model.ValidationError で返し、行には触れない。
+// 進行中の交換・パスワードの不一致・未チェックは *model.ValidationError で返し、行には触れない。
 // 既に退会していたとき (二重送信で先の送信が退会させた) は、AppErrCodeConflict の *model.AppError を返す。
-func (uc *DeleteAccountUsecase) Execute(ctx context.Context, input DeleteAccountInput) error {
-	if err := uc.withdrawalDeleteValidator.Validate(ctx, validator.WithdrawalDeleteValidatorInput{
-		UserID:          input.User.ID,
-		CurrentPassword: input.CurrentPassword,
-		Confirmed:       input.Confirmed,
-	}); err != nil {
-		if model.AsValidationError(err) != nil {
-			// 先の退会がパスワードを消した後に届いた二重送信は、入力の誤りではなく退会済みとして扱う。
-			activeUser, lookupErr := uc.userRepo.FindByID(ctx, input.User.ID)
-			if lookupErr != nil {
-				return fmt.Errorf("退会状態の確認に失敗: %w", lookupErr)
-			}
-			if activeUser == nil {
-				return &model.AppError{Code: model.AppErrCodeConflict}
-			}
-		}
-		return err
-	}
-
-	return uc.deleteAccount(ctx, input.User)
-}
-
-// deleteAccount は、匿名化・認証の情報の削除・招待の取り消しを1つのトランザクションで行う。
+//
+// 検証から後始末までを1つのトランザクションで行う。
 // 途中で失敗して、ログインできないのに招待だけが使える、といった半端な状態を残さないため。
 //
-// usersの行を最初に更新して行ロックを取る。招待を作る処理 (replaceInvitation) も招待者の行を先にロックするため、
-// 退会の途中に作られようとした招待は退会のコミットを待ち、退会したユーザーの招待として作られずに終わる。
-func (uc *DeleteAccountUsecase) deleteAccount(ctx context.Context, user *model.User) error {
+// usersの行を最初にロックする。交換の申し込み (createTrade) と招待の作成 (replaceInvitation) も同じユーザーの行を先にロックするため、
+// 退会の途中に届いた申し込みや招待は退会のコミットを待ち、退会したユーザーとの交換や、退会したユーザーの招待として作られずに終わる。
+// 退会より先にコミットした申し込みは、ロックの後の進行中の交換の確認で見つける。
+func (uc *DeleteAccountUsecase) Execute(ctx context.Context, input DeleteAccountInput) error {
 	tx, err := uc.db.BeginTx(ctx, nil)
 	if err != nil {
 		return fmt.Errorf("トランザクションの開始に失敗: %w", err)
 	}
 	defer func() { _ = tx.Rollback() }()
+
+	user, err := uc.userRepo.WithTx(tx).LockByID(ctx, input.User.ID)
+	if err != nil {
+		return fmt.Errorf("ユーザーのロックに失敗: %w", err)
+	}
+	if user == nil {
+		// 先の退会がパスワードを消した後に届いた二重送信は、入力の誤りではなく退会済みとして扱う。
+		return &model.AppError{Code: model.AppErrCodeConflict}
+	}
+	if err := uc.withdrawalDeleteValidator.WithTx(tx).Validate(ctx, validator.WithdrawalDeleteValidatorInput{
+		UserID:          user.ID,
+		CurrentPassword: input.CurrentPassword,
+		Confirmed:       input.Confirmed,
+	}); err != nil {
+		return err
+	}
 
 	withdrawn, err := uc.userRepo.WithTx(tx).Withdraw(ctx, user.ID, model.AnonymizedEmail(user.ID), model.AnonymizedAtname(user.ID))
 	if err != nil {
@@ -129,6 +133,12 @@ func (uc *DeleteAccountUsecase) deleteAccount(ctx context.Context, user *model.U
 	}
 	if err := uc.invitationRepo.WithTx(tx).RevokeUnrevokedByInviterUserID(ctx, user.ID); err != nil {
 		return fmt.Errorf("招待の取り消しに失敗: %w", err)
+	}
+	if err := uc.itemRepo.WithTx(tx).RemoveListedByUserID(ctx, user.ID); err != nil {
+		return fmt.Errorf("リストのアイテムの取り外しに失敗: %w", err)
+	}
+	if err := uc.userStationRepo.WithTx(tx).DeleteByUserID(ctx, user.ID); err != nil {
+		return fmt.Errorf("交換場所の削除に失敗: %w", err)
 	}
 
 	if err := tx.Commit(); err != nil {

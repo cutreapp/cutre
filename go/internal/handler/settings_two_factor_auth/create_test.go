@@ -74,7 +74,8 @@ func TestCreate(t *testing.T) {
 		`<form action="/settings/two_factor_auth" method="get"`,
 		`<input type="checkbox" class="input" required>`,
 	)
-	assertNotContains(t, body, `aria-label="プロフィールにもどる"`, `aria-label="二要素認証にもどる"`)
+	// 保存を終えるまで画面から離れさせないため、メインメニューもパンくずも出さない。
+	assertNotContains(t, body, "data-main-nav", `<nav aria-label="メインメニュー"`, `<nav aria-label="パンくずリスト">`)
 
 	matches := recoveryCodePattern.FindAllStringSubmatch(body, -1)
 	if len(matches) != auth.RecoveryCodeCount {

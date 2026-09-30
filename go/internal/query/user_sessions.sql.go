@@ -97,7 +97,7 @@ func (q *Queries) ExtendUserSession(ctx context.Context, arg ExtendUserSessionPa
 }
 
 const getLiveUserSessionWithUserByTokenDigest = `-- name: GetLiveUserSessionWithUserByTokenDigest :one
-SELECT user_sessions.id, user_sessions.user_id, user_sessions.token_digest, user_sessions.expires_at, user_sessions.last_seen_at, user_sessions.ip_address, user_sessions.user_agent, user_sessions.signed_in_at, user_sessions.created_at, user_sessions.updated_at, users.id, users.email, users.atname, users.locale, users.time_zone, users.deleted_at, users.created_at, users.updated_at
+SELECT user_sessions.id, user_sessions.user_id, user_sessions.token_digest, user_sessions.expires_at, user_sessions.last_seen_at, user_sessions.ip_address, user_sessions.user_agent, user_sessions.signed_in_at, user_sessions.created_at, user_sessions.updated_at, users.id, users.email, users.atname, users.locale, users.time_zone, users.deleted_at, users.created_at, users.updated_at, users.role, users.place_note, users.place_lock_version
 FROM user_sessions
 INNER JOIN users ON users.id = user_sessions.user_id
 WHERE user_sessions.token_digest = $1
@@ -136,6 +136,9 @@ func (q *Queries) GetLiveUserSessionWithUserByTokenDigest(ctx context.Context, t
 		&i.User.DeletedAt,
 		&i.User.CreatedAt,
 		&i.User.UpdatedAt,
+		&i.User.Role,
+		&i.User.PlaceNote,
+		&i.User.PlaceLockVersion,
 	)
 	return i, err
 }

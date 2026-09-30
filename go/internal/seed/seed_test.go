@@ -86,7 +86,7 @@ func TestLoadRoster_Invalid(t *testing.T) {
 	}
 }
 
-// TestCreateUsers は、名簿のアカウントがそのパスワードでログインできる形で作られ、
+// TestCreateUsers は、名簿のアカウントがそのパスワードでログインでき、メッセージの取り扱いに同意した形で作られ、
 // 再実行しても重複して作られないことを検証する。
 //
 // CreateUsers は自前でトランザクションを開くため、共有の接続で実行して行をコミットする。
@@ -112,6 +112,7 @@ func TestCreateUsers(t *testing.T) {
 
 	userRepo := repository.NewUserRepository(db)
 	userPasswordRepo := repository.NewUserPasswordRepository(db)
+	messageConsentRepo := repository.NewMessageConsentRepository(db)
 	for i, want := range []model.Locale{model.LocaleJa, model.LocaleEn} {
 		user, err := userRepo.FindByEmail(ctx, roster.Users[i].Email)
 		if err != nil || user == nil {
@@ -126,6 +127,10 @@ func TestCreateUsers(t *testing.T) {
 		}
 		if err := auth.CheckPassword(password.PasswordDigest, roster.Password); err != nil {
 			t.Errorf("名簿のパスワードと照合できない: %v", err)
+		}
+		consent, err := messageConsentRepo.FindLatestByUserID(ctx, user.ID)
+		if err != nil || consent == nil || !consent.IsValid() {
+			t.Errorf("メッセージの取り扱いへの同意 = (%+v, %v)、有効な同意を期待", consent, err)
 		}
 	}
 

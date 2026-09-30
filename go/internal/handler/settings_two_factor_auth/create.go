@@ -7,7 +7,6 @@ import (
 	"github.com/cutreapp/cutre/go/internal/middleware"
 	"github.com/cutreapp/cutre/go/internal/model"
 	"github.com/cutreapp/cutre/go/internal/templates"
-	"github.com/cutreapp/cutre/go/internal/templates/components"
 	"github.com/cutreapp/cutre/go/internal/templates/layouts"
 	page "github.com/cutreapp/cutre/go/internal/templates/pages/settings_two_factor_auth"
 	"github.com/cutreapp/cutre/go/internal/usecase"
@@ -51,10 +50,8 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	meta.SetTitle(ctx, "settings_two_factor_auth_create_title")
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	layoutData := layouts.DefaultLayoutData{
-		Meta:   meta,
-		Header: &components.HeaderData{Atname: user.Atname, CurrentPath: templates.SettingsTwoFactorAuthPath},
-	}
+	// 保存を終えるまで画面から離れさせないため、メインメニューを出さない。
+	layoutData := layouts.DefaultLayoutData{Meta: meta}
 	if err := layouts.Default(layoutData, page.Create(page.CreatePageData{RecoveryCodes: output.RecoveryCodes})).Render(ctx, w); err != nil {
 		slog.ErrorContext(ctx, "リカバリーコードの画面の描画に失敗しました", "error", err)
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)

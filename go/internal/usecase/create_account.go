@@ -16,7 +16,8 @@ import (
 // CreateAccountUsecase は、確認を済ませたメールアドレスと入力されたアットネーム・パスワードでアカウントを作る。
 //
 // メールアドレスはフォームではなく確認済みの確認から取る。確認が、本人がそのアドレスを持っていることの証明になるため。
-// ユーザーとパスワードの作成、招待の使用の記録、確認の削除を1つのトランザクションで行う。
+// ユーザーとパスワードの作成、メッセージの取り扱いへの同意の記録、招待の使用の記録、確認の削除を1つのトランザクションで行う。
+// 同意しないとアカウントを作れないため、同意の無いアカウントを残さない。
 // ログイン (セッションの発行) は、ハンドラーが CreateSessionUsecase で続けて行う。
 type CreateAccountUsecase struct {
 	db                       *sql.DB
@@ -26,6 +27,7 @@ type CreateAccountUsecase struct {
 	accountValidator         *validator.AccountCreateValidator
 	userRepo                 *repository.UserRepository
 	userPasswordRepo         *repository.UserPasswordRepository
+	messageConsentRepo       *repository.MessageConsentRepository
 }
 
 // NewCreateAccountUsecase は CreateAccountUsecase を生成する。
@@ -37,6 +39,7 @@ func NewCreateAccountUsecase(
 	accountValidator *validator.AccountCreateValidator,
 	userRepo *repository.UserRepository,
 	userPasswordRepo *repository.UserPasswordRepository,
+	messageConsentRepo *repository.MessageConsentRepository,
 ) *CreateAccountUsecase {
 	return &CreateAccountUsecase{
 		db:                       db,
@@ -46,6 +49,7 @@ func NewCreateAccountUsecase(
 		accountValidator:         accountValidator,
 		userRepo:                 userRepo,
 		userPasswordRepo:         userPasswordRepo,
+		messageConsentRepo:       messageConsentRepo,
 	}
 }
 
@@ -56,6 +60,8 @@ type CreateAccountInput struct {
 	EmailConfirmationID model.EmailConfirmationID
 	Atname              string
 	Password            string
+	// MessageConsentAgreed はメッセージの取り扱いへの同意のチェックを入れたか。
+	MessageConsentAgreed bool
 	// Locale はアカウントの表示言語。登録の画面の言語版で決まる。
 	Locale model.Locale
 }
@@ -91,9 +97,10 @@ func (uc *CreateAccountUsecase) Execute(ctx context.Context, input CreateAccount
 	}
 
 	if err := uc.accountValidator.Validate(ctx, validator.AccountCreateValidatorInput{
-		Email:    confirmation.Email,
-		Atname:   input.Atname,
-		Password: input.Password,
+		Email:                confirmation.Email,
+		Atname:               input.Atname,
+		Password:             input.Password,
+		MessageConsentAgreed: input.MessageConsentAgreed,
 	}); err != nil {
 		return nil, err
 	}
@@ -106,7 +113,7 @@ func (uc *CreateAccountUsecase) Execute(ctx context.Context, input CreateAccount
 	return uc.createAccount(ctx, input, confirmation.Email, passwordDigest)
 }
 
-// createAccount はユーザーとパスワードを作り、招待の使用を記録し、確認を消すまでを1つのトランザクションで行う。
+// createAccount はユーザーとパスワードを作り、同意と招待の使用を記録し、確認を消すまでを1つのトランザクションで行う。
 //
 // 招待は行を排他ロックしてから、人数を数え直して使えることを確かめる。
 // 取り消していない招待は招待者ごとに1本に限られ、使える招待は取り消していないものだけのため、
@@ -149,6 +156,10 @@ func (uc *CreateAccountUsecase) createAccount(ctx context.Context, input CreateA
 		PasswordDigest: passwordDigest,
 	}); err != nil {
 		return nil, fmt.Errorf("パスワードの作成に失敗: %w", err)
+	}
+
+	if _, err := uc.messageConsentRepo.WithTx(tx).Create(ctx, user.ID, model.CurrentMessageConsentVersion); err != nil {
+		return nil, fmt.Errorf("メッセージの取り扱いへの同意の記録に失敗: %w", err)
 	}
 
 	if _, err := uc.invitationRedemptionRepo.WithTx(tx).Create(ctx, invitation.ID, user.ID); err != nil {

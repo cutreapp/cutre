@@ -1,0 +1,128 @@
+package trade
+
+import (
+	"github.com/cutreapp/cutre/go/internal/model"
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+	"github.com/cutreapp/cutre/go/internal/viewmodel"
+)
+
+// confirmationSummaryFields はエラーの要約に並べるフィールドを、フォームに現れる順で持つ。
+var confirmationSummaryFields = []components.FormErrorSummaryField{
+	{Name: "note", LabelKey: "trade_confirmation_note_label"},
+}
+
+// ConfirmationPageData は申し込み内容の確認の画面の描画に使うデータ。
+type ConfirmationPageData struct {
+	// CSRFToken は申し込みのフォームに載せるトークン。
+	CSRFToken string
+	// Proposal は申し込む相手と、選んだ組み合わせ。選んだアイテムだけを持つ。
+	Proposal viewmodel.TradeProposal
+	// Note はひとことの欄に入れる値。入力の誤りで描き直すときは送られた値を戻す。
+	Note string
+	// MessageConsentValid は、メッセージの取り扱いへの有効な同意があるか。無ければ申し込む代わりに同意の案内を出す。
+	MessageConsentValid bool
+	// FormErrors は申し込みを受け付けなかったときのエラー。
+	FormErrors *model.ValidationError
+}
+
+// Confirmation は、選んだ組み合わせとひとことを確かめて交換を申し込む画面を描画する。
+//
+// 選んだアイテムはフォームに隠して載せ、申し込みと一緒に送る。組み合わせを変えるときは、選んだ状態のまま組み合わせを選ぶ画面へ戻す。
+// ひとことは任意で、メッセージの1通目として相手に届く。
+templ Confirmation(data ConfirmationPageData) {
+	<div class="flex w-full flex-1 flex-col gap-3 py-4 md:mx-auto md:max-w-180">
+		@components.PageHeading(components.PageHeadingData{
+			Title:       templates.T(ctx, "trade_confirmation_heading"),
+			Breadcrumbs: breadcrumbs(ctx, data.Proposal.Atname),
+		})
+		if !data.MessageConsentValid {
+			@consentRequired(templates.T(ctx, "trade_consent_required_message"))
+		} else {
+			<form
+				action={ templ.SafeURL(templates.TradesPath) }
+				method="post"
+				class="page-card flex flex-col gap-4"
+				data-disable-on-submit
+			>
+				@components.FormErrors(data.FormErrors)
+				@components.FormErrorSummary(components.FormErrorSummaryData{Fields: confirmationSummaryFields, Errors: data.FormErrors})
+				<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+				<input type="hidden" name="atname" value={ data.Proposal.Atname }/>
+				for _, id := range data.Proposal.GiveItemIDs() {
+					<input type="hidden" name="give_item_ids" value={ id }/>
+				}
+				for _, id := range data.Proposal.ReceiveItemIDs() {
+					<input type="hidden" name="receive_item_ids" value={ id }/>
+				}
+				@selectedItems("trade-give-heading", templates.T(ctx, "trade_confirmation_give_heading", map[string]any{"Quantity": len(data.Proposal.Givable)}), data.Proposal.Givable)
+				<div aria-hidden="true" class="flex items-center gap-2.5 text-primary">
+					<span class="h-px flex-1 bg-border"></span>
+					@exchangeIcon()
+					<span class="h-px flex-1 bg-border"></span>
+				</div>
+				@selectedItems("trade-receive-heading", templates.T(ctx, "trade_confirmation_receive_heading", map[string]any{"Atname": data.Proposal.Atname, "Quantity": len(data.Proposal.Receivable)}), data.Proposal.Receivable)
+				@noteField(data)
+				<div class="flex flex-col gap-2">
+					<button type="submit" class="btn w-full" aria-describedby="trade-confirmation-submit-hint">{ templates.T(ctx, "trade_confirmation_submit") }</button>
+					<p id="trade-confirmation-submit-hint" class="text-center text-sm">{ templates.T(ctx, "trade_confirmation_submit_hint", map[string]any{"Atname": data.Proposal.Atname}) }</p>
+				</div>
+				<a
+					href={ templ.SafeURL(templates.NewTradeWithItemsPath(data.Proposal.Atname, data.Proposal.ReceiveItemIDs(), data.Proposal.GiveItemIDs())) }
+					class="self-center py-1 text-sm font-medium underline"
+				>
+					{ templates.T(ctx, "trade_confirmation_change_link") }
+				</a>
+			</form>
+		}
+	</div>
+}
+
+// selectedItems は、選んだもらうもの・渡すものの一方を、見出し heading とともに描画する。
+templ selectedItems(headingID string, heading string, choices []viewmodel.TradeItemChoice) {
+	<section class="flex flex-col gap-2" aria-labelledby={ headingID }>
+		<h2 id={ headingID } class="text-sm font-medium">{ heading }</h2>
+		<ul class="flex flex-col gap-2">
+			for _, choice := range choices {
+				<li class="flex items-center gap-3 rounded-lg border px-3 py-2">
+					@itemThumbnail()
+					@itemName(choice.TradeItemRow)
+				</li>
+			}
+		</ul>
+	</section>
+}
+
+// noteField は、メッセージの1通目として届くひとことの入力欄を描画する。
+templ noteField(data ConfirmationPageData) {
+	<div
+		role="group"
+		class="field"
+		if data.FormErrors.HasFieldError("note") {
+			data-invalid
+		}
+	>
+		@components.OptionalFieldLabel("note", templates.T(ctx, "trade_confirmation_note_label"))
+		<textarea
+			id="note"
+			name="note"
+			rows="3"
+			maxlength="1000"
+			aria-describedby={ noteDescribedBy(data.FormErrors) }
+			if data.FormErrors.HasFieldError("note") {
+				aria-invalid="true"
+			}
+		>{ data.Note }</textarea>
+		<p id="note-hint" class="text-sm">{ templates.T(ctx, "trade_confirmation_note_hint", map[string]any{"Atname": data.Proposal.Atname}) }</p>
+		@components.FieldErrors("note", data.FormErrors)
+	</div>
+}
+
+// noteDescribedBy はひとことの欄の aria-describedby を、補足とエラーメッセージのidから組み立てる。
+func noteDescribedBy(formErrors *model.ValidationError) string {
+	if !formErrors.HasFieldError("note") {
+		return "note-hint"
+	}
+
+	return "note-hint " + components.FieldErrorsDescribedBy("note", formErrors)
+}

@@ -24,7 +24,7 @@ const recoveryCodesFileName = "cutre-recovery-codes.txt"
 
 // Create は、二要素認証を有効にしたことを伝え、リカバリーコードを一度だけ示す画面を描画する。
 //
-// コードは保存していないため、この画面から離れると二度と表示できない。戻るリンクは置かず、
+// コードは保存していないため、この画面から離れると二度と表示できない。パンくずとメインメニューは置かず、
 // 「保存しました」をチェックして完了を押す操作だけで二要素認証の画面へ進ませる。
 // 完了はGETのフォームにし、required のチェックボックスでJavaScriptが無くてもチェックするまで進めないようにする。
 // チェックボックスには name を付けず、完了後のURLに値を残さない。
@@ -49,14 +49,14 @@ func Create(data CreatePageData) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"flex w-full flex-1 flex-col gap-3 py-4 md:mx-auto md:max-w-180\"><h1 id=\"recovery-codes-heading\" class=\"px-4 text-base font-semibold md:px-0\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"flex w-full flex-1 flex-col gap-3 py-4 md:mx-auto md:max-w-180\"><h1 id=\"recovery-codes-heading\" class=\"px-4 text-xl font-semibold md:px-0\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(templates.T(ctx, "settings_two_factor_auth_create_heading"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/create.templ`, Line: 26, Col: 140}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/templates/pages/settings_two_factor_auth/create.templ`, Line: 26, Col: 138}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {

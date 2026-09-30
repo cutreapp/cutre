@@ -1,0 +1,108 @@
+package item
+
+import (
+	"github.com/cutreapp/cutre/go/internal/model"
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+	"github.com/cutreapp/cutre/go/internal/viewmodel"
+)
+
+// summaryFields はエラーの要約に並べるフィールドを、フォームに現れる順で持つ。
+var summaryFields = []components.FormErrorSummaryField{
+	{Name: "kind", LabelKey: "item_new_kind_label"},
+	{Name: "quantity", LabelKey: "item_form_quantity_label"},
+	{Name: "note", LabelKey: "item_form_note_label"},
+}
+
+// NewPageData はリストに追加する画面の描画に使うデータ。
+type NewPageData struct {
+	// CSRFToken は追加のフォームに載せるトークン。
+	CSRFToken string
+	// EventID と EventName、EventCategoryID と EventCategoryName は、パンくずと見出しに置くグッズのイベントとカテゴリー。
+	EventID           string
+	EventName         string
+	EventCategoryID   string
+	EventCategoryName string
+	// GoodsID と GoodsName は、リストに追加するグッズのIDと名前。
+	GoodsID   string
+	GoodsName string
+	// Form はフォームに入れる値。入力の誤りで描き直すときは送られた値を戻す。
+	Form viewmodel.ItemForm
+	// FormErrors はフォームを受け付けなかったときのエラー。
+	FormErrors *model.ValidationError
+}
+
+// New はリストに追加する画面を描画する。
+//
+// 追加するグッズを見出しに示し、入れるリスト (譲れる・ほしい)・数量・ひとことを入力させる。
+// リストは選ぶボタンの見た目のラジオボタンで選び、JavaScriptが無くても送れるようにする。
+// 写真は保存先ができるまで置かない。
+templ New(data NewPageData) {
+	<div class="flex w-full flex-1 flex-col gap-3 py-4 md:mx-auto md:max-w-180">
+		@components.PageHeading(components.PageHeadingData{
+			Title: templates.T(ctx, "item_new_heading"),
+			Breadcrumbs: []components.Breadcrumb{
+				{Label: templates.T(ctx, "item_new_breadcrumb_home"), Path: templates.HomePath},
+				{Label: templates.T(ctx, "item_new_breadcrumb_events"), Path: templates.EventsPath},
+				{Label: data.EventName, Path: templates.EventPath(data.EventID)},
+				{Label: data.EventCategoryName, Path: templates.EventCategoryPath(data.EventID, data.EventCategoryID)},
+			},
+		})
+		<form
+			action={ templ.SafeURL(templates.ItemsPath) }
+			method="post"
+			class="page-card flex flex-col gap-4"
+			data-disable-on-submit
+		>
+			@components.FormErrors(data.FormErrors)
+			@components.FormErrorSummary(components.FormErrorSummaryData{Fields: summaryFields, Errors: data.FormErrors})
+			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+			<input type="hidden" name="goods_id" value={ data.GoodsID }/>
+			<div class="flex flex-col gap-0.5">
+				<span class="text-sm text-muted-foreground">{ data.EventName }・{ data.EventCategoryName }</span>
+				<h2 id="item-goods-name" class="text-lg font-semibold">{ data.GoodsName }</h2>
+			</div>
+			@kindField(data.Form, data.FormErrors)
+			@quantityField(data.Form, data.FormErrors)
+			@noteField(data.Form, data.FormErrors)
+			<button type="submit" class="btn w-full">{ templates.T(ctx, "item_new_submit") }</button>
+		</form>
+	</div>
+}
+
+// kindField は入れるリスト (譲れる・ほしい) を選ぶ欄を描画する。
+// ラジオボタンは見えなくし、それを包むラベルを選ぶボタンの見た目にして、選んだほうを押した状態 (チェックの印) で示す。
+templ kindField(form viewmodel.ItemForm, formErrors *model.ValidationError) {
+	<fieldset
+		class="field"
+		if formErrors.HasFieldError("kind") {
+			data-invalid
+			aria-describedby={ components.FieldErrorsDescribedBy("kind", formErrors) }
+		}
+	>
+		<legend class="items-baseline gap-1">
+			<span>{ templates.T(ctx, "item_new_kind_label") }</span>
+			<span class="text-xs font-normal text-muted-foreground">({ templates.T(ctx, "field_required") })</span>
+		</legend>
+		<div class="flex gap-2">
+			for i, kind := range model.ItemKinds() {
+				<label class="btn group flex-1 gap-1" data-variant="outline">
+					<input
+						if i == 0 {
+							id="kind"
+						}
+						type="radio"
+						name="kind"
+						value={ string(kind) }
+						class="sr-only"
+						required
+						checked?={ form.Kind == string(kind) }
+					/>
+					<svg aria-hidden="true" class="hidden group-has-checked:block" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>
+					{ templates.T(ctx, viewmodel.ItemKindLabelKey(kind)) }
+				</label>
+			}
+		</div>
+		@components.FieldErrors("kind", formErrors)
+	</fieldset>
+}

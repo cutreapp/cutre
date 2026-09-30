@@ -8,7 +8,7 @@ import (
 
 // ShowPageData は二要素認証の画面の描画に使うデータ。
 type ShowPageData struct {
-	// ProfilePath は戻り先の自分のプロフィールのパス。
+	// ProfilePath はパンくずに置くマイページ (自分のプロフィール) のパス。
 	ProfilePath string
 	// Enabled は二要素認証を有効にしているか。
 	Enabled bool
@@ -30,7 +30,10 @@ var disableSummaryFields = []components.FormErrorSummaryField{
 // Show は二要素認証の画面を描画する。オフのときは説明と有効にする入口を、オンのときは状態を出す。
 templ Show(data ShowPageData) {
 	<div class="flex w-full flex-1 flex-col gap-3 py-4 md:mx-auto md:max-w-180">
-		@pageHeading(data.ProfilePath, templates.T(ctx, "settings_two_factor_auth_show_back"), templates.T(ctx, "settings_two_factor_auth_show_heading"))
+		@components.PageHeading(components.PageHeadingData{
+			Title:       templates.T(ctx, "settings_two_factor_auth_show_heading"),
+			Breadcrumbs: []components.Breadcrumb{{Label: templates.T(ctx, "settings_two_factor_auth_show_breadcrumb_my_page"), Path: data.ProfilePath}},
+		})
 		if data.Enabled {
 			@enabledCard(data)
 			@disableSection(data)
@@ -38,16 +41,6 @@ templ Show(data ShowPageData) {
 			<p class="px-4 text-sm md:px-0">{ templates.T(ctx, "settings_two_factor_auth_show_lead") }</p>
 			@disabledCard()
 		}
-	</div>
-}
-
-// pageHeading は戻るリンクと見出しを並べた画面の見出しを描画する。
-templ pageHeading(backPath string, backLabel string, heading string) {
-	<div class="flex items-center gap-1 px-2 md:px-0">
-		<a href={ templ.SafeURL(backPath) } class="btn" data-variant="ghost" data-size="icon" aria-label={ backLabel }>
-			<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>
-		</a>
-		<h1 class="text-base font-semibold">{ heading }</h1>
 	</div>
 }
 

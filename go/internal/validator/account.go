@@ -16,7 +16,7 @@ const AtnameMaxLength = 20
 // atnameRegex はアットネームに使える文字 (半角英数字とアンダースコア)。
 var atnameRegex = regexp.MustCompile(`^[A-Za-z0-9_]+$`)
 
-// AccountCreateValidator はアカウントの作成のフォーム (アットネームとパスワード) を検証する。
+// AccountCreateValidator はアカウントの作成のフォーム (アットネーム・パスワード・メッセージの取り扱いへの同意) を検証する。
 type AccountCreateValidator struct {
 	userRepo *repository.UserRepository
 }
@@ -32,9 +32,11 @@ type AccountCreateValidatorInput struct {
 	Email    string
 	Atname   string
 	Password string
+	// MessageConsentAgreed はメッセージの取り扱いへの同意のチェックを入れたか。
+	MessageConsentAgreed bool
 }
 
-// Validate はアットネームとパスワードの形式を検証してから、アットネームとメールアドレスが空いているかを確かめる。
+// Validate はアットネームとパスワードの形式と同意のチェックを検証してから、アットネームとメールアドレスが空いているかを確かめる。
 // 形式を満たさない値ではデータベースを引かない。
 //
 // メールアドレスは確認を済ませた本人にしか届かないため、登録済みであることをフォームのエラーとして伝えてよい。
@@ -52,6 +54,10 @@ func (v *AccountCreateValidator) Validate(ctx context.Context, input AccountCrea
 	}
 
 	validatePassword(ctx, ve, input.Password)
+
+	if !input.MessageConsentAgreed {
+		ve.AddField("message_consent", i18n.T(ctx, "validation_message_consent_required"))
+	}
 
 	if ve.HasErrors() {
 		return ve

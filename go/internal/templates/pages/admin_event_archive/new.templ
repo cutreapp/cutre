@@ -1,0 +1,124 @@
+package admin_event_archive
+
+import (
+	"context"
+	"strconv"
+
+	"github.com/cutreapp/cutre/go/internal/model"
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+)
+
+// NewPageData は管理画面のイベントのアーカイブの画面の描画に使うデータ。
+type NewPageData struct {
+	// ProfilePath はパンくずに置くマイページ (自分のプロフィール) のパス。
+	ProfilePath string
+	// CSRFToken はアーカイブのフォームに載せるトークン。
+	CSRFToken string
+	// EventID はフォームの送信先とパンくずを組み立てるイベントのID。
+	EventID string
+	// EventName はパンくずと説明に出すイベントの名前。
+	EventName string
+	// LockVersion は画面を開いたときのイベントの版。
+	LockVersion int32
+	// Conflict は、ほかの操作で先にイベントが変わったことを示す。
+	Conflict bool
+	// CurrentPeriod は競合時に表示する最新の開催期間。
+	CurrentPeriod string
+	// Archived は競合時に表示する最新の状態。
+	Archived bool
+	// ArchiveMessage は理由の入力欄に入れる値。エラーで描き直すときは送られた値を戻す。
+	ArchiveMessage string
+	// FormErrors はアーカイブのフォームを受け付けなかったときのエラー。
+	FormErrors *model.ValidationError
+}
+
+// summaryFields はエラーの要約に並べるフィールドを、フォームに現れる順で持つ。
+var summaryFields = []components.FormErrorSummaryField{
+	{Name: "archive_message", LabelKey: "admin_event_archive_new_archive_message_label"},
+}
+
+// New は管理画面のイベントのアーカイブの画面を描画する。アーカイブすると何が起きるかを示し、理由の入力を求める。
+templ New(data NewPageData) {
+	<div class="flex w-full flex-1 flex-col gap-3 py-4 md:mx-auto md:max-w-180">
+		@components.PageHeading(components.PageHeadingData{
+			Title: archivePageTitle(ctx, data.Conflict),
+			Breadcrumbs: []components.Breadcrumb{
+				{Label: templates.T(ctx, "admin_event_archive_new_breadcrumb_my_page"), Path: data.ProfilePath},
+				{Label: templates.T(ctx, "admin_event_archive_new_breadcrumb_admin"), Path: templates.AdminPath},
+				{Label: templates.T(ctx, "admin_event_archive_new_breadcrumb_events"), Path: templates.AdminEventsPath},
+				{Label: data.EventName, Path: templates.EditAdminEventPath(data.EventID)},
+			},
+		})
+		if data.Conflict {
+			<div class="page-card flex flex-col gap-3">
+				@components.FormErrors(data.FormErrors)
+				<p class="font-medium">{ data.EventName }</p>
+				<p class="text-sm">{ data.CurrentPeriod }</p>
+				if data.Archived {
+					<span class="badge" data-variant="warning">{ templates.T(ctx, "admin_event_index_archived_badge") }</span>
+				} else {
+					<span class="badge">{ templates.T(ctx, "admin_event_conflict_published_badge") }</span>
+				}
+				<a href={ templ.SafeURL(templates.EditAdminEventPath(data.EventID)) } class="btn" data-variant="outline">
+					{ templates.T(ctx, "admin_event_conflict_edit_link") }
+				</a>
+			</div>
+		} else {
+			<form
+				action={ templ.SafeURL(templates.AdminEventArchivePath(data.EventID)) }
+				method="post"
+				class="page-card flex flex-col gap-4"
+				data-disable-on-submit
+			>
+				@components.FormErrors(data.FormErrors)
+				@components.FormErrorSummary(components.FormErrorSummaryData{Fields: summaryFields, Errors: data.FormErrors})
+				<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+				<input type="hidden" name="lock_version" value={ strconv.FormatInt(int64(data.LockVersion), 10) }/>
+				<p class="text-sm">{ templates.T(ctx, "admin_event_archive_new_lead", map[string]any{"Name": data.EventName}) }</p>
+				<div
+					role="group"
+					class="field"
+					if data.FormErrors.HasFieldError("archive_message") {
+						data-invalid
+					}
+				>
+					@components.RequiredFieldLabel("archive_message", templates.T(ctx, "admin_event_archive_new_archive_message_label"))
+					<textarea
+						id="archive_message"
+						name="archive_message"
+						rows="3"
+						required
+						aria-describedby={ archiveMessageDescribedBy(data.FormErrors) }
+						if data.FormErrors.HasFieldError("archive_message") {
+							aria-invalid="true"
+						}
+					>{ data.ArchiveMessage }</textarea>
+					<p id="archive_message-hint" class="text-sm">{ templates.T(ctx, "admin_event_archive_new_archive_message_hint") }</p>
+					@components.FieldErrors("archive_message", data.FormErrors)
+				</div>
+				<button type="submit" class="btn w-full">
+					{ templates.T(ctx, "admin_event_archive_new_submit") }
+				</button>
+			</form>
+		}
+	</div>
+}
+
+// archivePageTitle は競合時だけ見出しを切り替える。
+func archivePageTitle(ctx context.Context, conflict bool) string {
+	if conflict {
+		return templates.T(ctx, "admin_event_conflict_heading")
+	}
+
+	return templates.T(ctx, "admin_event_archive_new_heading")
+}
+
+// archiveMessageDescribedBy は理由の入力欄の aria-describedby を、補足とエラーメッセージのidから組み立てる。
+func archiveMessageDescribedBy(formErrors *model.ValidationError) string {
+	if !formErrors.HasFieldError("archive_message") {
+		return "archive_message-hint"
+	}
+
+	return "archive_message-hint " + components.FieldErrorsDescribedBy("archive_message", formErrors)
+}

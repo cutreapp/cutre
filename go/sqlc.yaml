@@ -12,6 +12,9 @@ sql:
         # クエリから参照されないテーブルの型は生成しない。
         # Riverのテーブルは実行時にRiverのドライバーが読み書きし、アプリケーションはsqlcで触れないため。
         omit_unused_structs: true
+        # goodsは単数と複数が同じ形の語だが、sqlcはテーブル名を単数化して Good を作るため、Goods に戻す。
+        rename:
+          good: "Goods"
         overrides:
           - db_type: "uuid"
             go_type: "github.com/google/uuid.UUID"
@@ -31,6 +34,19 @@ sql:
             go_type:
               import: "time"
               type: "Time"
+              pointer: true
+            nullable: true
+          # NULL許容の日付と文字列も、同じ理由でポインタ型で受け取る。
+          # dateはtimestamptzと違い、sqlcがスキーマ修飾の無い型名で解決する。
+          - db_type: "date"
+            go_type:
+              import: "time"
+              type: "Time"
+              pointer: true
+            nullable: true
+          - db_type: "pg_catalog.varchar"
+            go_type:
+              type: "string"
               pointer: true
             nullable: true
           # citextは大文字小文字を区別しないだけのテキスト型のため、Go側はstringで扱う。

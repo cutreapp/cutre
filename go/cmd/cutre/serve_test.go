@@ -1599,7 +1599,7 @@ func TestNewRouter_SignIn(t *testing.T) {
 		t.Errorf("ホームのCache-Control = %q、期待値 = %q", got, "private, no-store")
 	}
 	body := rec.Body.String()
-	for _, want := range []string{`<html lang="en">`, "Welcome, @" + atname, "You&#39;re signed in"} {
+	for _, want := range []string{`<html lang="en" data-main-nav>`, "Welcome, @" + atname, "You&#39;re signed in"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("ホームに %q が含まれていない", want)
 		}
@@ -1844,7 +1844,17 @@ func TestNewRouter_SignInRoutes(t *testing.T) {
 		{path: "/settings/invitation", wantStatus: http.StatusSeeOther, wantLocation: "/sign_in?return_to=%2Fsettings%2Finvitation"},
 		{path: "/settings/two_factor_auth", wantStatus: http.StatusSeeOther, wantLocation: "/sign_in?return_to=%2Fsettings%2Ftwo_factor_auth"},
 		{path: "/settings/two_factor_auth/new", wantStatus: http.StatusSeeOther, wantLocation: "/sign_in?return_to=%2Fsettings%2Ftwo_factor_auth%2Fnew"},
+		{path: "/settings/message_consent", wantStatus: http.StatusSeeOther, wantLocation: "/sign_in?return_to=%2Fsettings%2Fmessage_consent"},
+		{path: "/settings/places", wantStatus: http.StatusSeeOther, wantLocation: "/sign_in?return_to=%2Fsettings%2Fplaces"},
 		{path: "/settings/withdrawal", wantStatus: http.StatusSeeOther, wantLocation: "/sign_in?return_to=%2Fsettings%2Fwithdrawal"},
+		{path: "/events", wantStatus: http.StatusSeeOther, wantLocation: "/sign_in?return_to=%2Fevents"},
+		{path: "/items/new", wantStatus: http.StatusSeeOther, wantLocation: "/sign_in?return_to=%2Fitems%2Fnew"},
+		{path: "/matches", wantStatus: http.StatusSeeOther, wantLocation: "/sign_in?return_to=%2Fmatches"},
+		{path: "/@cutre_user/trades/new", wantStatus: http.StatusSeeOther, wantLocation: "/sign_in?return_to=%2F%40cutre_user%2Ftrades%2Fnew"},
+		{path: "/@cutre_user/trades/new/confirmation", wantStatus: http.StatusSeeOther, wantLocation: "/sign_in?return_to=%2F%40cutre_user%2Ftrades%2Fnew%2Fconfirmation"},
+		{path: "/trades", wantStatus: http.StatusSeeOther, wantLocation: "/sign_in?return_to=%2Ftrades"},
+		{path: "/trades/0199a2b0-0000-7000-8000-000000000000", wantStatus: http.StatusSeeOther, wantLocation: "/sign_in?return_to=%2Ftrades%2F0199a2b0-0000-7000-8000-000000000000"},
+		{path: "/messages", wantStatus: http.StatusSeeOther, wantLocation: "/sign_in?return_to=%2Fmessages"},
 		// ログイン後のページは言語版を持たない。
 		{path: "/en/home", wantStatus: http.StatusNotFound},
 		{path: "/en/@cutre_user", wantStatus: http.StatusNotFound},
@@ -1935,6 +1945,286 @@ func TestNewRouter_SettingsInvitation(t *testing.T) {
 	}
 }
 
+// TestNewRouter_Admin は、管理画面のルートがログインを求め、一般のユーザーには存在しないページとして404を返し、
+// 編集者には描画することと、状態を変える送信 (_method による上書きを含む) がCSRFトークンを求めることを検証する。
+func TestNewRouter_Admin(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.GetTestDB()
+	router := newRouter(testConfig(), db, t.TempDir())
+	sessionToken := func(role model.UserRole) string {
+		userSession := testutil.NewUserSessionBuilder(t, db).WithUserID(testutil.NewUserBuilder(t, db).WithRole(role).Build())
+		userSession.Build()
+		return userSession.Token()
+	}
+	userToken := sessionToken(model.UserRoleUser)
+	editorToken := sessionToken(model.UserRoleEditor)
+	eventID := testutil.NewEventBuilder(t, db).Build()
+	eventPath := "/admin/events/" + eventID.String()
+	categoryID := testutil.NewEventCategoryBuilder(t, db, eventID).Build()
+	categoryPath := "/admin/categories/" + categoryID.String()
+	goodsPath := "/admin/goods/" + testutil.NewGoodsBuilder(t, db, categoryID).Build().String()
+	stationPath := "/admin/stations/" + testutil.NewStationBuilder(t, db).Build().String()
+
+	// ケースは順に同じイベント・カテゴリー・グッズ・駅を変えていくため、送る版 (lock_version) はその時点の版にする。
+	// どれも更新で0から1に、アーカイブで1から2に、元に戻すことで2から3に上がる。
+	tests := []struct {
+		name         string
+		method       string
+		path         string
+		body         string
+		token        string
+		csrf         bool
+		wantCode     int
+		wantLocation string
+	}{
+		{name: "入口: ログインしていなければログイン画面へ送る", method: http.MethodGet, path: "/admin", wantCode: http.StatusSeeOther, wantLocation: "/sign_in?return_to=%2Fadmin"},
+		{name: "入口: 一般のユーザーには404", method: http.MethodGet, path: "/admin", token: userToken, wantCode: http.StatusNotFound},
+		{name: "入口: 編集者には描画する", method: http.MethodGet, path: "/admin", token: editorToken, wantCode: http.StatusOK},
+		{name: "一覧: 一般のユーザーには404", method: http.MethodGet, path: "/admin/events", token: userToken, wantCode: http.StatusNotFound},
+		{name: "一覧: 編集者には描画する", method: http.MethodGet, path: "/admin/events", token: editorToken, wantCode: http.StatusOK},
+		{name: "作成の画面: 編集者には描画する", method: http.MethodGet, path: "/admin/events/new", token: editorToken, wantCode: http.StatusOK},
+		{name: "編集の画面: 一般のユーザーには404", method: http.MethodGet, path: eventPath + "/edit", token: userToken, wantCode: http.StatusNotFound},
+		{name: "編集の画面: 編集者には描画する", method: http.MethodGet, path: eventPath + "/edit", token: editorToken, wantCode: http.StatusOK},
+		{name: "アーカイブの画面: 編集者には描画する", method: http.MethodGet, path: eventPath + "/archive/new", token: editorToken, wantCode: http.StatusOK},
+		{name: "作成: CSRFトークンが無ければ拒む", method: http.MethodPost, path: "/admin/events", body: "name=x&starts_on=2026-10-01", token: editorToken, wantCode: http.StatusForbidden},
+		{name: "更新: 一般のユーザーには404", method: http.MethodPost, path: eventPath, body: "_method=PATCH&lock_version=0&name=x&starts_on=2026-10-01", token: userToken, csrf: true, wantCode: http.StatusNotFound},
+		{name: "更新: 編集者は更新して一覧へ戻る", method: http.MethodPost, path: eventPath, body: "_method=PATCH&lock_version=0&name=x&starts_on=2026-10-01", token: editorToken, csrf: true, wantCode: http.StatusSeeOther, wantLocation: "/admin/events"},
+		{name: "アーカイブ: 編集者はアーカイブして編集の画面へ戻る", method: http.MethodPost, path: eventPath + "/archive", body: "archive_message=x&lock_version=1", token: editorToken, csrf: true, wantCode: http.StatusSeeOther, wantLocation: eventPath + "/edit"},
+		{name: "元に戻す: 編集者は戻して編集の画面へ戻る", method: http.MethodPost, path: eventPath + "/archive", body: "_method=DELETE&lock_version=2", token: editorToken, csrf: true, wantCode: http.StatusSeeOther, wantLocation: eventPath + "/edit"},
+		{name: "削除: 編集者には404", method: http.MethodPost, path: eventPath, body: "_method=DELETE", token: editorToken, csrf: true, wantCode: http.StatusNotFound},
+		{name: "カテゴリーの作成の画面: 一般のユーザーには404", method: http.MethodGet, path: eventPath + "/categories/new", token: userToken, wantCode: http.StatusNotFound},
+		{name: "カテゴリーの作成の画面: 編集者には描画する", method: http.MethodGet, path: eventPath + "/categories/new", token: editorToken, wantCode: http.StatusOK},
+		{name: "カテゴリーの作成: CSRFトークンが無ければ拒む", method: http.MethodPost, path: eventPath + "/categories", body: "name=x&position=1", token: editorToken, wantCode: http.StatusForbidden},
+		{name: "カテゴリーの編集の画面: 編集者には描画する", method: http.MethodGet, path: categoryPath + "/edit", token: editorToken, wantCode: http.StatusOK},
+		{name: "カテゴリーの更新: 編集者は更新してイベントの編集の画面へ戻る", method: http.MethodPost, path: categoryPath, body: "_method=PATCH&lock_version=0&name=x&position=1", token: editorToken, csrf: true, wantCode: http.StatusSeeOther, wantLocation: eventPath + "/edit"},
+		{name: "カテゴリーのアーカイブの画面: 編集者には描画する", method: http.MethodGet, path: categoryPath + "/archive/new", token: editorToken, wantCode: http.StatusOK},
+		{name: "カテゴリーのアーカイブ: 編集者はアーカイブしてカテゴリーの編集の画面へ戻る", method: http.MethodPost, path: categoryPath + "/archive", body: "archive_message=x&lock_version=1", token: editorToken, csrf: true, wantCode: http.StatusSeeOther, wantLocation: categoryPath + "/edit"},
+		{name: "カテゴリーを元に戻す: 編集者は戻してカテゴリーの編集の画面へ戻る", method: http.MethodPost, path: categoryPath + "/archive", body: "_method=DELETE&lock_version=2", token: editorToken, csrf: true, wantCode: http.StatusSeeOther, wantLocation: categoryPath + "/edit"},
+		{name: "カテゴリーの削除: 編集者には404", method: http.MethodPost, path: categoryPath, body: "_method=DELETE&lock_version=3", token: editorToken, csrf: true, wantCode: http.StatusNotFound},
+		{name: "グッズの作成の画面: 編集者には描画する", method: http.MethodGet, path: categoryPath + "/goods/new", token: editorToken, wantCode: http.StatusOK},
+		{name: "グッズの作成: 編集者は作成してカテゴリーの編集の画面へ戻る", method: http.MethodPost, path: categoryPath + "/goods", body: "name=x&position=1", token: editorToken, csrf: true, wantCode: http.StatusSeeOther, wantLocation: categoryPath + "/edit"},
+		{name: "グッズの編集の画面: 一般のユーザーには404", method: http.MethodGet, path: goodsPath + "/edit", token: userToken, wantCode: http.StatusNotFound},
+		{name: "グッズの編集の画面: 編集者には描画する", method: http.MethodGet, path: goodsPath + "/edit", token: editorToken, wantCode: http.StatusOK},
+		{name: "グッズの更新: 編集者は更新してカテゴリーの編集の画面へ戻る", method: http.MethodPost, path: goodsPath, body: "_method=PATCH&lock_version=0&name=x&position=1", token: editorToken, csrf: true, wantCode: http.StatusSeeOther, wantLocation: categoryPath + "/edit"},
+		{name: "グッズのアーカイブの画面: 編集者には描画する", method: http.MethodGet, path: goodsPath + "/archive/new", token: editorToken, wantCode: http.StatusOK},
+		{name: "グッズのアーカイブ: 編集者はアーカイブしてグッズの編集の画面へ戻る", method: http.MethodPost, path: goodsPath + "/archive", body: "archive_message=x&lock_version=1", token: editorToken, csrf: true, wantCode: http.StatusSeeOther, wantLocation: goodsPath + "/edit"},
+		{name: "グッズを元に戻す: 編集者は戻してグッズの編集の画面へ戻る", method: http.MethodPost, path: goodsPath + "/archive", body: "_method=DELETE&lock_version=2", token: editorToken, csrf: true, wantCode: http.StatusSeeOther, wantLocation: goodsPath + "/edit"},
+		{name: "グッズの削除: 編集者には404", method: http.MethodPost, path: goodsPath, body: "_method=DELETE&lock_version=3", token: editorToken, csrf: true, wantCode: http.StatusNotFound},
+		{name: "駅の一覧: 一般のユーザーには404", method: http.MethodGet, path: "/admin/stations", token: userToken, wantCode: http.StatusNotFound},
+		{name: "駅の一覧: 編集者には描画する", method: http.MethodGet, path: "/admin/stations", token: editorToken, wantCode: http.StatusOK},
+		{name: "駅の作成の画面: 編集者には描画する", method: http.MethodGet, path: "/admin/stations/new?prefecture_code=13", token: editorToken, wantCode: http.StatusOK},
+		{name: "駅の作成: CSRFトークンが無ければ拒む", method: http.MethodPost, path: "/admin/stations", body: "prefecture_code=13&name=x&position=1", token: editorToken, wantCode: http.StatusForbidden},
+		{name: "駅の編集の画面: 一般のユーザーには404", method: http.MethodGet, path: stationPath + "/edit", token: userToken, wantCode: http.StatusNotFound},
+		{name: "駅の編集の画面: 編集者には描画する", method: http.MethodGet, path: stationPath + "/edit", token: editorToken, wantCode: http.StatusOK},
+		{name: "駅の更新: 編集者は更新して一覧へ戻る", method: http.MethodPost, path: stationPath, body: "_method=PATCH&lock_version=0&prefecture_code=13&name=x&position=1", token: editorToken, csrf: true, wantCode: http.StatusSeeOther, wantLocation: "/admin/stations"},
+		{name: "駅のアーカイブの画面: 編集者には描画する", method: http.MethodGet, path: stationPath + "/archive/new", token: editorToken, wantCode: http.StatusOK},
+		{name: "駅のアーカイブ: 編集者はアーカイブして駅の編集の画面へ戻る", method: http.MethodPost, path: stationPath + "/archive", body: "archive_message=x&lock_version=1", token: editorToken, csrf: true, wantCode: http.StatusSeeOther, wantLocation: stationPath + "/edit"},
+		{name: "駅を元に戻す: 編集者は戻して駅の編集の画面へ戻る", method: http.MethodPost, path: stationPath + "/archive", body: "_method=DELETE&lock_version=2", token: editorToken, csrf: true, wantCode: http.StatusSeeOther, wantLocation: stationPath + "/edit"},
+		{name: "駅の削除: 編集者には404", method: http.MethodPost, path: stationPath, body: "_method=DELETE&lock_version=3", token: editorToken, csrf: true, wantCode: http.StatusNotFound},
+	}
+
+	for _, tt := range tests {
+		req := httptest.NewRequest(tt.method, tt.path, strings.NewReader(tt.body))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		if tt.csrf {
+			req = withCSRFToken(req)
+		}
+		if tt.token != "" {
+			req.AddCookie(&http.Cookie{Name: session.CookieName, Value: tt.token})
+		}
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != tt.wantCode || rec.Header().Get("Location") != tt.wantLocation {
+			t.Errorf("%s: 応答 = %d %q、期待値 = %d %q", tt.name, rec.Code, rec.Header().Get("Location"), tt.wantCode, tt.wantLocation)
+		}
+	}
+}
+
+// TestNewRouter_Item は、イベント → カテゴリー → グッズの順にたどってリストに追加する画面を開けることと、
+// 追加がCSRFトークンとログインを求め、同じリストに同じグッズを2つ入れようとすると409で描き直すことと、
+// リスト・アイテムの編集の画面を開け、更新とリストから外す操作が _method で届くことを検証する。
+// 同じアイテムを2つ作らないことはデータベースの一意制約で保証しており、違反はテストのトランザクションを中断させるため、
+// トランザクションで包まないルーターのテストで確かめる。
+func TestNewRouter_Item(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.GetTestDB()
+	router := newRouter(testConfig(), db, t.TempDir())
+	userID := testutil.NewUserBuilder(t, db).Build()
+	userSession := testutil.NewUserSessionBuilder(t, db).WithUserID(userID)
+	userSession.Build()
+	eventID := testutil.NewEventBuilder(t, db).Build()
+	categoryID := testutil.NewEventCategoryBuilder(t, db, eventID).Build()
+	goodsID := testutil.NewGoodsBuilder(t, db, categoryID).Build()
+	categoryPath := "/events/" + eventID.String() + "/categories/" + categoryID.String()
+	body := "goods_id=" + goodsID.String() + "&kind=give&quantity=1"
+	itemPath := "/items/" + testutil.NewItemBuilder(t, db, userID, goodsID).WithKind(model.ItemKindWant).Build().String()
+
+	// 追加してから同じ内容をもう一度送る順と、アイテムを更新してから外す順に並べる。
+	tests := []struct {
+		name         string
+		method       string
+		path         string
+		body         string
+		signedIn     bool
+		csrf         bool
+		wantCode     int
+		wantLocation string
+	}{
+		{name: "イベントの一覧", method: http.MethodGet, path: "/events", signedIn: true, wantCode: http.StatusOK},
+		{name: "イベントのカテゴリーの一覧", method: http.MethodGet, path: "/events/" + eventID.String(), signedIn: true, wantCode: http.StatusOK},
+		{name: "カテゴリーのグッズの一覧", method: http.MethodGet, path: categoryPath, signedIn: true, wantCode: http.StatusOK},
+		{name: "リストに追加する画面", method: http.MethodGet, path: "/items/new?goods_id=" + goodsID.String() + "&kind=give", signedIn: true, wantCode: http.StatusOK},
+		{name: "追加: CSRFトークンが無ければ拒む", method: http.MethodPost, path: "/items", body: body, signedIn: true, wantCode: http.StatusForbidden},
+		{name: "追加: ログインしていなければログイン画面へ送る", method: http.MethodPost, path: "/items", body: body, csrf: true, wantCode: http.StatusSeeOther, wantLocation: "/sign_in"},
+		{name: "追加してカテゴリーのグッズの一覧へ戻す", method: http.MethodPost, path: "/items", body: body, signedIn: true, csrf: true, wantCode: http.StatusSeeOther, wantLocation: categoryPath},
+		{name: "同じリストに同じグッズを2つ入れようとすると描き直す", method: http.MethodPost, path: "/items", body: body, signedIn: true, csrf: true, wantCode: http.StatusConflict},
+		{name: "リスト", method: http.MethodGet, path: "/list?kind=give", signedIn: true, wantCode: http.StatusOK},
+		{name: "リスト: ログインしていなければログイン画面へ送る", method: http.MethodGet, path: "/list", wantCode: http.StatusSeeOther, wantLocation: "/sign_in?return_to=%2Flist"},
+		{name: "アイテムの編集の画面", method: http.MethodGet, path: itemPath + "/edit", signedIn: true, wantCode: http.StatusOK},
+		{name: "更新: CSRFトークンが無ければ拒む", method: http.MethodPost, path: itemPath, body: "_method=PATCH&quantity=3", signedIn: true, wantCode: http.StatusForbidden},
+		{name: "更新してリストへ戻す", method: http.MethodPost, path: itemPath, body: "_method=PATCH&lock_version=0&quantity=3", signedIn: true, csrf: true, wantCode: http.StatusSeeOther, wantLocation: "/list?kind=want"},
+		{name: "リストから外してリストへ戻す", method: http.MethodPost, path: itemPath, body: "_method=DELETE&lock_version=1", signedIn: true, csrf: true, wantCode: http.StatusSeeOther, wantLocation: "/list?kind=want"},
+		{name: "外したアイテムの編集の画面は無い", method: http.MethodGet, path: itemPath + "/edit", signedIn: true, wantCode: http.StatusNotFound},
+	}
+
+	for _, tt := range tests {
+		req := httptest.NewRequest(tt.method, tt.path, strings.NewReader(tt.body))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		if tt.csrf {
+			req = withCSRFToken(req)
+		}
+		if tt.signedIn {
+			req.AddCookie(&http.Cookie{Name: session.CookieName, Value: userSession.Token()})
+		}
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != tt.wantCode || rec.Header().Get("Location") != tt.wantLocation {
+			t.Errorf("%s: 応答 = %d %q、期待値 = %d %q", tt.name, rec.Code, rec.Header().Get("Location"), tt.wantCode, tt.wantLocation)
+		}
+	}
+}
+
+// TestNewRouter_Trade は、交換の申し込みの画面と申し込みが、ログインとCSRFトークンを求め、
+// 申し込んだら交換のページへ送ることを検証する。
+func TestNewRouter_Trade(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.GetTestDB()
+	router := newRouter(testConfig(), db, t.TempDir())
+	userID := testutil.NewUserBuilder(t, db).Build()
+	testutil.NewMessageConsentBuilder(t, db, userID).Build()
+	userSession := testutil.NewUserSessionBuilder(t, db).WithUserID(userID)
+	userSession.Build()
+	partnerAtname := testutil.UniqueAtname()
+	partnerID := testutil.NewUserBuilder(t, db).WithAtname(partnerAtname).Build()
+	categoryID := testutil.NewEventCategoryBuilder(t, db, testutil.NewEventBuilder(t, db).Build()).Build()
+	wantedGoodsID := testutil.NewGoodsBuilder(t, db, categoryID).Build()
+	offeredGoodsID := testutil.NewGoodsBuilder(t, db, categoryID).Build()
+	testutil.NewItemBuilder(t, db, userID, wantedGoodsID).WithKind(model.ItemKindWant).Build()
+	testutil.NewItemBuilder(t, db, partnerID, offeredGoodsID).WithKind(model.ItemKindWant).Build()
+	receiveItemID := testutil.NewItemBuilder(t, db, partnerID, wantedGoodsID).Build()
+	giveItemID := testutil.NewItemBuilder(t, db, userID, offeredGoodsID).Build()
+	body := "atname=" + partnerAtname + "&receive_item_ids=" + receiveItemID.String() + "&give_item_ids=" + giveItemID.String()
+
+	tests := []struct {
+		name         string
+		method       string
+		path         string
+		body         string
+		signedIn     bool
+		csrf         bool
+		wantCode     int
+		wantLocation string
+	}{
+		{name: "組み合わせを選ぶ画面", method: http.MethodGet, path: "/@" + partnerAtname + "/trades/new", signedIn: true, wantCode: http.StatusOK},
+		{name: "申し込み内容の確認の画面", method: http.MethodGet, path: "/@" + partnerAtname + "/trades/new/confirmation?receive_item_ids=" + receiveItemID.String() + "&give_item_ids=" + giveItemID.String(), signedIn: true, wantCode: http.StatusOK},
+		{name: "申し込み: CSRFトークンが無ければ拒む", method: http.MethodPost, path: "/trades", body: body, signedIn: true, wantCode: http.StatusForbidden},
+		{name: "申し込み: ログインしていなければログイン画面へ送る", method: http.MethodPost, path: "/trades", body: body, csrf: true, wantCode: http.StatusSeeOther, wantLocation: "/sign_in"},
+		{name: "申し込んで交換のページへ送る", method: http.MethodPost, path: "/trades", body: body, signedIn: true, csrf: true, wantCode: http.StatusSeeOther, wantLocation: "/trades/"},
+	}
+
+	for _, tt := range tests {
+		req := httptest.NewRequest(tt.method, tt.path, strings.NewReader(tt.body))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		if tt.csrf {
+			req = withCSRFToken(req)
+		}
+		if tt.signedIn {
+			req.AddCookie(&http.Cookie{Name: session.CookieName, Value: userSession.Token()})
+		}
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		// 交換のページのパスは作った交換のIDで決まるため、行き先は接頭辞で確かめる。
+		if location := rec.Header().Get("Location"); rec.Code != tt.wantCode || !strings.HasPrefix(location, tt.wantLocation) || (tt.wantLocation == "") != (location == "") {
+			t.Errorf("%s: 応答 = %d %q、期待値 = %d %q", tt.name, rec.Code, location, tt.wantCode, tt.wantLocation)
+		}
+	}
+}
+
+// TestNewRouter_TradePage は、交換の画面と交換のページがログインを求め、交換のページと取り下げは交換の2人以外に404を返すことと、
+// 取り下げがCSRFトークンを求め、取り下げたら交換のページへ戻すことを検証する。
+// メッセージの一覧を出し、メッセージの取り消しはCSRFトークンを求め、交換の2人以外に404を返し、取り消したらメッセージのページへ戻す。
+// ログイン後のページのメインメニューには、返事を待っている交換の数と、未読のメッセージの数を出す。
+func TestNewRouter_TradePage(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.GetTestDB()
+	router := newRouter(testConfig(), db, t.TempDir())
+	userID := testutil.NewUserBuilder(t, db).Build()
+	userSession := testutil.NewUserSessionBuilder(t, db).WithUserID(userID)
+	userSession.Build()
+	partnerID := testutil.NewUserBuilder(t, db).Build()
+	proposedID := testutil.NewTradeBuilder(t, db, userID, partnerID).Build()
+	testutil.NewTradeBuilder(t, db, partnerID, userID).Build()
+	otherTradeID := testutil.NewTradeBuilder(t, db, partnerID, testutil.NewUserBuilder(t, db).Build()).Build()
+	testutil.NewTradeMessageBuilder(t, db, proposedID, partnerID, "はじめまして").Build()
+	messageID := testutil.NewTradeMessageBuilder(t, db, proposedID, userID, "よろしくお願いします").Build()
+	retractionPath := "/trades/" + proposedID.String() + "/messages/" + messageID.String() + "/retraction"
+
+	tests := []struct {
+		name         string
+		method       string
+		path         string
+		csrf         bool
+		wantCode     int
+		wantLocation string
+		wantBody     string
+	}{
+		{name: "交換の画面", method: http.MethodGet, path: "/trades", wantCode: http.StatusOK, wantBody: `aria-label="交換 (対応待ち 1件)"`},
+		{name: "メッセージの一覧", method: http.MethodGet, path: "/messages", wantCode: http.StatusOK, wantBody: `aria-label="メッセージ (未読 1件)"`},
+		{name: "取り消し: CSRFトークンが無ければ拒む", method: http.MethodPost, path: retractionPath, wantCode: http.StatusForbidden},
+		{name: "取り消し: 交換の2人以外の交換のパス", method: http.MethodPost, path: "/trades/" + otherTradeID.String() + "/messages/" + messageID.String() + "/retraction", csrf: true, wantCode: http.StatusNotFound},
+		{name: "取り消してメッセージのページへ戻す", method: http.MethodPost, path: retractionPath, csrf: true, wantCode: http.StatusSeeOther, wantLocation: "/trades/" + proposedID.String() + "/messages#trade-messages-latest"},
+		{name: "交換のページ", method: http.MethodGet, path: "/trades/" + proposedID.String(), wantCode: http.StatusOK},
+		{name: "交換の2人以外の交換のページ", method: http.MethodGet, path: "/trades/" + otherTradeID.String(), wantCode: http.StatusNotFound},
+		{name: "取り下げ: CSRFトークンが無ければ拒む", method: http.MethodPost, path: "/trades/" + proposedID.String() + "/withdrawal", wantCode: http.StatusForbidden},
+		{name: "取り下げ: 交換の2人以外", method: http.MethodPost, path: "/trades/" + otherTradeID.String() + "/withdrawal", csrf: true, wantCode: http.StatusNotFound},
+		{name: "取り下げて交換のページへ戻す", method: http.MethodPost, path: "/trades/" + proposedID.String() + "/withdrawal", csrf: true, wantCode: http.StatusSeeOther, wantLocation: "/trades/" + proposedID.String()},
+	}
+
+	for _, tt := range tests {
+		req := httptest.NewRequest(tt.method, tt.path, nil)
+		if tt.csrf {
+			req = withCSRFToken(req)
+		}
+		req.AddCookie(&http.Cookie{Name: session.CookieName, Value: userSession.Token()})
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != tt.wantCode || rec.Header().Get("Location") != tt.wantLocation {
+			t.Errorf("%s: 応答 = %d %q、期待値 = %d %q", tt.name, rec.Code, rec.Header().Get("Location"), tt.wantCode, tt.wantLocation)
+		}
+		if !strings.Contains(rec.Body.String(), tt.wantBody) {
+			t.Errorf("%s: レスポンスボディに %q が含まれていない", tt.name, tt.wantBody)
+		}
+	}
+}
+
 // TestNewRouter_SettingsInvitationRecreate は、招待リンクの作り直しがCSRFトークンとログインを求め、
 // 作り直したら招待の画面へ戻すことを検証する。
 func TestNewRouter_SettingsInvitationRecreate(t *testing.T) {
@@ -1980,6 +2270,63 @@ func TestNewRouter_SettingsInvitationRecreate(t *testing.T) {
 	current, err := repository.NewInvitationRepository(db).FindUnrevokedByInviterUserID(context.Background(), userID)
 	if err != nil || current == nil || current.ID == currentID {
 		t.Errorf("取り消していない招待 = (%+v, %v)、作り直した1回分の新しい招待を期待", current, err)
+	}
+}
+
+// TestNewRouter_SettingsMessageConsent は、メッセージの取り扱いへの同意 (POST) と、フォームから _method で送る
+// 同意の取りやめ (DELETE) が、CSRFトークンとログインを求め、それぞれのハンドラーに届いてメッセージの利用の画面へ戻すことを検証する。
+func TestNewRouter_SettingsMessageConsent(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.GetTestDB()
+	router := newRouter(testConfig(), db, t.TempDir())
+
+	userID := testutil.NewUserBuilder(t, db).Build()
+	userSession := testutil.NewUserSessionBuilder(t, db).WithUserID(userID)
+	userSession.Build()
+	consentRepo := repository.NewMessageConsentRepository(db)
+
+	// 同意してからやめる順に並べ、成功した送信のたびに記録の状態を確かめる。
+	tests := []struct {
+		name         string
+		body         string
+		signedIn     bool
+		csrf         bool
+		wantCode     int
+		wantLocation string
+		// wantValid は送信のあとに有効な同意があるべきか。記録を変えない送信では前の状態のまま。
+		wantValid bool
+	}{
+		{name: "同意: CSRFトークンが無ければ拒む", body: "", signedIn: true, csrf: false, wantCode: http.StatusForbidden},
+		{name: "同意: ログインしていなければログイン画面へ送る", body: "", signedIn: false, csrf: true, wantCode: http.StatusSeeOther, wantLocation: "/sign_in"},
+		{name: "同意してメッセージの利用の画面へ戻す", body: "", signedIn: true, csrf: true, wantCode: http.StatusSeeOther, wantLocation: "/settings/message_consent", wantValid: true},
+		{name: "取りやめ: CSRFトークンが無ければ拒む", body: "_method=DELETE", signedIn: true, csrf: false, wantCode: http.StatusForbidden, wantValid: true},
+		{name: "取りやめ: ログインしていなければログイン画面へ送る", body: "_method=DELETE", signedIn: false, csrf: true, wantCode: http.StatusSeeOther, wantLocation: "/sign_in", wantValid: true},
+		{name: "同意をやめてメッセージの利用の画面へ戻す", body: "_method=DELETE", signedIn: true, csrf: true, wantCode: http.StatusSeeOther, wantLocation: "/settings/message_consent"},
+	}
+
+	for _, tt := range tests {
+		req := httptest.NewRequest(http.MethodPost, "/settings/message_consent", strings.NewReader(tt.body))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		if tt.csrf {
+			req = withCSRFToken(req)
+		}
+		if tt.signedIn {
+			req.AddCookie(&http.Cookie{Name: session.CookieName, Value: userSession.Token()})
+		}
+		rec := httptest.NewRecorder()
+		router.ServeHTTP(rec, req)
+
+		if rec.Code != tt.wantCode || rec.Header().Get("Location") != tt.wantLocation {
+			t.Errorf("%s: 応答 = %d %q、期待値 = %d %q", tt.name, rec.Code, rec.Header().Get("Location"), tt.wantCode, tt.wantLocation)
+		}
+		consent, err := consentRepo.FindLatestByUserID(context.Background(), userID)
+		if err != nil {
+			t.Fatalf("%s: 同意の取得のエラー = %v", tt.name, err)
+		}
+		if valid := consent != nil && consent.IsValid(); valid != tt.wantValid {
+			t.Errorf("%s: 有効な同意 = %v (%+v)、期待値 = %v", tt.name, valid, consent, tt.wantValid)
+		}
 	}
 }
 

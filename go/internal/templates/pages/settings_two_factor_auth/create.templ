@@ -17,13 +17,13 @@ const recoveryCodesFileName = "cutre-recovery-codes.txt"
 
 // Create は、二要素認証を有効にしたことを伝え、リカバリーコードを一度だけ示す画面を描画する。
 //
-// コードは保存していないため、この画面から離れると二度と表示できない。戻るリンクは置かず、
+// コードは保存していないため、この画面から離れると二度と表示できない。パンくずとメインメニューは置かず、
 // 「保存しました」をチェックして完了を押す操作だけで二要素認証の画面へ進ませる。
 // 完了はGETのフォームにし、required のチェックボックスでJavaScriptが無くてもチェックするまで進めないようにする。
 // チェックボックスには name を付けず、完了後のURLに値を残さない。
 templ Create(data CreatePageData) {
 	<div class="flex w-full flex-1 flex-col gap-3 py-4 md:mx-auto md:max-w-180">
-		<h1 id="recovery-codes-heading" class="px-4 text-base font-semibold md:px-0">{ templates.T(ctx, "settings_two_factor_auth_create_heading") }</h1>
+		<h1 id="recovery-codes-heading" class="px-4 text-xl font-semibold md:px-0">{ templates.T(ctx, "settings_two_factor_auth_create_heading") }</h1>
 		<p class="px-4 text-sm md:px-0">
 			<strong class="font-semibold">{ templates.T(ctx, "settings_two_factor_auth_create_enabled") }</strong>
 			{ templates.T(ctx, "settings_two_factor_auth_create_lead") }

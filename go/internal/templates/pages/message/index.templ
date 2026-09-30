@@ -1,0 +1,53 @@
+package message
+
+import (
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+	"github.com/cutreapp/cutre/go/internal/viewmodel"
+)
+
+// IndexPageData はメッセージの一覧の描画に使うデータ。
+type IndexPageData struct {
+	// Rows はユーザーの交換ごとのメッセージで、最新のメッセージが新しいものから並ぶ。
+	Rows []viewmodel.TradeMessageListRow
+}
+
+// Index はメッセージの一覧を描画する。メインメニューのメッセージの行き先。
+//
+// 交換ごとに1行にし、各行を交換のメッセージのページ (最新のメッセージまで進めた位置) へのリンクにする。
+// 行には相手・最新のメッセージを送った日時・最新のメッセージの抜き出し・交換の品の点数・未読の数を置き、終わった交換には「終了」のバッジを添える。
+// 未読のある行は、抜き出しを太くして目に留まるようにする。
+templ Index(data IndexPageData) {
+	<div class="flex w-full flex-1 flex-col gap-3 py-4 md:mx-auto md:max-w-180">
+		<div class="flex flex-col gap-1">
+			@components.PageHeading(components.PageHeadingData{Title: templates.T(ctx, "message_index_heading")})
+			<p class="px-4 text-sm md:px-0">{ templates.T(ctx, "message_index_description") }</p>
+		</div>
+		if len(data.Rows) == 0 {
+			<p class="page-card text-sm text-muted-foreground">{ templates.T(ctx, "message_index_empty") }</p>
+		} else {
+			<ul class="page-card divide-y py-0">
+				for _, row := range data.Rows {
+					<li>
+						<a href={ templ.SafeURL(templates.TradeMessagesLatestPath(row.ID)) } class="-mx-4 flex min-h-12 flex-col gap-0.5 px-4 py-3">
+							<span class="flex items-center gap-2">
+								<span class="min-w-0 flex-1 truncate text-sm font-semibold">{ row.PartnerName }</span>
+								<time datetime={ row.DateTime } class="shrink-0 text-sm">{ row.DisplayTime }</time>
+							</span>
+							@components.TradeMessagePreview(row.LatestMessage, row.PartnerName, row.UnreadCount > 0)
+							<span class="flex items-center gap-1.5">
+								if row.Ended {
+									<span class="badge shrink-0" data-variant="outline">{ templates.T(ctx, "message_index_ended") }</span>
+								}
+								<span class="min-w-0 flex-1 truncate text-sm text-muted-foreground">
+									{ templates.T(ctx, "message_index_quantities", map[string]any{"Receive": row.ReceiveQuantity, "Give": row.GiveQuantity}) }
+								</span>
+								@components.UnreadMessageCount(row.UnreadCount)
+							</span>
+						</a>
+					</li>
+				}
+			</ul>
+		}
+	</div>
+}

@@ -95,6 +95,8 @@ linters:
           deny:
             - pkg: github.com/cutreapp/cutre/go/internal/database
               desc: "HandlerはDatabaseに直接依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/policy
+              desc: "HandlerはPolicyに依存できません。認可はUseCaseを経由してください。"
 
         # Httperror層: どのリソースにも属さない共通のエラーページを描画する。
         # Handler層と同じくPresentation層の入口のため、データアクセスの制約も同じにする。
@@ -245,6 +247,30 @@ linters:
             - pkg: github.com/cutreapp/cutre/go/internal/worker
               desc: "DispatcherはWorkerに依存できません。"
 
+        # Policy層: 操作をしてよいかの判定 (認可)。Modelだけに依存し、UseCaseから呼ばれる。
+        policy-layer:
+          files:
+            - "**/internal/policy/**"
+          deny:
+            - pkg: github.com/cutreapp/cutre/go/internal/database
+              desc: "PolicyはDatabaseに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/query
+              desc: "PolicyはQueryに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/repository
+              desc: "PolicyはRepositoryに依存できません。判定に要るModelは呼び出し元から受け取ってください。"
+            - pkg: github.com/cutreapp/cutre/go/internal/usecase
+              desc: "PolicyはUseCaseに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/validator
+              desc: "PolicyはValidatorに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/handler
+              desc: "PolicyはHandlerに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/middleware
+              desc: "PolicyはMiddlewareに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/templates
+              desc: "PolicyはTemplatesに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/viewmodel
+              desc: "PolicyはViewModelに依存できません。"
+
         # Validator層: フォームの入力を検証する。UseCaseから呼ばれ、データアクセスはRepositoryを経由する。
         validator-layer:
           files:
@@ -289,6 +315,64 @@ linters:
               desc: "RateLimitはTemplatesに依存できません。"
             - pkg: github.com/cutreapp/cutre/go/internal/viewmodel
               desc: "RateLimitはViewModelに依存できません。"
+
+        # HTTPAdmin層: 管理画面のハンドラーが共有する、リクエストの読み取りとエラーの応え方の判定。
+        # Handler層の補助のため、データアクセスとほかのPresentation層のパッケージは知らない。
+        httpadmin-layer:
+          files:
+            - "**/internal/httpadmin/**"
+          deny:
+            - pkg: github.com/cutreapp/cutre/go/internal/database
+              desc: "HTTPAdminはDatabaseに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/query
+              desc: "HTTPAdminはQueryに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/repository
+              desc: "HTTPAdminはRepositoryに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/usecase
+              desc: "HTTPAdminはUseCaseに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/policy
+              desc: "HTTPAdminはPolicyに依存できません。認可はUseCaseを経由してください。"
+            - pkg: github.com/cutreapp/cutre/go/internal/handler
+              desc: "HTTPAdminはHandlerに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/httperror
+              desc: "HTTPAdminはHttperrorに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/templates
+              desc: "HTTPAdminはTemplatesに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/viewmodel
+              desc: "HTTPAdminはViewModelに依存できません。"
+
+        # HTTPForm層: 管理画面とユーザー向けの画面のハンドラーが共有する、フォームの値の読み取り。
+        # Handler層の補助のため、リクエストの読み取りだけを持ち、ドメインとほかのPresentation層のパッケージは知らない。
+        httpform-layer:
+          files:
+            - "**/internal/httpform/**"
+          deny:
+            - pkg: github.com/cutreapp/cutre/go/internal/database
+              desc: "HTTPFormはDatabaseに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/query
+              desc: "HTTPFormはQueryに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/repository
+              desc: "HTTPFormはRepositoryに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/usecase
+              desc: "HTTPFormはUseCaseに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/policy
+              desc: "HTTPFormはPolicyに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/model
+              desc: "HTTPFormはModelに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/handler
+              desc: "HTTPFormはHandlerに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/httpadmin
+              desc: "HTTPFormはHTTPAdminに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/httperror
+              desc: "HTTPFormはHttperrorに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/i18n
+              desc: "HTTPFormはI18nに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/session
+              desc: "HTTPFormはSessionに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/templates
+              desc: "HTTPFormはTemplatesに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/viewmodel
+              desc: "HTTPFormはViewModelに依存できません。"
 
         # ClientIP層: リクエストからクライアントのアドレスを解決する技術ユーティリティ。
         # 信頼するプロキシは引数で受け取り、標準ライブラリだけで完結させる。

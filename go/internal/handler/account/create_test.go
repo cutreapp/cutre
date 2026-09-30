@@ -16,7 +16,8 @@ import (
 	"github.com/cutreapp/cutre/go/internal/testutil"
 )
 
-// TestCreate は、アカウントを表示中の言語で作ってログインさせ、登録の途中のCookieを消してホームへ送ることを検証する。
+// TestCreate は、アカウントを表示中の言語で作ってメッセージの取り扱いへの同意を記録し、ログインさせ、
+// 登録の途中のCookieを消してホームへ送ることを検証する。
 func TestCreate(t *testing.T) {
 	t.Parallel()
 
@@ -34,7 +35,7 @@ func TestCreate(t *testing.T) {
 		atname := testutil.UniqueAtname()
 
 		rec := httptest.NewRecorder()
-		newHandler().Create(rec, newRequest(http.MethodPost, tt.target, url.Values{"atname": {atname}, "password": {"password1234"}}, tt.locale, continuationCookies(testutil.NewInvitationBuilder(t, db).Build(), confirmationID)))
+		newHandler().Create(rec, newRequest(http.MethodPost, tt.target, url.Values{"atname": {atname}, "password": {"password1234"}, "message_consent": {"1"}}, tt.locale, continuationCookies(testutil.NewInvitationBuilder(t, db).Build(), confirmationID)))
 
 		if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/home" {
 			t.Fatalf("%s: 応答 = %d %q、303 /home を期待\n%s", tt.target, rec.Code, rec.Header().Get("Location"), rec.Body.String())
@@ -58,10 +59,14 @@ func TestCreate(t *testing.T) {
 		if user.Atname != atname || user.Locale != tt.wantLocale {
 			t.Errorf("%s: ユーザー = %+v、アットネーム %q・ロケール %q を期待", tt.target, user, atname, tt.wantLocale)
 		}
+		if consent, err := repository.NewMessageConsentRepository(db).FindLatestByUserID(context.Background(), user.ID); err != nil || consent == nil || !consent.IsValid() {
+			t.Errorf("%s: メッセージの取り扱いへの同意 = (%+v, %v)、有効な同意を期待", tt.target, consent, err)
+		}
 	}
 }
 
 // TestCreate_Rejected は、受け付けなかった送信を422で再描画し、アットネームとメールアドレスは戻してパスワードは戻さないことを検証する。
+// 同意のチェックが無ければ、そのこともエラーで示す。
 func TestCreate_Rejected(t *testing.T) {
 	t.Parallel()
 
@@ -78,6 +83,7 @@ func TestCreate_Rejected(t *testing.T) {
 	for _, want := range []string{
 		"半角英数字とアンダースコア (_) だけで入力してください",
 		"8文字以上で入力してください",
+		"メッセージの取り扱いを確かめて、チェックを入れてください",
 		`value="cutre-user"`,
 		`value="` + email + `"`,
 		`aria-invalid="true"`,
@@ -94,6 +100,27 @@ func TestCreate_Rejected(t *testing.T) {
 	}
 }
 
+// TestCreate_KeepsMessageConsent は、同意のチェックを入れて送ったフォームを再描画するとき、チェックを入れたまま戻すことを検証する。
+func TestCreate_KeepsMessageConsent(t *testing.T) {
+	t.Parallel()
+
+	confirmationID, _ := confirmedEmail(t)
+	cookies := continuationCookies(testutil.NewInvitationBuilder(t, testutil.GetTestDB()).Build(), confirmationID)
+	rec := httptest.NewRecorder()
+	newHandler().Create(rec, newRequest(http.MethodPost, "/account", url.Values{"atname": {"cutre-user"}, "password": {"password1234"}, "message_consent": {"1"}}, i18n.LangJa, cookies))
+
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("ステータス = %d、期待値 = 422", rec.Code)
+	}
+	body := rec.Body.String()
+	if want := `aria-describedby="message-consent-terms" checked>`; !strings.Contains(body, want) {
+		t.Errorf("応答に %q が無い", want)
+	}
+	if strings.Contains(body, "メッセージの取り扱いを確かめて") {
+		t.Error("チェックを入れた送信に、同意のエラーを出した")
+	}
+}
+
 // TestCreate_InvitationUnusable は、招待が使えなくなっているとき、アカウントを作らずにその理由を403で示すことを検証する。
 func TestCreate_InvitationUnusable(t *testing.T) {
 	t.Parallel()
@@ -103,7 +130,7 @@ func TestCreate_InvitationUnusable(t *testing.T) {
 	invitationID := testutil.NewInvitationBuilder(t, db).WithExpiresAt(time.Now().Add(-time.Minute)).Build()
 
 	rec := httptest.NewRecorder()
-	newHandler().Create(rec, newRequest(http.MethodPost, "/account", url.Values{"atname": {testutil.UniqueAtname()}, "password": {"password1234"}}, i18n.LangJa, continuationCookies(invitationID, confirmationID)))
+	newHandler().Create(rec, newRequest(http.MethodPost, "/account", url.Values{"atname": {testutil.UniqueAtname()}, "password": {"password1234"}, "message_consent": {"1"}}, i18n.LangJa, continuationCookies(invitationID, confirmationID)))
 
 	assertInvitationUnusable(t, rec)
 	if user, err := repository.NewUserRepository(db).FindByEmail(context.Background(), email); err != nil || user != nil {
@@ -120,7 +147,7 @@ func TestCreate_RedirectsWithoutConfirmation(t *testing.T) {
 	cookies := continuationCookies(testutil.NewInvitationBuilder(t, db).Build(), testutil.NewEmailConfirmationBuilder(t, db).Build())
 
 	rec := httptest.NewRecorder()
-	newHandler().Create(rec, newRequest(http.MethodPost, "/account", url.Values{"atname": {atname}, "password": {"password1234"}}, i18n.LangJa, cookies))
+	newHandler().Create(rec, newRequest(http.MethodPost, "/account", url.Values{"atname": {atname}, "password": {"password1234"}, "message_consent": {"1"}}, i18n.LangJa, cookies))
 
 	if rec.Code != http.StatusSeeOther || rec.Header().Get("Location") != "/sign_up" {
 		t.Errorf("応答 = %d %q、303 /sign_up を期待", rec.Code, rec.Header().Get("Location"))

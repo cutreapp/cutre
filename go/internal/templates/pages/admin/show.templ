@@ -1,0 +1,42 @@
+package admin
+
+import (
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+)
+
+// ShowPageData は管理画面の入口の描画に使うデータ。
+type ShowPageData struct {
+	// ProfilePath はパンくずに置くマイページ (自分のプロフィール) のパス。
+	ProfilePath string
+}
+
+// Show は管理画面の入口を描画する。マスタの種類ごとの管理の画面へのリンクを並べる。
+templ Show(data ShowPageData) {
+	<div class="flex w-full flex-1 flex-col gap-3 py-4 md:mx-auto md:max-w-180">
+		@components.PageHeading(components.PageHeadingData{
+			Title:       templates.T(ctx, "admin_show_heading"),
+			Breadcrumbs: []components.Breadcrumb{{Label: templates.T(ctx, "admin_show_breadcrumb_my_page"), Path: data.ProfilePath}},
+		})
+		<ul class="page-card divide-y py-0">
+			<li>
+				<a href={ templ.SafeURL(templates.AdminEventsPath) } class="-mx-4 flex min-h-12 items-center gap-3 px-4 py-2">
+					<span class="flex flex-1 flex-col">
+						<span class="text-sm font-medium">{ templates.T(ctx, "admin_show_events_link") }</span>
+						<span class="text-sm text-muted-foreground">{ templates.T(ctx, "admin_show_events_summary") }</span>
+					</span>
+					<svg aria-hidden="true" class="shrink-0 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"></path></svg>
+				</a>
+			</li>
+			<li>
+				<a href={ templ.SafeURL(templates.AdminStationsPath) } class="-mx-4 flex min-h-12 items-center gap-3 px-4 py-2">
+					<span class="flex flex-1 flex-col">
+						<span class="text-sm font-medium">{ templates.T(ctx, "admin_show_stations_link") }</span>
+						<span class="text-sm text-muted-foreground">{ templates.T(ctx, "admin_show_stations_summary") }</span>
+					</span>
+					<svg aria-hidden="true" class="shrink-0 text-muted-foreground" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"></path></svg>
+				</a>
+			</li>
+		</ul>
+	</div>
+}

@@ -4,13 +4,15 @@ import (
 	"context"
 	"io"
 	"log/slog"
+	"time"
 
 	"github.com/cutreapp/cutre/go/internal/config"
 	"github.com/cutreapp/cutre/go/internal/database"
 	"github.com/cutreapp/cutre/go/internal/seed"
 )
 
-// runSeed は名簿 (go/seed-users.toml) のアカウントを開発用データベースへ作る。戻り値はプロセスの終了コード。
+// runSeed は名簿 (go/seed-users.toml) のアカウントと、マスタ (イベント・カテゴリー・グッズ・駅) の見本を
+// 開発用データベースへ作る。戻り値はプロセスの終了コード。
 //
 // 開発環境以外では実行を拒む。名簿のパスワードは全アカウント共通の単純な値のため、
 // 誤って本番へ流すと誰でもログインできるアカウントができてしまう。
@@ -42,8 +44,13 @@ func runSeed(stdout io.Writer) int {
 		}
 	}()
 
-	if err := seed.CreateUsers(context.Background(), db, roster, stdout); err != nil {
+	ctx := context.Background()
+	if err := seed.CreateUsers(ctx, db, roster, stdout); err != nil {
 		slog.Error("アカウントの作成に失敗しました", "error", err)
+		return 1
+	}
+	if err := seed.CreateMasters(ctx, db, seed.DefaultMasters(time.Now()), stdout); err != nil {
+		slog.Error("マスタの見本の作成に失敗しました", "error", err)
 		return 1
 	}
 

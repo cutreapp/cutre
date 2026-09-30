@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -129,10 +130,19 @@ func TestShow_Disabled(t *testing.T) {
 		t.Fatalf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusOK)
 	}
 	body := rec.Body.String()
+	// マイページから辿った画面のため、メインメニューのマイページの項目を選択中 (aria-current="true") にする。
+	// ホームの項目を選択中にしても aria-current="true" は出るため、マイページのリンクに付いていることまで確かめる。
+	myPageLink := regexp.MustCompile(`href="/@` + regexp.QuoteMeta(user.Atname) + `" class="[^"]*" aria-current="true"`)
+	if !myPageLink.MatchString(body) {
+		t.Error("メインメニューのマイページの項目に aria-current=\"true\" が付いていない")
+	}
 	assertContains(t, body,
 		"<title>二要素認証 | Cutre</title>",
 		`<meta name="robots" content="noindex">`,
+		`<html lang="ja" data-main-nav>`,
+		`<nav aria-label="パンくずリスト">`,
 		`href="/@`+user.Atname+`"`,
+		`<h1 class="text-xl font-semibold">二要素認証</h1>`,
 		"二要素認証はオフです",
 		"有効にすると",
 		`href="/settings/two_factor_auth/new"`,

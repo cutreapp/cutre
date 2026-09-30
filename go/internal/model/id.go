@@ -66,3 +66,57 @@ type UserTwoFactorAuthID uuid.UUID
 
 // String はUserTwoFactorAuthIDをUUIDの文字列表記で返す。
 func (id UserTwoFactorAuthID) String() string { return uuid.UUID(id).String() }
+
+// MessageConsentID はメッセージの取り扱いへの同意の識別子。UserIDと同じ理由でuuidをラップする。
+type MessageConsentID uuid.UUID
+
+// String はMessageConsentIDをUUIDの文字列表記で返す。
+func (id MessageConsentID) String() string { return uuid.UUID(id).String() }
+
+// EventID はイベントの識別子。UserIDと同じ理由でuuidをラップする。
+type EventID uuid.UUID
+
+// String はEventIDをUUIDの文字列表記で返す。
+func (id EventID) String() string { return uuid.UUID(id).String() }
+
+// EventCategoryID はカテゴリーの識別子。UserIDと同じ理由でuuidをラップする。
+type EventCategoryID uuid.UUID
+
+// String はEventCategoryIDをUUIDの文字列表記で返す。
+func (id EventCategoryID) String() string { return uuid.UUID(id).String() }
+
+// GoodsID はグッズの識別子。UserIDと同じ理由でuuidをラップする。
+type GoodsID uuid.UUID
+
+// String はGoodsIDをUUIDの文字列表記で返す。
+func (id GoodsID) String() string { return uuid.UUID(id).String() }
+
+// StationID は駅の識別子。UserIDと同じ理由でuuidをラップする。
+type StationID uuid.UUID
+
+// String はStationIDをUUIDの文字列表記で返す。
+func (id StationID) String() string { return uuid.UUID(id).String() }
+
+// ItemID はリストのアイテムの識別子。UserIDと同じ理由でuuidをラップする。
+type ItemID uuid.UUID
+
+// String はItemIDをUUIDの文字列表記で返す。
+func (id ItemID) String() string { return uuid.UUID(id).String() }
+
+// TradeID は交換の識別子。UserIDと同じ理由でuuidをラップする。
+type TradeID uuid.UUID
+
+// String はTradeIDをUUIDの文字列表記で返す。
+func (id TradeID) String() string { return uuid.UUID(id).String() }
+
+// TradeEventID は交換の出来事の識別子。UserIDと同じ理由でuuidをラップする。
+type TradeEventID uuid.UUID
+
+// String はTradeEventIDをUUIDの文字列表記で返す。
+func (id TradeEventID) String() string { return uuid.UUID(id).String() }
+
+// TradeMessageID は交換のメッセージの識別子。UserIDと同じ理由でuuidをラップする。
+type TradeMessageID uuid.UUID
+
+// String はTradeMessageIDをUUIDの文字列表記で返す。
+func (id TradeMessageID) String() string { return uuid.UUID(id).String() }

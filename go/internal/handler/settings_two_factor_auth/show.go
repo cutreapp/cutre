@@ -67,8 +67,8 @@ func (h *Handler) renderShow(w http.ResponseWriter, r *http.Request, user *model
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
 	layoutData := layouts.DefaultLayoutData{
-		Meta:   meta,
-		Header: &components.HeaderData{Atname: user.Atname, CurrentPath: templates.SettingsTwoFactorAuthPath},
+		Meta:    meta,
+		MainNav: &components.MainNavData{Atname: user.Atname, Current: components.MainNavMyPage, CurrentPath: templates.SettingsTwoFactorAuthPath},
 	}
 	if err := layouts.Default(layoutData, page.Show(data)).Render(ctx, w); err != nil {
 		// ステータスとヘッダーは送出済みのため、500には変えられずログに残すだけになる。

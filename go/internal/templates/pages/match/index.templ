@@ -1,0 +1,77 @@
+package match
+
+import (
+	"strconv"
+
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+	"github.com/cutreapp/cutre/go/internal/viewmodel"
+)
+
+// IndexPageData はマッチ候補の画面の描画に使うデータ。
+type IndexPageData struct {
+	// Candidates はマッチ候補。アットネームの順に並ぶ。
+	Candidates []viewmodel.MatchCandidate
+	// HasPlaces はユーザーが交換場所の駅を1つ以上選んでいるか。候補がいないときの案内を選ぶのに使う。
+	HasPlaces bool
+}
+
+// Index はマッチ候補の画面を描画する。
+//
+// 候補ごとのカードに、プロフィールへのリンク・交換場所・もらえるもの・渡せるものと、交換を申し込む組み合わせを選ぶ画面への入口を置く。
+// 候補がいないときは、交換場所をまだ選んでいなければ交換場所の画面へ、選んでいればリストへ案内する。
+templ Index(data IndexPageData) {
+	<div class="flex w-full flex-1 flex-col gap-3 py-4 md:mx-auto md:max-w-180">
+		@components.PageHeading(components.PageHeadingData{
+			Title: templates.T(ctx, "match_index_heading"),
+			Breadcrumbs: []components.Breadcrumb{
+				{Label: templates.T(ctx, "match_index_breadcrumb_trades"), Path: templates.TradesPath},
+			},
+		})
+		<p class="px-4 text-sm md:px-0">{ templates.T(ctx, "match_index_lead") }</p>
+		if len(data.Candidates) == 0 {
+			<div class="page-card flex flex-col gap-3">
+				if data.HasPlaces {
+					<p class="text-sm">{ templates.T(ctx, "match_index_empty") }</p>
+					<a href={ templ.SafeURL(templates.ListPath) } class="btn" data-variant="outline">{ templates.T(ctx, "match_index_empty_link") }</a>
+				} else {
+					<p class="text-sm">{ templates.T(ctx, "match_index_no_places") }</p>
+					<a href={ templ.SafeURL(templates.SettingsPlacesPath) } class="btn">{ templates.T(ctx, "match_index_no_places_link") }</a>
+				}
+			</div>
+		}
+		for i, candidate := range data.Candidates {
+			@candidateCard(i, candidate)
+		}
+	</div>
+}
+
+// candidateCard は、index 番目のマッチ候補のカードを描画する。
+templ candidateCard(index int, candidate viewmodel.MatchCandidate) {
+	<section class="page-card flex flex-col gap-3" aria-labelledby={ candidateHeadingID(index) }>
+		<div class="flex flex-col gap-0.5">
+			<h2 id={ candidateHeadingID(index) } class="font-semibold">
+				<a href={ templ.SafeURL(templates.ProfilePath(candidate.Atname)) } class="inline-block py-0.5">{ "@" + candidate.Atname }</a>
+			</h2>
+			<p class="text-sm text-muted-foreground">
+				@components.PlaceGroups(candidate.Places)
+			</p>
+		</div>
+		<div class="grid grid-cols-2 gap-3">
+			@components.MatchItems(templates.T(ctx, "match_index_receivable", map[string]any{"Quantity": candidate.Receivable.Quantity}), candidate.Receivable, "")
+			@components.MatchItems(templates.T(ctx, "match_index_givable", map[string]any{"Quantity": candidate.Givable.Quantity}), candidate.Givable, "")
+		</div>
+		<a
+			href={ templ.SafeURL(templates.NewTradePath(candidate.Atname)) }
+			class="btn w-full"
+			aria-label={ templates.T(ctx, "match_index_propose_label", map[string]any{"Atname": candidate.Atname}) }
+		>
+			{ templates.T(ctx, "match_index_propose") }
+		</a>
+	</section>
+}
+
+// candidateHeadingID は、index 番目のマッチ候補のカードの見出しのidを返す。
+func candidateHeadingID(index int) string {
+	return "match-candidate-" + strconv.Itoa(index)
+}

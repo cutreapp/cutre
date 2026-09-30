@@ -2,6 +2,7 @@ package usecase_test
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
@@ -22,7 +23,7 @@ func newDeleteAccountUsecase() *usecase.DeleteAccountUsecase {
 	userPasswordRepo := repository.NewUserPasswordRepository(db)
 	return usecase.NewDeleteAccountUsecase(
 		db,
-		validator.NewWithdrawalDeleteValidator(userPasswordRepo),
+		validator.NewWithdrawalDeleteValidator(userPasswordRepo, repository.NewTradeRepository(db)),
 		repository.NewUserRepository(db),
 		userPasswordRepo,
 		repository.NewUserSessionRepository(db),
@@ -31,6 +32,8 @@ func newDeleteAccountUsecase() *usecase.DeleteAccountUsecase {
 		repository.NewPasswordResetTokenRepository(db),
 		repository.NewEmailConfirmationRepository(db),
 		repository.NewInvitationRepository(db),
+		repository.NewItemRepository(db),
+		repository.NewUserStationRepository(db),
 	)
 }
 
@@ -182,5 +185,81 @@ func TestDeleteAccountUsecase_Execute_AlreadyWithdrawnWithoutPassword(t *testing
 	err := uc.Execute(ctx, input)
 	if ae := model.AsAppError(err); ae == nil || ae.Code != model.AppErrCodeConflict {
 		t.Errorf("後のExecute()のエラー = %v、AppErrCodeConflict を期待", err)
+	}
+}
+
+// TestDeleteAccountUsecase_Execute_ListAndPlaces は、退会でリストのアイテムを行を残して外し、交換場所を消すこと、
+// 終わった交換は退会を止めず、交換の記録とメッセージは残ることを検証する。
+func TestDeleteAccountUsecase_Execute_ListAndPlaces(t *testing.T) {
+	t.Parallel()
+
+	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	db := testutil.GetTestDB()
+	user := twoFactorUser(t)
+	testutil.NewUserPasswordBuilder(t, db).WithUserID(user.ID).Build()
+	goodsID := testutil.NewGoodsBuilder(t, db, testutil.NewEventCategoryBuilder(t, db, testutil.NewEventBuilder(t, db).Build()).Build()).Build()
+	giveID := testutil.NewItemBuilder(t, db, user.ID, goodsID).Build()
+	testutil.NewItemBuilder(t, db, user.ID, goodsID).WithKind(model.ItemKindWant).Build()
+	testutil.NewUserStationBuilder(t, db, user.ID, testutil.NewStationBuilder(t, db).Build()).Build()
+	partnerID := testutil.NewUserBuilder(t, db).Build()
+	tradeID := testutil.NewTradeBuilder(t, db, user.ID, partnerID).WithStatus(model.TradeStatusCompleted).WithEndedAt(time.Now()).Build()
+	if err := repository.NewTradeItemRepository(db).CreateMany(ctx, tradeID, []model.ItemID{giveID}); err != nil {
+		t.Fatalf("CreateMany()のエラー = %v", err)
+	}
+	testutil.NewTradeMessageBuilder(t, db, tradeID, user.ID, "よろしくお願いします").Build()
+
+	err := newDeleteAccountUsecase().Execute(ctx, usecase.DeleteAccountInput{User: user, CurrentPassword: testutil.DefaultBuilderPassword, Confirmed: true})
+	if err != nil {
+		t.Fatalf("Execute()のエラー = %v", err)
+	}
+
+	id := uuid.UUID(user.ID)
+	if got := countQuery(t, "SELECT COUNT(*) FROM items WHERE user_id = $1 AND status = 'listed'", id); got != 0 {
+		t.Errorf("リストにあるアイテムの数 = %d、期待値 = 0", got)
+	}
+	if got := countQuery(t, "SELECT COUNT(*) FROM items WHERE user_id = $1", id); got != 2 {
+		t.Errorf("アイテムの行の数 = %d、外した行が残ることを期待", got)
+	}
+	if got := countRows(t, "user_stations", user.ID); got != 0 {
+		t.Errorf("交換場所の行の数 = %d、期待値 = 0", got)
+	}
+	if got := countQuery(t, "SELECT COUNT(*) FROM trade_items WHERE trade_id = $1", uuid.UUID(tradeID)); got != 1 {
+		t.Errorf("交換の品の行の数 = %d、期待値 = 1", got)
+	}
+	if got := countQuery(t, "SELECT COUNT(*) FROM trade_messages WHERE sender_user_id = $1", id); got != 1 {
+		t.Errorf("退会したユーザーのメッセージの数 = %d、期待値 = 1", got)
+	}
+}
+
+// TestDeleteAccountUsecase_Execute_TradeInProgress は、返事待ちかマッチ成立の交換があるとき、パスワードが合っていても
+// フォーム全体の *model.ValidationError を返し、退会させず、リストと交換場所にも触れないことを検証する。
+func TestDeleteAccountUsecase_Execute_TradeInProgress(t *testing.T) {
+	t.Parallel()
+
+	ctx := i18n.SetLocale(context.Background(), i18n.LangJa)
+	db := testutil.GetTestDB()
+	for _, status := range []model.TradeStatus{model.TradeStatusPending, model.TradeStatusMatched} {
+		user := twoFactorUser(t)
+		testutil.NewUserPasswordBuilder(t, db).WithUserID(user.ID).Build()
+		goodsID := testutil.NewGoodsBuilder(t, db, testutil.NewEventCategoryBuilder(t, db, testutil.NewEventBuilder(t, db).Build()).Build()).Build()
+		testutil.NewItemBuilder(t, db, user.ID, goodsID).Build()
+		testutil.NewUserStationBuilder(t, db, user.ID, testutil.NewStationBuilder(t, db).Build()).Build()
+		testutil.NewTradeBuilder(t, db, testutil.NewUserBuilder(t, db).Build(), user.ID).WithStatus(status).Build()
+
+		err := newDeleteAccountUsecase().Execute(ctx, usecase.DeleteAccountInput{User: user, CurrentPassword: testutil.DefaultBuilderPassword, Confirmed: true})
+		ve := model.AsValidationError(err)
+		if ve == nil || !slices.Equal(ve.Global, []string{"進行中の交換があるため、退会できません。交換がすべて終わってから、もう一度お試しください"}) {
+			t.Errorf("%s: Execute()のエラー = %v、進行中の交換のValidationErrorを期待", status, err)
+		}
+		if found, err := repository.NewUserRepository(db).FindByID(ctx, user.ID); err != nil || found == nil {
+			t.Errorf("%s: ユーザー = (%+v, %v)、退会していないことを期待", status, found, err)
+		}
+		id := uuid.UUID(user.ID)
+		if got := countQuery(t, "SELECT COUNT(*) FROM items WHERE user_id = $1 AND status = 'listed'", id); got != 1 {
+			t.Errorf("%s: リストにあるアイテムの数 = %d、期待値 = 1", status, got)
+		}
+		if got := countRows(t, "user_stations", user.ID); got != 1 {
+			t.Errorf("%s: 交換場所の行の数 = %d、期待値 = 1", status, got)
+		}
 	}
 }

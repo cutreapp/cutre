@@ -1,0 +1,154 @@
+package settings_place
+
+import (
+	"strconv"
+
+	"github.com/cutreapp/cutre/go/internal/model"
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+	"github.com/cutreapp/cutre/go/internal/viewmodel"
+)
+
+// summaryFields は交換場所の画面で、エラーの要約に並べるフィールドを、フォームに現れる順で持つ。
+// 駅の誤りはフォーム全体のエラーとして出すため含めない。
+var summaryFields = []components.FormErrorSummaryField{
+	{Name: "place_note", LabelKey: "settings_place_show_place_note_label"},
+}
+
+// ShowPageData は交換場所の画面の描画に使うデータ。
+type ShowPageData struct {
+	// ProfilePath はパンくずに置くマイページ (自分のプロフィール) のパス。
+	ProfilePath string
+	// CSRFToken は保存のフォームに載せるトークン。
+	CSRFToken string
+	// Prefectures は都道府県ごとの駅の選択肢。チェックの有無は Form の駅から決めてある。
+	Prefectures viewmodel.PlacePrefectures
+	// Form はフォームに入れる値。入力の誤りで描き直すときは送られた値を戻す。
+	Form viewmodel.PlaceForm
+	// FormErrors はフォームを受け付けなかったときのエラー。
+	FormErrors *model.ValidationError
+}
+
+// Show は交換場所の画面を描画する。
+//
+// 駅を選んだ都道府県ごとに駅のチェックボックスを並べ、まだ選んでいない都道府県は「都道府県を追加」の中に畳む。
+// 都道府県を開いて駅にチェックを入れれば、保存したあとは選んだ都道府県として並ぶ。
+// JavaScriptを使わずに開閉できるよう <details> で組み、畳んだ中のチェックボックスもフォームと一緒に送る。
+// 交換場所をまだ選んでいないときは、選ぶところから始められるよう「都道府県を追加」を開いておく。
+// チェックボックスは見えなくし、それを包むラベルを選ぶボタンの見た目にして、選んだ駅を押した状態 (チェックの印) で示す。
+// HTMLのフォームはPATCHを送れないため、POSTに _method を載せて上書きする。
+templ Show(data ShowPageData) {
+	<div class="flex w-full flex-1 flex-col gap-3 py-4 md:mx-auto md:max-w-180">
+		@components.PageHeading(components.PageHeadingData{
+			Title:       templates.T(ctx, "settings_place_show_heading"),
+			Breadcrumbs: []components.Breadcrumb{{Label: templates.T(ctx, "settings_place_show_breadcrumb_my_page"), Path: data.ProfilePath}},
+		})
+		<p class="px-4 text-sm md:px-0">{ templates.T(ctx, "settings_place_show_lead") }</p>
+		<form
+			action={ templ.SafeURL(templates.SettingsPlacesPath) }
+			method="post"
+			class="flex flex-col gap-3"
+			data-disable-on-submit
+		>
+			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+			<input type="hidden" name="_method" value="PATCH"/>
+			<input type="hidden" name="lock_version" value={ strconv.FormatInt(int64(data.Form.LockVersion), 10) }/>
+			if data.FormErrors.HasErrors() {
+				<div class="flex flex-col gap-3 px-4 md:px-0">
+					@components.FormErrors(data.FormErrors)
+					@components.FormErrorSummary(components.FormErrorSummaryData{Fields: summaryFields, Errors: data.FormErrors})
+				</div>
+			}
+			for _, prefecture := range data.Prefectures.Chosen {
+				<div class="page-card">
+					@stationFieldset(prefecture, false)
+				</div>
+			}
+			if len(data.Prefectures.Others) > 0 {
+				@addPrefecture(data.Prefectures.Others, len(data.Prefectures.Chosen) == 0)
+			} else if len(data.Prefectures.Chosen) == 0 {
+				<p class="page-card text-sm text-muted-foreground">{ templates.T(ctx, "settings_place_show_no_stations") }</p>
+			}
+			<div class="page-card flex flex-col gap-4">
+				@placeNoteField(data.Form, data.FormErrors)
+				<button type="submit" class="btn w-full">{ templates.T(ctx, "settings_place_show_submit") }</button>
+			</div>
+		</form>
+	</div>
+}
+
+// stationFieldset は都道府県 prefecture の駅のチェックボックスを描画する。
+// 「都道府県を追加」の中では開閉の見出しが都道府県の名前を示すため、legendHidden をtrueにして凡例を支援技術にだけ読ませる。
+templ stationFieldset(prefecture viewmodel.PlacePrefecture, legendHidden bool) {
+	<fieldset>
+		<legend class={ templ.KV("mb-2.5 font-semibold", !legendHidden), templ.KV("sr-only", legendHidden) }>{ prefecture.Name }</legend>
+		<div class="flex flex-wrap gap-2">
+			for _, station := range prefecture.Stations {
+				<label class="btn group gap-1 rounded-full" data-variant="outline">
+					<input type="checkbox" name="station_ids" value={ station.ID } class="sr-only" checked?={ station.Checked }/>
+					<svg aria-hidden="true" class="hidden group-has-checked:block" xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"></path></svg>
+					{ station.Name }
+				</label>
+			}
+		</div>
+	</fieldset>
+}
+
+// addPrefecture は「都道府県を追加」を描画する。まだ駅を選んでいない都道府県 prefectures を、それぞれ開閉できる欄にして並べる。
+// open がtrueなら、最初から開いておく。
+templ addPrefecture(prefectures []viewmodel.PlacePrefecture, open bool) {
+	<details class="page-card group/add" open?={ open }>
+		<summary class="btn w-full cursor-pointer list-none border-dashed [&::-webkit-details-marker]:hidden" data-variant="outline">
+			<svg aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+			{ templates.T(ctx, "settings_place_show_add_prefecture") }
+		</summary>
+		<div class="mt-3 flex flex-col divide-y">
+			for _, prefecture := range prefectures {
+				<details class="group/prefecture">
+					<summary class="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 font-medium [&::-webkit-details-marker]:hidden">
+						{ prefecture.Name }
+						<svg aria-hidden="true" class="shrink-0 text-muted-foreground transition-transform group-open/prefecture:rotate-90" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"></path></svg>
+					</summary>
+					<div class="pb-3">
+						@stationFieldset(prefecture, true)
+					</div>
+				</details>
+			}
+		</div>
+	</details>
+}
+
+// placeNoteField は「ほかに出られるところ」の入力欄を描画する。
+templ placeNoteField(form viewmodel.PlaceForm, formErrors *model.ValidationError) {
+	<div
+		role="group"
+		class="field"
+		if formErrors.HasFieldError("place_note") {
+			data-invalid
+		}
+	>
+		@components.OptionalFieldLabel("place_note", templates.T(ctx, "settings_place_show_place_note_label"))
+		<input
+			id="place_note"
+			name="place_note"
+			type="text"
+			maxlength="200"
+			value={ form.PlaceNote }
+			aria-describedby={ placeNoteDescribedBy(formErrors) }
+			if formErrors.HasFieldError("place_note") {
+				aria-invalid="true"
+			}
+		/>
+		<p id="place_note-hint" class="text-sm">{ templates.T(ctx, "settings_place_show_place_note_hint") }</p>
+		@components.FieldErrors("place_note", formErrors)
+	</div>
+}
+
+// placeNoteDescribedBy は「ほかに出られるところ」の aria-describedby を、補足とエラーメッセージのidから組み立てる。
+func placeNoteDescribedBy(formErrors *model.ValidationError) string {
+	if !formErrors.HasFieldError("place_note") {
+		return "place_note-hint"
+	}
+
+	return "place_note-hint " + components.FieldErrorsDescribedBy("place_note", formErrors)
+}
