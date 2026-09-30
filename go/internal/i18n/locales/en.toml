@@ -80,6 +80,10 @@ other = "Back to the top page"
 description = "必須の入力欄のラベルに添える注記"
 other = "required"
 
+[field_optional]
+description = "任意の入力欄のラベルに添える注記"
+other = "optional"
+
 [form_error_summary_heading]
 description = "フォームの冒頭に置くエラーの要約の見出し"
 other = "Please check your entries"
@@ -140,6 +144,10 @@ other = "Incorrect password"
 description = "退会を元に戻せないことを確認するチェックが無いときのエラー"
 other = "Check the box to confirm that you understand account deletion cannot be undone"
 
+[validation_withdrawal_trade_in_progress]
+description = "退会のフォームを送ったときに、進行中の交換 (返事待ち・マッチ成立) があって退会できないときのエラー"
+other = "You can't delete your account while a trade is in progress. Try again after all your trades end"
+
 [validation_recovery_code_format]
 description = "リカバリーコードの形が正しくないときのエラー"
 other = "Enter the 8 letters and numbers in your recovery code"
@@ -175,6 +183,38 @@ other = "This is too long. Please keep it within 72 letters and numbers, or abou
 [validation_account_email_taken]
 description = "アカウントの作成中に、同じメールアドレスのアカウントが先に作られていたときのエラー"
 other = "An account with this email address already exists. Please sign in"
+
+[validation_message_consent_required]
+description = "アカウントの作成で、メッセージの取り扱いへの同意のチェックが無いときのエラー"
+other = "Check the box to agree to how messages are handled"
+
+[validation_too_long]
+description = "入力が最大の文字数を超えたときのエラー。Maxは最大の文字数"
+other = "Must be {{.Max}} characters or fewer"
+
+[validation_date_invalid]
+description = "日付の入力欄の値が日付として読めないときのエラー"
+other = "Enter a valid date"
+
+[validation_event_ends_on_before_starts_on]
+description = "管理画面のイベントの終了日が開始日より前のときのエラー"
+other = "Must be on or after the start date"
+
+[validation_edit_conflict]
+description = "管理画面の編集で、フォームを開いたあとにほかの操作で先に更新されていたときのエラー。フォームには最新の内容を出し直す"
+other = "This was updated elsewhere after you opened it, so your changes weren't saved. The latest version is shown. Please edit it again"
+
+[validation_position_out_of_range]
+description = "並び順の入力欄の値が0から上限までの整数でないときのエラー。Maxは上限"
+other = "Enter a whole number from 0 to {{.Max}}"
+
+[validation_select_required]
+description = "選択肢から選ぶ必須の欄が選ばれていないか、選択肢に無い値が送られたときのエラー"
+other = "Select an option"
+
+[validation_quantity_out_of_range]
+description = "数量の入力欄の値が1から上限までの整数でないときのエラー。Maxは上限"
+other = "Enter a whole number from 1 to {{.Max}}"
 
 [sign_in_new_title]
 description = "ログイン画面のタイトル"
@@ -213,24 +253,88 @@ description = "ログイン後のホームのタイトル"
 other = "Home"
 
 [home_show_heading]
-description = "ログイン後のホームの見出し。Atnameはログイン中のユーザーのアットネーム"
+description = "ログイン後のホームの見出し"
+other = "Home"
+
+[home_show_welcome]
+description = "ログイン後のホームのあいさつ。Atnameはログイン中のユーザーのアットネーム"
 other = "Welcome, @{{.Atname}}"
 
-[header_nav_label]
-description = "ログイン後のページのヘッダーにあるメニューの名前 (読み上げ用)"
+[home_show_give_list]
+description = "ログイン後のホームの、譲れるリストへのリンクの名前"
+other = "Can give list"
+
+[home_show_want_list]
+description = "ログイン後のホームの、ほしいリストへのリンクの名前"
+other = "Want list"
+
+[home_show_list_quantity]
+description = "ログイン後のホームの、リストのアイテムの数量の合計。Quantityは数量"
+other = "{{.Quantity}}"
+
+[home_show_setup_heading]
+description = "ログイン後のホームの、交換場所をまだ選んでいないときに出す準備のカードの見出し"
+other = "Get ready to trade"
+
+[home_show_setup_message]
+description = "ログイン後のホームの準備のカードの説明"
+other = "Add your trade spots and we'll start looking for people you can trade with."
+
+[home_show_setup_places_link]
+description = "ログイン後のホームの準備のカードにある、交換場所の画面へのリンクの名前"
+other = "Trade spots"
+
+[home_show_setup_places_not_set]
+description = "ログイン後のホームの準備のカードで、交換場所へのリンクに添える、まだ選んでいないことを示す文"
+other = "Not added yet"
+
+[home_show_matches_link]
+description = "ログイン後のホームの、マッチ候補の画面へのリンクの文言。Countはマッチ候補の人数 (1人以上)"
+other = "People you can trade with: {{.Count}}"
+
+[home_show_matches_none]
+description = "ログイン後のホームの、マッチ候補がいないときのカードの見出し"
+other = "No one to trade with yet"
+
+[home_show_matches_none_hint]
+description = "ログイン後のホームの、マッチ候補がいないときに添える、候補を見つけやすくする方法の説明"
+other = "Adding more to your want list makes matches easier to find."
+
+[home_show_matches_none_list]
+description = "ログイン後のホームの、マッチ候補がいないときに添える、ほしいリストへのリンクの文言"
+other = "Review your list"
+
+[home_show_matches_hint]
+description = "ログイン後のホームの、マッチ候補の画面へのリンクに添える、候補の見つけ方の説明"
+other = "Found automatically from your lists and trade spots"
+
+[main_nav_label]
+description = "ログイン後のページのメインメニューの名前 (読み上げ用)"
 other = "Main menu"
 
-[header_profile_link]
-description = "ログイン後のページのヘッダーにある、自分のプロフィールへのリンクの文言"
-other = "Profile"
+[main_nav_home]
+description = "メインメニューの、ホームへのリンクの文言"
+other = "Home"
+
+[main_nav_list]
+description = "メインメニューの、リストへのリンクの文言"
+other = "List"
+
+[main_nav_my_page]
+description = "メインメニューの、マイページ (自分のプロフィール) へのリンクの文言"
+other = "My page"
+
+[breadcrumb_label]
+description = "ログイン後のページの上部にあるパンくずの名前 (読み上げ用)"
+other = "Breadcrumb"
 
 [profile_show_title]
-description = "自分のプロフィールのタイトル"
-other = "Profile"
+description = "マイページ (自分のプロフィール) のタイトル"
+other = "My page"
 
 [profile_show_heading]
-description = "自分のプロフィールの見出し"
-other = "Profile"
+description = "マイページ (自分のプロフィール) の見出し"
+other = "My page"
 
 [profile_show_sign_out]
 description = "自分のプロフィールのログアウトボタンの文言"
@@ -252,6 +356,26 @@ other = "Invitations"
 description = "自分のプロフィールのメニューの招待のリンクに添える、残りの人数と参加した人数"
 other = "Invites left: {{.Remaining}} · Joined: {{.Joined}}"
 
+[profile_show_message_consent_link]
+description = "自分のプロフィールのメニューにある、メッセージの利用の画面へのリンクの文言"
+other = "Messaging"
+
+[profile_show_message_consent_agreed]
+description = "メッセージの利用のリンクに添える、メッセージの取り扱いに有効な同意をしていることを示す文"
+other = "Agreed"
+
+[profile_show_message_consent_not_agreed]
+description = "メッセージの利用のリンクに添える、有効な同意が無い (やめた・文面が変わった) ことと、その影響を示す文"
+other = "Not agreed · Required to propose or accept trades"
+
+[profile_show_places_link]
+description = "マイページの交換場所の画面へのリンク"
+other = "Trade spots"
+
+[profile_show_places_not_set]
+description = "マイページの交換場所のリンクに添える、まだ選んでいないことを示す文"
+other = "Not added yet"
+
 [profile_show_two_factor_auth_link]
 description = "自分のプロフィールのメニューにある、二要素認証の画面へのリンクの文言"
 other = "Two-factor authentication"
@@ -263,6 +387,10 @@ other = "On"
 [profile_show_two_factor_auth_disabled]
 description = "二要素認証のリンクに添える、有効にしていないことを示すバッジ"
 other = "Off"
+
+[profile_show_admin_link]
+description = "マイページの、管理画面への行の文言。編集者と管理者にだけ出す"
+other = "Admin"
 
 [profile_show_withdrawal_link]
 description = "自分のプロフィールの下部にある、退会の画面へのリンクの文言"
@@ -276,9 +404,9 @@ other = "Invitations"
 description = "招待の画面の見出し"
 other = "Invitations"
 
-[settings_invitation_show_back]
-description = "招待の画面から自分のプロフィールへ戻るリンクの名前 (読み上げ用)"
-other = "Back to profile"
+[settings_invitation_show_breadcrumb_my_page]
+description = "招待の画面のパンくずにある、マイページ (自分のプロフィール) へのリンクの文言"
+other = "My page"
 
 [settings_invitation_show_rule_heading]
 description = "招待の画面で、招待してよい相手の決まりを伝える見出し"
@@ -384,9 +512,9 @@ other = "Two-factor authentication"
 description = "二要素認証の画面の見出し"
 other = "Two-factor authentication"
 
-[settings_two_factor_auth_show_back]
-description = "二要素認証の画面から自分のプロフィールへ戻るリンクの名前 (読み上げ用)"
-other = "Back to profile"
+[settings_two_factor_auth_show_breadcrumb_my_page]
+description = "二要素認証の画面のパンくずにある、マイページ (自分のプロフィール) へのリンクの文言"
+other = "My page"
 
 [settings_two_factor_auth_show_lead]
 description = "二要素認証がオフのときに、画面の冒頭に置く説明"
@@ -464,6 +592,102 @@ other = "To confirm, enter your password or a code from your authenticator app"
 description = "二要素認証を無効にするボタンの文言"
 other = "Turn off two-factor authentication"
 
+[settings_place_show_title]
+description = "交換場所の画面のタイトル"
+other = "Trade spots"
+
+[settings_place_show_heading]
+description = "交換場所の画面の見出し"
+other = "Trade spots"
+
+[settings_place_show_breadcrumb_my_page]
+description = "交換場所の画面のパンくずの、マイページへのリンク"
+other = "My page"
+
+[settings_place_show_lead]
+description = "交換場所の画面の説明"
+other = "Add a prefecture, then choose the stations in it where you can meet. You'll match with people who share at least one prefecture, and your stations are shown to them as a guide to where to meet."
+
+[settings_place_show_add_prefecture]
+description = "交換場所の画面の、まだ選んでいない都道府県の駅の選択肢を開くボタン"
+other = "Add a prefecture"
+
+[settings_place_show_no_stations]
+description = "交換場所の画面で、選べる駅が1つも無いときの文"
+other = "There are no stations to choose from yet."
+
+[settings_place_show_place_note_label]
+description = "交換場所の画面の「ほかに出られるところ」の入力欄のラベル"
+other = "Other places you can go"
+
+[settings_place_show_place_note_hint]
+description = "交換場所の画面の「ほかに出られるところ」の補足"
+other = "Not used for matching. It's a note for the people you trade with."
+
+[settings_place_show_submit]
+description = "交換場所の画面の保存するボタン"
+other = "Save"
+
+[settings_place_station_unavailable]
+description = "交換場所の画面で、選べなくなった駅 (アーカイブ・削除された駅) を選んで保存しようとしたときのエラー"
+other = "Some of the stations you chose are no longer available. Choose again, then save"
+
+[settings_place_conflict_message]
+description = "交換場所の画面を開いたあとにほかの操作で保存されたときの案内"
+other = "Your trade spots were updated elsewhere. Check the latest version before saving again"
+
+[settings_message_consent_show_title]
+description = "メッセージの利用の画面のタイトル"
+other = "Messaging"
+
+[settings_message_consent_show_heading]
+description = "メッセージの利用の画面の見出し"
+other = "Messaging"
+
+[settings_message_consent_show_breadcrumb_my_page]
+description = "メッセージの利用の画面のパンくずにある、マイページ (自分のプロフィール) へのリンクの文言"
+other = "My page"
+
+[settings_message_consent_show_lead]
+description = "有効な同意が無いときに、メッセージの利用の画面の冒頭に置く説明"
+other = "You talk with your trade partners through messages on Cutre. To propose or accept trades, you need to agree to how messages are handled."
+
+[settings_message_consent_show_agreed_badge]
+description = "有効な同意があることを示すバッジ"
+other = "Agreed"
+
+[settings_message_consent_show_agreed_on]
+description = "メッセージの取り扱いに同意した日。Dateは同意した日"
+other = "Agreed on {{.Date}}"
+
+[settings_message_consent_show_agreed_terms_heading]
+description = "有効な同意があるときの、同意した文面の見出し"
+other = "What you agreed to"
+
+[settings_message_consent_show_withdraw_heading]
+description = "同意をやめるフォームの見出し"
+other = "Withdraw your agreement"
+
+[settings_message_consent_show_withdraw_message]
+description = "同意をやめるフォームの説明"
+other = "If you withdraw, you can no longer propose or accept trades. You can still read your past messages. Agree again to start trading again."
+
+[settings_message_consent_show_withdraw_submit]
+description = "同意をやめるボタンの文言"
+other = "Withdraw agreement"
+
+[settings_message_consent_show_not_agreed_badge]
+description = "有効な同意が無い (やめた・文面が変わった・記録が無い) ことを示すバッジ"
+other = "Not agreed"
+
+[settings_message_consent_show_not_agreed_terms_heading]
+description = "有効な同意が無いときの、これから同意する文面の見出し"
+other = "What you agree to"
+
+[settings_message_consent_show_agree_submit]
+description = "メッセージの取り扱いに同意するボタンの文言"
+other = "Agree"
+
 [settings_two_factor_auth_new_title]
 description = "二要素認証を有効にする画面のタイトル"
 other = "Turn on two-factor authentication"
@@ -472,9 +696,13 @@ other = "Turn on two-factor authentication"
 description = "二要素認証を有効にする画面の見出し"
 other = "Turn on two-factor authentication"
 
-[settings_two_factor_auth_new_back]
-description = "二要素認証を有効にする画面から二要素認証の画面へ戻るリンクの名前 (読み上げ用)"
-other = "Back to two-factor authentication"
+[settings_two_factor_auth_new_breadcrumb_my_page]
+description = "二要素認証を有効にする画面のパンくずにある、マイページ (自分のプロフィール) へのリンクの文言"
+other = "My page"
+
+[settings_two_factor_auth_new_breadcrumb_two_factor_auth]
+description = "二要素認証を有効にする画面のパンくずにある、二要素認証の画面へのリンクの文言"
+other = "Two-factor authentication"
 
 [settings_two_factor_auth_new_register_heading]
 description = "認証アプリへ登録する手順の見出し"
@@ -576,9 +804,9 @@ other = "Delete account"
 description = "退会の画面の見出し"
 other = "Delete account"
 
-[settings_withdrawal_new_back]
-description = "退会の画面から自分のプロフィールへ戻るリンクの名前 (読み上げ用)"
-other = "Back to profile"
+[settings_withdrawal_new_breadcrumb_my_page]
+description = "退会の画面のパンくずにある、マイページ (自分のプロフィール) へのリンクの文言"
+other = "My page"
 
 [settings_withdrawal_new_consequences_heading]
 description = "退会の画面の、退会すると何が起きるかの見出し"
@@ -587,6 +815,14 @@ other = "When you delete your account"
 [settings_withdrawal_new_consequence_account]
 description = "退会すると何が起きるかの項目。アカウントが消えること"
 other = "Your account (email address and atname) is deleted and you can no longer sign in. This cannot be undone"
+
+[settings_withdrawal_new_consequence_list]
+description = "退会すると何が起きるかの項目。リストと交換場所が消えること"
+other = "Your lists and trade places are deleted"
+
+[settings_withdrawal_new_consequence_trade]
+description = "退会すると何が起きるかの項目。交換の記録とメッセージが相手の画面に退会したユーザーとして残ること"
+other = "Your trades and messages stay on your partners' screens. You are shown as \"Withdrawn user\" and your profile is no longer shown"
 
 [settings_withdrawal_new_consequence_invitation]
 description = "退会すると何が起きるかの項目。招待リンクが使えなくなること"
@@ -611,6 +847,18 @@ other = "I understand that deleting my account cannot be undone"
 [settings_withdrawal_new_submit]
 description = "退会の画面の送信ボタンの文言"
 other = "Delete account"
+
+[settings_withdrawal_new_trade_in_progress_heading]
+description = "退会の画面で、進行中の交換 (返事待ち・マッチ成立) があって退会できないことを伝える文。Countは進行中の交換の数"
+other = "Trades in progress: {{.Count}}. You can't delete your account until they all end"
+
+[settings_withdrawal_new_trade_in_progress_link]
+description = "退会の画面で、進行中の交換があるときに出す、交換の画面へのリンクの文言"
+other = "View trades in progress"
+
+[settings_withdrawal_new_submit_hint_trade_in_progress]
+description = "退会の画面で、進行中の交換があって押せない退会するボタンの下に出す説明"
+other = "You can delete your account after all your trades end"
 
 [invitation_redemption_withdrawn]
 description = "招待で参加した人が退会しているときに、参加した人として示す名前"
@@ -643,6 +891,110 @@ other = "Two-factor authentication has been turned off."
 [flash_account_withdrawn]
 description = "退会したあと、トップページに出すフラッシュメッセージ"
 other = "Your account has been deleted. Thank you for using Cutre"
+
+[flash_message_consent_agreed]
+description = "メッセージの利用の画面で、メッセージの取り扱いに同意したときのメッセージ"
+other = "You agreed to how messages are handled"
+
+[flash_message_consent_withdrawn]
+description = "メッセージの利用の画面で、メッセージの取り扱いへの同意をやめたときのメッセージ"
+other = "You withdrew your agreement on how messages are handled"
+
+[flash_event_created]
+description = "管理画面でイベントを作成したときのメッセージ"
+other = "Event created"
+
+[flash_event_updated]
+description = "管理画面でイベントを保存したときのメッセージ"
+other = "Event saved"
+
+[flash_event_archived]
+description = "管理画面でイベントをアーカイブしたときのメッセージ"
+other = "Event archived"
+
+[flash_event_unarchived]
+description = "管理画面でアーカイブしたイベントを元に戻したときのメッセージ"
+other = "Event restored"
+
+[flash_event_deleted]
+description = "管理画面でイベントを削除したときのメッセージ"
+other = "Event deleted"
+
+[flash_event_category_created]
+description = "管理画面でカテゴリーを作成したときのメッセージ"
+other = "Category created"
+
+[flash_event_category_updated]
+description = "管理画面でカテゴリーを保存したときのメッセージ"
+other = "Category saved"
+
+[flash_event_category_archived]
+description = "管理画面でカテゴリーをアーカイブしたときのメッセージ"
+other = "Category archived"
+
+[flash_event_category_unarchived]
+description = "管理画面でアーカイブしたカテゴリーを元に戻したときのメッセージ"
+other = "Category restored"
+
+[flash_event_category_deleted]
+description = "管理画面でカテゴリーを削除したときのメッセージ"
+other = "Category deleted"
+
+[flash_goods_created]
+description = "管理画面でグッズを作成したときのメッセージ"
+other = "Goods created"
+
+[flash_goods_updated]
+description = "管理画面でグッズを保存したときのメッセージ"
+other = "Goods saved"
+
+[flash_goods_archived]
+description = "管理画面でグッズをアーカイブしたときのメッセージ"
+other = "Goods archived"
+
+[flash_goods_unarchived]
+description = "管理画面でアーカイブしたグッズを元に戻したときのメッセージ"
+other = "Goods restored"
+
+[flash_goods_deleted]
+description = "管理画面でグッズを削除したときのメッセージ"
+other = "Goods deleted"
+
+[flash_item_created]
+description = "グッズをリストに追加したときのメッセージ。Listはリストの名前 (item_kind_give / item_kind_want)"
+other = "Added to your {{.List}} list"
+
+[flash_item_updated]
+description = "リストのアイテムを保存したときのメッセージ。Listはリストの名前 (item_kind_give / item_kind_want)"
+other = "Saved the item in your {{.List}} list"
+
+[flash_places_updated]
+description = "交換場所を保存したときのメッセージ"
+other = "Saved your trade spots"
+
+[flash_item_deleted]
+description = "アイテムをリストから外したときのメッセージ。Listはリストの名前 (item_kind_give / item_kind_want)"
+other = "Removed from your {{.List}} list"
+
+[flash_station_created]
+description = "管理画面で駅を作成したときのメッセージ"
+other = "Station created"
+
+[flash_station_updated]
+description = "管理画面で駅を保存したときのメッセージ"
+other = "Station saved"
+
+[flash_station_archived]
+description = "管理画面で駅をアーカイブしたときのメッセージ"
+other = "Station archived"
+
+[flash_station_unarchived]
+description = "管理画面でアーカイブした駅を元に戻したときのメッセージ"
+other = "Station restored"
+
+[flash_station_deleted]
+description = "管理画面で駅を削除したときのメッセージ"
+other = "Station deleted"
 
 [invitation_inviter_admin]
 description = "管理者が発行した招待で、招待した人として示す名前"
@@ -824,6 +1176,18 @@ other = "Password"
 description = "アカウントの作成画面のパスワードの入力欄の補足"
 other = "Use at least 8 characters."
 
+[account_new_message_consent_heading]
+description = "アカウントの作成画面の、メッセージの取り扱いの文面の見出し"
+other = "How messages are handled"
+
+[account_new_message_consent_lead]
+description = "アカウントの作成画面の、メッセージの取り扱いの文面の前に置く説明"
+other = "You talk with your trade partners through messages on Cutre."
+
+[account_new_message_consent_label]
+description = "アカウントの作成画面の、メッセージの取り扱いへの同意のチェックボックスのラベル"
+other = "I agree to how messages are handled"
+
 [account_new_submit]
 description = "アカウントの作成画面の送信ボタンの文言"
 other = "Create account"
@@ -839,6 +1203,22 @@ other = "This invitation has expired, was revoked, or has reached the limit of p
 [account_new_back]
 description = "招待が使えなくなった案内から、トップへ戻るリンクの文言"
 other = "Back to the top page"
+
+[message_consent_term_participants]
+description = "メッセージの取り扱いの文面 (見られる人)。意味を変えたら model.CurrentMessageConsentVersion を上げる"
+other = "Only you and your trade partner can see your messages"
+
+[message_consent_term_review]
+description = "メッセージの取り扱いの文面 (報告を受けたときの運営の確認)。意味を変えたら model.CurrentMessageConsentVersion を上げる"
+other = "If a user reports a problem, the Cutre team may review the messages in that trade, including retracted ones"
+
+[message_consent_term_retracted]
+description = "メッセージの取り扱いの文面 (取り消した内容の保管)。意味を変えたら model.CurrentMessageConsentVersion を上げる"
+other = "The Cutre team keeps the content of retracted messages"
+
+[message_consent_term_withdrawal]
+description = "メッセージの取り扱いの文面 (退会したあとの記録)。意味を変えたら model.CurrentMessageConsentVersion を上げる"
+other = "If you delete your account, your trades and messages stay visible to your trade partners"
 
 [sign_in_new_forgot_password]
 description = "ログイン画面から、パスワードリセットの申請の画面へのリンクの文言"
@@ -1028,3 +1408,2287 @@ other = "This link has expired, has already been used, or has been replaced by a
 [password_edit_request_new_link]
 description = "パスワードの再設定のリンクが使えないときの、申請の画面へのリンクの文言"
 other = "Request a new reset link"
+
+[event_period]
+description = "イベントの開催期間。StartsOnとEndsOnは開始日と終了日"
+other = "{{.StartsOn}} – {{.EndsOn}}"
+
+[event_period_open_ended]
+description = "終わりが決まっていないイベントの開催期間。StartsOnは開始日"
+other = "From {{.StartsOn}}"
+
+[prefecture_hokkaido]
+description = "都道府県の名前 (JIS X 0401の都道府県コード1)"
+other = "Hokkaido"
+
+[prefecture_aomori]
+description = "都道府県の名前 (JIS X 0401の都道府県コード2)"
+other = "Aomori"
+
+[prefecture_iwate]
+description = "都道府県の名前 (JIS X 0401の都道府県コード3)"
+other = "Iwate"
+
+[prefecture_miyagi]
+description = "都道府県の名前 (JIS X 0401の都道府県コード4)"
+other = "Miyagi"
+
+[prefecture_akita]
+description = "都道府県の名前 (JIS X 0401の都道府県コード5)"
+other = "Akita"
+
+[prefecture_yamagata]
+description = "都道府県の名前 (JIS X 0401の都道府県コード6)"
+other = "Yamagata"
+
+[prefecture_fukushima]
+description = "都道府県の名前 (JIS X 0401の都道府県コード7)"
+other = "Fukushima"
+
+[prefecture_ibaraki]
+description = "都道府県の名前 (JIS X 0401の都道府県コード8)"
+other = "Ibaraki"
+
+[prefecture_tochigi]
+description = "都道府県の名前 (JIS X 0401の都道府県コード9)"
+other = "Tochigi"
+
+[prefecture_gunma]
+description = "都道府県の名前 (JIS X 0401の都道府県コード10)"
+other = "Gunma"
+
+[prefecture_saitama]
+description = "都道府県の名前 (JIS X 0401の都道府県コード11)"
+other = "Saitama"
+
+[prefecture_chiba]
+description = "都道府県の名前 (JIS X 0401の都道府県コード12)"
+other = "Chiba"
+
+[prefecture_tokyo]
+description = "都道府県の名前 (JIS X 0401の都道府県コード13)"
+other = "Tokyo"
+
+[prefecture_kanagawa]
+description = "都道府県の名前 (JIS X 0401の都道府県コード14)"
+other = "Kanagawa"
+
+[prefecture_niigata]
+description = "都道府県の名前 (JIS X 0401の都道府県コード15)"
+other = "Niigata"
+
+[prefecture_toyama]
+description = "都道府県の名前 (JIS X 0401の都道府県コード16)"
+other = "Toyama"
+
+[prefecture_ishikawa]
+description = "都道府県の名前 (JIS X 0401の都道府県コード17)"
+other = "Ishikawa"
+
+[prefecture_fukui]
+description = "都道府県の名前 (JIS X 0401の都道府県コード18)"
+other = "Fukui"
+
+[prefecture_yamanashi]
+description = "都道府県の名前 (JIS X 0401の都道府県コード19)"
+other = "Yamanashi"
+
+[prefecture_nagano]
+description = "都道府県の名前 (JIS X 0401の都道府県コード20)"
+other = "Nagano"
+
+[prefecture_gifu]
+description = "都道府県の名前 (JIS X 0401の都道府県コード21)"
+other = "Gifu"
+
+[prefecture_shizuoka]
+description = "都道府県の名前 (JIS X 0401の都道府県コード22)"
+other = "Shizuoka"
+
+[prefecture_aichi]
+description = "都道府県の名前 (JIS X 0401の都道府県コード23)"
+other = "Aichi"
+
+[prefecture_mie]
+description = "都道府県の名前 (JIS X 0401の都道府県コード24)"
+other = "Mie"
+
+[prefecture_shiga]
+description = "都道府県の名前 (JIS X 0401の都道府県コード25)"
+other = "Shiga"
+
+[prefecture_kyoto]
+description = "都道府県の名前 (JIS X 0401の都道府県コード26)"
+other = "Kyoto"
+
+[prefecture_osaka]
+description = "都道府県の名前 (JIS X 0401の都道府県コード27)"
+other = "Osaka"
+
+[prefecture_hyogo]
+description = "都道府県の名前 (JIS X 0401の都道府県コード28)"
+other = "Hyogo"
+
+[prefecture_nara]
+description = "都道府県の名前 (JIS X 0401の都道府県コード29)"
+other = "Nara"
+
+[prefecture_wakayama]
+description = "都道府県の名前 (JIS X 0401の都道府県コード30)"
+other = "Wakayama"
+
+[prefecture_tottori]
+description = "都道府県の名前 (JIS X 0401の都道府県コード31)"
+other = "Tottori"
+
+[prefecture_shimane]
+description = "都道府県の名前 (JIS X 0401の都道府県コード32)"
+other = "Shimane"
+
+[prefecture_okayama]
+description = "都道府県の名前 (JIS X 0401の都道府県コード33)"
+other = "Okayama"
+
+[prefecture_hiroshima]
+description = "都道府県の名前 (JIS X 0401の都道府県コード34)"
+other = "Hiroshima"
+
+[prefecture_yamaguchi]
+description = "都道府県の名前 (JIS X 0401の都道府県コード35)"
+other = "Yamaguchi"
+
+[prefecture_tokushima]
+description = "都道府県の名前 (JIS X 0401の都道府県コード36)"
+other = "Tokushima"
+
+[prefecture_kagawa]
+description = "都道府県の名前 (JIS X 0401の都道府県コード37)"
+other = "Kagawa"
+
+[prefecture_ehime]
+description = "都道府県の名前 (JIS X 0401の都道府県コード38)"
+other = "Ehime"
+
+[prefecture_kochi]
+description = "都道府県の名前 (JIS X 0401の都道府県コード39)"
+other = "Kochi"
+
+[prefecture_fukuoka]
+description = "都道府県の名前 (JIS X 0401の都道府県コード40)"
+other = "Fukuoka"
+
+[prefecture_saga]
+description = "都道府県の名前 (JIS X 0401の都道府県コード41)"
+other = "Saga"
+
+[prefecture_nagasaki]
+description = "都道府県の名前 (JIS X 0401の都道府県コード42)"
+other = "Nagasaki"
+
+[prefecture_kumamoto]
+description = "都道府県の名前 (JIS X 0401の都道府県コード43)"
+other = "Kumamoto"
+
+[prefecture_oita]
+description = "都道府県の名前 (JIS X 0401の都道府県コード44)"
+other = "Oita"
+
+[prefecture_miyazaki]
+description = "都道府県の名前 (JIS X 0401の都道府県コード45)"
+other = "Miyazaki"
+
+[prefecture_kagoshima]
+description = "都道府県の名前 (JIS X 0401の都道府県コード46)"
+other = "Kagoshima"
+
+[prefecture_okinawa]
+description = "都道府県の名前 (JIS X 0401の都道府県コード47)"
+other = "Okinawa"
+
+[admin_show_title]
+description = "管理画面の入口のタイトル"
+other = "Admin"
+
+[admin_show_heading]
+description = "管理画面の入口の見出し"
+other = "Admin"
+
+[admin_show_breadcrumb_my_page]
+description = "管理画面の入口のパンくずにある、マイページへのリンクの文言"
+other = "My page"
+
+[admin_show_events_link]
+description = "管理画面の入口の、イベントの管理への行の文言"
+other = "Events"
+
+[admin_show_events_summary]
+description = "管理画面の入口の、イベントの管理への行の補足"
+other = "Create and edit events and their categories and goods"
+
+[admin_show_stations_link]
+description = "管理画面の入口の、駅の管理への行の文言"
+other = "Stations"
+
+[admin_show_stations_summary]
+description = "管理画面の入口の、駅の管理への行の補足"
+other = "Create and edit the major stations in each prefecture that users can choose as meeting places"
+
+[admin_event_index_title]
+description = "管理画面のイベントの一覧のタイトル"
+other = "Manage events"
+
+[admin_event_index_heading]
+description = "管理画面のイベントの一覧の見出し"
+other = "Events"
+
+[admin_event_index_breadcrumb_my_page]
+description = "管理画面のイベントの一覧のパンくずにある、マイページへのリンクの文言"
+other = "My page"
+
+[admin_event_index_breadcrumb_admin]
+description = "管理画面のイベントの一覧のパンくずにある、管理画面の入口へのリンクの文言"
+other = "Admin"
+
+[admin_event_index_new_link]
+description = "管理画面のイベントの一覧の、イベントの作成へのリンクの文言"
+other = "New event"
+
+[admin_event_index_empty]
+description = "管理画面のイベントの一覧で、イベントが1つも無いときの文言"
+other = "No events yet"
+
+[admin_event_index_archived_badge]
+description = "管理画面のイベントの一覧で、アーカイブしたイベントに添えるバッジ"
+other = "Archived"
+
+[admin_event_form_name_label]
+description = "管理画面のイベントの作成・編集のフォームの、名前の入力欄のラベル"
+other = "Name"
+
+[admin_event_form_name_hint]
+description = "管理画面のイベントの作成・編集のフォームの、名前の入力欄の補足"
+other = "Use the official name. It's shown as is on English pages too."
+
+[admin_event_form_starts_on_label]
+description = "管理画面のイベントの作成・編集のフォームの、開始日の入力欄のラベル"
+other = "Start date"
+
+[admin_event_form_ends_on_label]
+description = "管理画面のイベントの作成・編集のフォームの、終了日の入力欄のラベル"
+other = "End date"
+
+[admin_event_form_ends_on_hint]
+description = "管理画面のイベントの作成・編集のフォームの、終了日の入力欄の補足"
+other = "Leave blank if there's no end date."
+
+[admin_event_new_title]
+description = "管理画面のイベントの作成の画面のタイトル"
+other = "New event"
+
+[admin_event_new_heading]
+description = "管理画面のイベントの作成の画面の見出し"
+other = "New event"
+
+[admin_event_new_breadcrumb_my_page]
+description = "管理画面のイベントの作成の画面のパンくずにある、マイページへのリンクの文言"
+other = "My page"
+
+[admin_event_new_breadcrumb_admin]
+description = "管理画面のイベントの作成の画面のパンくずにある、管理画面の入口へのリンクの文言"
+other = "Admin"
+
+[admin_event_new_breadcrumb_events]
+description = "管理画面のイベントの作成の画面のパンくずにある、イベントの一覧へのリンクの文言"
+other = "Events"
+
+[admin_event_new_submit]
+description = "管理画面のイベントの作成の画面の送信ボタンの文言"
+other = "Create"
+
+[admin_event_edit_title]
+description = "管理画面のイベントの編集の画面のタイトル"
+other = "Edit event"
+
+[admin_event_edit_breadcrumb_my_page]
+description = "管理画面のイベントの編集の画面のパンくずにある、マイページへのリンクの文言"
+other = "My page"
+
+[admin_event_edit_breadcrumb_admin]
+description = "管理画面のイベントの編集の画面のパンくずにある、管理画面の入口へのリンクの文言"
+other = "Admin"
+
+[admin_event_edit_breadcrumb_events]
+description = "管理画面のイベントの編集の画面のパンくずにある、イベントの一覧へのリンクの文言"
+other = "Events"
+
+[admin_event_edit_submit]
+description = "管理画面のイベントの編集の画面の送信ボタンの文言"
+other = "Save"
+
+[admin_event_edit_categories_heading]
+description = "管理画面のイベントの編集の画面の、カテゴリーの一覧の見出し"
+other = "Categories"
+
+[admin_event_edit_new_category_link]
+description = "管理画面のイベントの編集の画面の、カテゴリーの作成へのリンクの文言"
+other = "Create category"
+
+[admin_event_edit_categories_empty]
+description = "管理画面のイベントの編集の画面で、カテゴリーが1つも無いときの文言"
+other = "No categories yet"
+
+[admin_event_edit_archive_heading]
+description = "管理画面のイベントの編集の画面の、アーカイブの欄の見出し"
+other = "Archive"
+
+[admin_event_edit_archive_message]
+description = "管理画面のイベントの編集の画面で、公開中のイベントをアーカイブすると何が起きるかの説明"
+other = "Once archived, the event no longer appears in the event list for users. Goods already in lists or trades stay usable."
+
+[admin_event_edit_archive_link]
+description = "管理画面のイベントの編集の画面の、アーカイブの画面へのリンクの文言"
+other = "Archive"
+
+[admin_event_edit_archived_badge]
+description = "管理画面のイベントの編集の画面で、アーカイブしたイベントに添えるバッジ"
+other = "Archived"
+
+[admin_event_edit_archive_message_label]
+description = "管理画面のイベントの編集の画面で、アーカイブした理由の見出し"
+other = "Reason for archiving"
+
+[admin_event_edit_unarchive_message]
+description = "管理画面のイベントの編集の画面で、アーカイブしたイベントを元に戻すと何が起きるかの説明"
+other = "Once restored, the event appears in the event list for users again."
+
+[admin_event_edit_unarchive_submit]
+description = "管理画面のイベントの編集の画面の、アーカイブしたイベントを元に戻すボタンの文言"
+other = "Restore"
+
+[admin_event_edit_delete_heading]
+description = "管理画面のイベントの編集の画面の、削除の欄の見出し。管理者にだけ出す"
+other = "Delete"
+
+[admin_event_edit_delete_message]
+description = "管理画面のイベントの編集の画面で、イベントを削除すると何が起きるかの説明"
+other = "Once deleted, the event no longer appears even in the admin, and this can't be undone. If the event is just no longer in use, archive it instead."
+
+[admin_event_edit_delete_button]
+description = "管理画面のイベントの編集の画面の、削除の確認のダイアログを開くボタンの文言"
+other = "Delete"
+
+[admin_event_edit_delete_confirm_title]
+description = "イベントの削除の確認のダイアログの見出し"
+other = "Delete this event?"
+
+[admin_event_edit_delete_confirm_message]
+description = "イベントの削除の確認のダイアログの説明。Nameはイベントの名前"
+other = "\"{{.Name}}\" will be deleted. This can't be undone."
+
+[admin_event_edit_delete_cancel]
+description = "イベントの削除の確認のダイアログの、閉じるボタンの文言"
+other = "Cancel"
+
+[admin_event_edit_delete_submit]
+description = "イベントの削除の確認のダイアログの、削除するボタンの文言"
+other = "Delete"
+
+[admin_event_conflict_heading]
+description = "イベントの状態変更が競合したときの画面の見出し"
+other = "Event updated"
+
+[admin_event_conflict_message]
+description = "イベントの状態変更が競合したときの説明"
+other = "This event was updated elsewhere, so your change wasn't saved. Check the latest version before trying again"
+
+[admin_event_delete_referenced]
+description = "管理画面で、配下のグッズがリストに入れられたことのあるイベントを削除しようとしたときのエラー"
+other = "This event's goods have been added to someone's list, so it can't be deleted. Archive it instead"
+
+[admin_event_conflict_published_badge]
+description = "競合したイベントの最新の状態が公開中であることを示す"
+other = "Published"
+
+[admin_event_conflict_edit_link]
+description = "競合したイベントの編集の画面へ戻るリンク"
+other = "Review event"
+
+[admin_event_archive_new_title]
+description = "管理画面のイベントのアーカイブの画面のタイトル"
+other = "Archive event"
+
+[admin_event_archive_new_heading]
+description = "管理画面のイベントのアーカイブの画面の見出し"
+other = "Archive event"
+
+[admin_event_archive_new_breadcrumb_my_page]
+description = "管理画面のイベントのアーカイブの画面のパンくずにある、マイページへのリンクの文言"
+other = "My page"
+
+[admin_event_archive_new_breadcrumb_admin]
+description = "管理画面のイベントのアーカイブの画面のパンくずにある、管理画面の入口へのリンクの文言"
+other = "Admin"
+
+[admin_event_archive_new_breadcrumb_events]
+description = "管理画面のイベントのアーカイブの画面のパンくずにある、イベントの一覧へのリンクの文言"
+other = "Events"
+
+[admin_event_archive_new_lead]
+description = "管理画面のイベントのアーカイブの画面の説明。Nameはイベントの名前"
+other = "\"{{.Name}}\" will be archived. It no longer appears in the event list for users and can't be newly added to lists. Goods already in lists or trades stay usable."
+
+[admin_event_archive_new_archive_message_label]
+description = "管理画面のイベントのアーカイブの画面の、理由の入力欄のラベル"
+other = "Reason"
+
+[admin_event_archive_new_archive_message_hint]
+description = "管理画面のイベントのアーカイブの画面の、理由の入力欄の補足"
+other = "Shown only in the admin. Note why, for future reference."
+
+[admin_event_archive_new_submit]
+description = "管理画面のイベントのアーカイブの画面の送信ボタンの文言"
+other = "Archive"
+
+[admin_master_list_archived_badge]
+description = "管理画面のカテゴリー・グッズの一覧で、アーカイブしたものに添えるバッジ"
+other = "Archived"
+
+[admin_event_category_form_name_label]
+description = "管理画面のカテゴリーの作成・編集のフォームの、名前の入力欄のラベル"
+other = "Name"
+
+[admin_event_category_form_name_hint]
+description = "管理画面のカテゴリーの作成・編集のフォームの、名前の入力欄の補足"
+other = "Enter the official name, such as \"Prize B Rubber Mascot\". It's shown as is on English pages too."
+
+[admin_event_category_form_position_label]
+description = "管理画面のカテゴリーの作成・編集のフォームの、並び順の入力欄のラベル"
+other = "Order"
+
+[admin_event_category_form_position_hint]
+description = "管理画面のカテゴリーの作成・編集のフォームの、並び順の入力欄の補足"
+other = "Items are listed from the smallest number. Items with the same number appear in creation order. Leaving gaps between numbers makes it easier to insert items later."
+
+[admin_event_category_new_title]
+description = "管理画面のカテゴリーの作成の画面のタイトル"
+other = "Create category"
+
+[admin_event_category_new_heading]
+description = "管理画面のカテゴリーの作成の画面の見出し"
+other = "Create category"
+
+[admin_event_category_new_breadcrumb_my_page]
+description = "管理画面のカテゴリーの作成の画面のパンくずにある、マイページへのリンクの文言"
+other = "My page"
+
+[admin_event_category_new_breadcrumb_admin]
+description = "管理画面のカテゴリーの作成の画面のパンくずにある、管理画面の入口へのリンクの文言"
+other = "Admin"
+
+[admin_event_category_new_breadcrumb_events]
+description = "管理画面のカテゴリーの作成の画面のパンくずにある、イベントの一覧へのリンクの文言"
+other = "Events"
+
+[admin_event_category_new_submit]
+description = "管理画面のカテゴリーの作成の画面の送信ボタンの文言"
+other = "Create"
+
+[admin_event_category_edit_title]
+description = "管理画面のカテゴリーの編集の画面のタイトル"
+other = "Edit category"
+
+[admin_event_category_edit_breadcrumb_my_page]
+description = "管理画面のカテゴリーの編集の画面のパンくずにある、マイページへのリンクの文言"
+other = "My page"
+
+[admin_event_category_edit_breadcrumb_admin]
+description = "管理画面のカテゴリーの編集の画面のパンくずにある、管理画面の入口へのリンクの文言"
+other = "Admin"
+
+[admin_event_category_edit_breadcrumb_events]
+description = "管理画面のカテゴリーの編集の画面のパンくずにある、イベントの一覧へのリンクの文言"
+other = "Events"
+
+[admin_event_category_edit_submit]
+description = "管理画面のカテゴリーの編集の画面の送信ボタンの文言"
+other = "Save"
+
+[admin_event_category_edit_goods_heading]
+description = "管理画面のカテゴリーの編集の画面の、グッズの一覧の見出し"
+other = "Goods"
+
+[admin_event_category_edit_new_goods_link]
+description = "管理画面のカテゴリーの編集の画面の、グッズの作成へのリンクの文言"
+other = "Create goods"
+
+[admin_event_category_edit_goods_empty]
+description = "管理画面のカテゴリーの編集の画面で、グッズが1つも無いときの文言"
+other = "No goods yet"
+
+[admin_event_category_edit_archive_heading]
+description = "管理画面のカテゴリーの編集の画面の、アーカイブの欄の見出し"
+other = "Archive"
+
+[admin_event_category_edit_archive_message]
+description = "管理画面のカテゴリーの編集の画面で、公開中のカテゴリーをアーカイブすると何が起きるかの説明"
+other = "Once archived, the category no longer appears in the categories of the event for users. Items already in lists or trades stay usable."
+
+[admin_event_category_edit_archive_link]
+description = "管理画面のカテゴリーの編集の画面の、アーカイブの画面へのリンクの文言"
+other = "Archive"
+
+[admin_event_category_edit_archived_badge]
+description = "管理画面のカテゴリーの編集の画面で、アーカイブしたカテゴリーに添えるバッジ"
+other = "Archived"
+
+[admin_event_category_edit_archive_message_label]
+description = "管理画面のカテゴリーの編集の画面で、アーカイブした理由の見出し"
+other = "Reason for archiving"
+
+[admin_event_category_edit_unarchive_message]
+description = "管理画面のカテゴリーの編集の画面で、アーカイブしたカテゴリーを元に戻すと何が起きるかの説明"
+other = "Once restored, the category appears in the categories of the event for users again."
+
+[admin_event_category_edit_unarchive_submit]
+description = "管理画面のカテゴリーの編集の画面の、アーカイブしたカテゴリーを元に戻すボタンの文言"
+other = "Restore"
+
+[admin_event_category_edit_delete_heading]
+description = "管理画面のカテゴリーの編集の画面の、削除の欄の見出し。管理者にだけ出す"
+other = "Delete"
+
+[admin_event_category_edit_delete_message]
+description = "管理画面のカテゴリーの編集の画面で、カテゴリーを削除すると何が起きるかの説明"
+other = "Once deleted, the category no longer appears even in the admin, and this can't be undone. If it's just no longer in use, archive it instead."
+
+[admin_event_category_edit_delete_button]
+description = "管理画面のカテゴリーの編集の画面の、削除の確認のダイアログを開くボタンの文言"
+other = "Delete"
+
+[admin_event_category_edit_delete_confirm_title]
+description = "カテゴリーの削除の確認のダイアログの見出し"
+other = "Delete this category?"
+
+[admin_event_category_edit_delete_confirm_message]
+description = "カテゴリーの削除の確認のダイアログの説明。Nameはカテゴリーの名前"
+other = "\"{{.Name}}\" will be deleted. This can't be undone."
+
+[admin_event_category_edit_delete_cancel]
+description = "カテゴリーの削除の確認のダイアログの、閉じるボタンの文言"
+other = "Cancel"
+
+[admin_event_category_edit_delete_submit]
+description = "カテゴリーの削除の確認のダイアログの、削除するボタンの文言"
+other = "Delete"
+
+[admin_event_category_conflict_heading]
+description = "カテゴリーの状態変更が競合したときの画面の見出し"
+other = "Category updated"
+
+[admin_event_category_conflict_message]
+description = "カテゴリーの状態変更が競合したときの説明"
+other = "This category was updated elsewhere, so your change wasn't saved. Check the latest version before trying again"
+
+[admin_event_category_delete_referenced]
+description = "管理画面で、配下のグッズがリストに入れられたことのあるカテゴリーを削除しようとしたときのエラー"
+other = "This category's goods have been added to someone's list, so it can't be deleted. Archive it instead"
+
+[admin_event_category_conflict_published_badge]
+description = "競合したカテゴリーの最新の状態が公開中であることを示す"
+other = "Published"
+
+[admin_event_category_conflict_archived_badge]
+description = "競合したカテゴリーの最新の状態がアーカイブであることを示す"
+other = "Archived"
+
+[admin_event_category_conflict_edit_link]
+description = "競合したカテゴリーの編集の画面へ戻るリンク"
+other = "Review category"
+
+[admin_event_category_archive_new_title]
+description = "管理画面のカテゴリーのアーカイブの画面のタイトル"
+other = "Archive category"
+
+[admin_event_category_archive_new_heading]
+description = "管理画面のカテゴリーのアーカイブの画面の見出し"
+other = "Archive category"
+
+[admin_event_category_archive_new_breadcrumb_my_page]
+description = "管理画面のカテゴリーのアーカイブの画面のパンくずにある、マイページへのリンクの文言"
+other = "My page"
+
+[admin_event_category_archive_new_breadcrumb_admin]
+description = "管理画面のカテゴリーのアーカイブの画面のパンくずにある、管理画面の入口へのリンクの文言"
+other = "Admin"
+
+[admin_event_category_archive_new_breadcrumb_events]
+description = "管理画面のカテゴリーのアーカイブの画面のパンくずにある、イベントの一覧へのリンクの文言"
+other = "Events"
+
+[admin_event_category_archive_new_lead]
+description = "管理画面のカテゴリーのアーカイブの画面の説明。Nameはカテゴリーの名前"
+other = "\"{{.Name}}\" will be archived. It no longer appears in the categories of the event for users, and its goods can't be newly added to lists. Items already in lists or trades stay usable."
+
+[admin_event_category_archive_new_archive_message_label]
+description = "管理画面のカテゴリーのアーカイブの画面の、理由の入力欄のラベル"
+other = "Reason"
+
+[admin_event_category_archive_new_archive_message_hint]
+description = "管理画面のカテゴリーのアーカイブの画面の、理由の入力欄の補足"
+other = "Shown only in the admin. Note why, for future reference."
+
+[admin_event_category_archive_new_submit]
+description = "管理画面のカテゴリーのアーカイブの画面の送信ボタンの文言"
+other = "Archive"
+
+[admin_goods_form_name_label]
+description = "管理画面のグッズの作成・編集のフォームの、名前の入力欄のラベル"
+other = "Name"
+
+[admin_goods_form_name_hint]
+description = "管理画面のグッズの作成・編集のフォームの、名前の入力欄の補足"
+other = "Enter the official name, such as \"Bear Cub\". It's shown as is on English pages too."
+
+[admin_goods_form_position_label]
+description = "管理画面のグッズの作成・編集のフォームの、並び順の入力欄のラベル"
+other = "Order"
+
+[admin_goods_form_position_hint]
+description = "管理画面のグッズの作成・編集のフォームの、並び順の入力欄の補足"
+other = "Items are listed from the smallest number. Items with the same number appear in creation order. Leaving gaps between numbers makes it easier to insert items later."
+
+[admin_goods_new_title]
+description = "管理画面のグッズの作成の画面のタイトル"
+other = "Create goods"
+
+[admin_goods_new_heading]
+description = "管理画面のグッズの作成の画面の見出し"
+other = "Create goods"
+
+[admin_goods_new_breadcrumb_my_page]
+description = "管理画面のグッズの作成の画面のパンくずにある、マイページへのリンクの文言"
+other = "My page"
+
+[admin_goods_new_breadcrumb_admin]
+description = "管理画面のグッズの作成の画面のパンくずにある、管理画面の入口へのリンクの文言"
+other = "Admin"
+
+[admin_goods_new_breadcrumb_events]
+description = "管理画面のグッズの作成の画面のパンくずにある、イベントの一覧へのリンクの文言"
+other = "Events"
+
+[admin_goods_new_submit]
+description = "管理画面のグッズの作成の画面の送信ボタンの文言"
+other = "Create"
+
+[admin_goods_edit_title]
+description = "管理画面のグッズの編集の画面のタイトル"
+other = "Edit goods"
+
+[admin_goods_edit_breadcrumb_my_page]
+description = "管理画面のグッズの編集の画面のパンくずにある、マイページへのリンクの文言"
+other = "My page"
+
+[admin_goods_edit_breadcrumb_admin]
+description = "管理画面のグッズの編集の画面のパンくずにある、管理画面の入口へのリンクの文言"
+other = "Admin"
+
+[admin_goods_edit_breadcrumb_events]
+description = "管理画面のグッズの編集の画面のパンくずにある、イベントの一覧へのリンクの文言"
+other = "Events"
+
+[admin_goods_edit_submit]
+description = "管理画面のグッズの編集の画面の送信ボタンの文言"
+other = "Save"
+
+[admin_goods_edit_archive_heading]
+description = "管理画面のグッズの編集の画面の、アーカイブの欄の見出し"
+other = "Archive"
+
+[admin_goods_edit_archive_message]
+description = "管理画面のグッズの編集の画面で、公開中のグッズをアーカイブすると何が起きるかの説明"
+other = "Once archived, the goods no longer appears in the goods of the category for users. Items already in lists or trades stay usable."
+
+[admin_goods_edit_archive_link]
+description = "管理画面のグッズの編集の画面の、アーカイブの画面へのリンクの文言"
+other = "Archive"
+
+[admin_goods_edit_archived_badge]
+description = "管理画面のグッズの編集の画面で、アーカイブしたグッズに添えるバッジ"
+other = "Archived"
+
+[admin_goods_edit_archive_message_label]
+description = "管理画面のグッズの編集の画面で、アーカイブした理由の見出し"
+other = "Reason for archiving"
+
+[admin_goods_edit_unarchive_message]
+description = "管理画面のグッズの編集の画面で、アーカイブしたグッズを元に戻すと何が起きるかの説明"
+other = "Once restored, the goods appears in the goods of the category for users again."
+
+[admin_goods_edit_unarchive_submit]
+description = "管理画面のグッズの編集の画面の、アーカイブしたグッズを元に戻すボタンの文言"
+other = "Restore"
+
+[admin_goods_edit_delete_heading]
+description = "管理画面のグッズの編集の画面の、削除の欄の見出し。管理者にだけ出す"
+other = "Delete"
+
+[admin_goods_edit_delete_message]
+description = "管理画面のグッズの編集の画面で、グッズを削除すると何が起きるかの説明"
+other = "Once deleted, the goods no longer appears even in the admin, and this can't be undone. If it's just no longer in use, archive it instead."
+
+[admin_goods_edit_delete_button]
+description = "管理画面のグッズの編集の画面の、削除の確認のダイアログを開くボタンの文言"
+other = "Delete"
+
+[admin_goods_edit_delete_confirm_title]
+description = "グッズの削除の確認のダイアログの見出し"
+other = "Delete this goods?"
+
+[admin_goods_edit_delete_confirm_message]
+description = "グッズの削除の確認のダイアログの説明。Nameはグッズの名前"
+other = "\"{{.Name}}\" will be deleted. This can't be undone."
+
+[admin_goods_edit_delete_cancel]
+description = "グッズの削除の確認のダイアログの、閉じるボタンの文言"
+other = "Cancel"
+
+[admin_goods_edit_delete_submit]
+description = "グッズの削除の確認のダイアログの、削除するボタンの文言"
+other = "Delete"
+
+[admin_goods_conflict_heading]
+description = "グッズの状態変更が競合したときの画面の見出し"
+other = "Goods updated"
+
+[admin_goods_conflict_message]
+description = "グッズの状態変更が競合したときの説明"
+other = "This goods was updated elsewhere, so your change wasn't saved. Check the latest version before trying again"
+
+[admin_goods_delete_referenced]
+description = "管理画面で、リストに入れられたことのあるグッズを削除しようとしたときのエラー"
+other = "These goods have been added to someone's list, so they can't be deleted. Archive them instead"
+
+[admin_goods_conflict_published_badge]
+description = "競合したグッズの最新の状態が公開中であることを示す"
+other = "Published"
+
+[admin_goods_conflict_archived_badge]
+description = "競合したグッズの最新の状態がアーカイブであることを示す"
+other = "Archived"
+
+[admin_goods_conflict_edit_link]
+description = "競合したグッズの編集の画面へ戻るリンク"
+other = "Review goods"
+
+[admin_goods_archive_new_title]
+description = "管理画面のグッズのアーカイブの画面のタイトル"
+other = "Archive goods"
+
+[admin_goods_archive_new_heading]
+description = "管理画面のグッズのアーカイブの画面の見出し"
+other = "Archive goods"
+
+[admin_goods_archive_new_breadcrumb_my_page]
+description = "管理画面のグッズのアーカイブの画面のパンくずにある、マイページへのリンクの文言"
+other = "My page"
+
+[admin_goods_archive_new_breadcrumb_admin]
+description = "管理画面のグッズのアーカイブの画面のパンくずにある、管理画面の入口へのリンクの文言"
+other = "Admin"
+
+[admin_goods_archive_new_breadcrumb_events]
+description = "管理画面のグッズのアーカイブの画面のパンくずにある、イベントの一覧へのリンクの文言"
+other = "Events"
+
+[admin_goods_archive_new_lead]
+description = "管理画面のグッズのアーカイブの画面の説明。Nameはグッズの名前"
+other = "\"{{.Name}}\" will be archived. It no longer appears in the goods of the category for users and can't be newly added to lists. Items already in lists or trades stay usable."
+
+[admin_goods_archive_new_archive_message_label]
+description = "管理画面のグッズのアーカイブの画面の、理由の入力欄のラベル"
+other = "Reason"
+
+[admin_goods_archive_new_archive_message_hint]
+description = "管理画面のグッズのアーカイブの画面の、理由の入力欄の補足"
+other = "Shown only in the admin. Note why, for future reference."
+
+[admin_goods_archive_new_submit]
+description = "管理画面のグッズのアーカイブの画面の送信ボタンの文言"
+other = "Archive"
+
+[admin_station_index_title]
+description = "管理画面の駅の一覧のタイトル"
+other = "Stations"
+
+[admin_station_index_heading]
+description = "管理画面の駅の一覧の見出し"
+other = "Stations"
+
+[admin_station_index_breadcrumb_my_page]
+description = "管理画面の駅の一覧のパンくずにある、マイページへのリンクの文言"
+other = "My page"
+
+[admin_station_index_breadcrumb_admin]
+description = "管理画面の駅の一覧のパンくずにある、管理画面の入口へのリンクの文言"
+other = "Admin"
+
+[admin_station_index_new_link]
+description = "管理画面の駅の一覧の、駅の作成の画面へのリンクの文言"
+other = "Create station"
+
+[admin_station_index_new_in_prefecture_link]
+description = "管理画面の駅の一覧の都道府県ごとの欄にある、その都道府県に駅を作成する画面へのリンクの文言。Prefectureは都道府県の名前"
+other = "Create station in {{.Prefecture}}"
+
+[admin_station_index_empty]
+description = "管理画面の駅の一覧に駅が1つも無いときの文言"
+other = "No stations yet."
+
+[admin_station_form_prefecture_label]
+description = "管理画面の駅の作成・編集のフォームの、都道府県を選ぶ欄のラベル"
+other = "Prefecture"
+
+[admin_station_form_prefecture_placeholder]
+description = "管理画面の駅の作成・編集のフォームの、都道府県を選ぶ欄の、まだ選んでいないときの選択肢"
+other = "Select"
+
+[admin_station_form_name_label]
+description = "管理画面の駅の作成・編集のフォームの、駅名の入力欄のラベル"
+other = "Station name"
+
+[admin_station_form_name_hint]
+description = "管理画面の駅の作成・編集のフォームの、駅名の入力欄の補足"
+other = "Enter the name without \"Station\", such as \"Shinjuku\". It's shown as is on English pages too."
+
+[admin_station_form_position_label]
+description = "管理画面の駅の作成・編集のフォームの、並び順の入力欄のラベル"
+other = "Order"
+
+[admin_station_form_position_hint]
+description = "管理画面の駅の作成・編集のフォームの、並び順の入力欄の補足"
+other = "Stations are listed within the prefecture from the smallest number. Stations with the same number appear in creation order. Leaving gaps between numbers makes it easier to insert stations later."
+
+[admin_station_new_title]
+description = "管理画面の駅の作成の画面のタイトル"
+other = "Create station"
+
+[admin_station_new_heading]
+description = "管理画面の駅の作成の画面の見出し"
+other = "Create station"
+
+[admin_station_new_breadcrumb_my_page]
+description = "管理画面の駅の作成の画面のパンくずにある、マイページへのリンクの文言"
+other = "My page"
+
+[admin_station_new_breadcrumb_admin]
+description = "管理画面の駅の作成の画面のパンくずにある、管理画面の入口へのリンクの文言"
+other = "Admin"
+
+[admin_station_new_breadcrumb_stations]
+description = "管理画面の駅の作成の画面のパンくずにある、駅の一覧へのリンクの文言"
+other = "Stations"
+
+[admin_station_new_submit]
+description = "管理画面の駅の作成の画面の送信ボタンの文言"
+other = "Create"
+
+[admin_station_edit_title]
+description = "管理画面の駅の編集の画面のタイトル"
+other = "Edit station"
+
+[admin_station_edit_breadcrumb_my_page]
+description = "管理画面の駅の編集の画面のパンくずにある、マイページへのリンクの文言"
+other = "My page"
+
+[admin_station_edit_breadcrumb_admin]
+description = "管理画面の駅の編集の画面のパンくずにある、管理画面の入口へのリンクの文言"
+other = "Admin"
+
+[admin_station_edit_breadcrumb_stations]
+description = "管理画面の駅の編集の画面のパンくずにある、駅の一覧へのリンクの文言"
+other = "Stations"
+
+[admin_station_edit_submit]
+description = "管理画面の駅の編集の画面の送信ボタンの文言"
+other = "Save"
+
+[admin_station_edit_archive_heading]
+description = "管理画面の駅の編集の画面の、アーカイブの欄の見出し"
+other = "Archive"
+
+[admin_station_edit_archive_message]
+description = "管理画面の駅の編集の画面で、公開中の駅をアーカイブすると何が起きるかの説明"
+other = "Once archived, the station no longer appears in the station options for users' meeting places. Users who already chose it can keep using it."
+
+[admin_station_edit_archive_link]
+description = "管理画面の駅の編集の画面の、アーカイブの画面へのリンクの文言"
+other = "Archive"
+
+[admin_station_edit_archived_badge]
+description = "管理画面の駅の編集の画面で、アーカイブした駅に添えるバッジ"
+other = "Archived"
+
+[admin_station_edit_archive_message_label]
+description = "管理画面の駅の編集の画面で、アーカイブした理由の見出し"
+other = "Reason for archiving"
+
+[admin_station_edit_unarchive_message]
+description = "管理画面の駅の編集の画面で、アーカイブした駅を元に戻すと何が起きるかの説明"
+other = "Once restored, the station appears in the station options for users' meeting places again."
+
+[admin_station_edit_unarchive_submit]
+description = "管理画面の駅の編集の画面の、アーカイブした駅を元に戻すボタンの文言"
+other = "Restore"
+
+[admin_station_edit_delete_heading]
+description = "管理画面の駅の編集の画面の、削除の欄の見出し。管理者にだけ出す"
+other = "Delete"
+
+[admin_station_edit_delete_message]
+description = "管理画面の駅の編集の画面で、駅を削除すると何が起きるかの説明"
+other = "Once deleted, the station no longer appears even in the admin, and this can't be undone. If it's just no longer in use, archive it instead."
+
+[admin_station_edit_delete_button]
+description = "管理画面の駅の編集の画面の、削除の確認のダイアログを開くボタンの文言"
+other = "Delete"
+
+[admin_station_edit_delete_confirm_title]
+description = "駅の削除の確認のダイアログの見出し"
+other = "Delete this station?"
+
+[admin_station_edit_delete_confirm_message]
+description = "駅の削除の確認のダイアログの説明。Nameは駅名"
+other = "\"{{.Name}}\" will be deleted. This can't be undone."
+
+[admin_station_edit_delete_cancel]
+description = "駅の削除の確認のダイアログの、閉じるボタンの文言"
+other = "Cancel"
+
+[admin_station_edit_delete_submit]
+description = "駅の削除の確認のダイアログの、削除するボタンの文言"
+other = "Delete"
+
+[admin_station_conflict_heading]
+description = "駅の状態変更が競合したときの画面の見出し"
+other = "Station updated"
+
+[admin_station_conflict_message]
+description = "駅の状態変更が競合したときの説明"
+other = "This station was updated elsewhere, so your change wasn't saved. Check the latest version before trying again"
+
+[admin_station_delete_referenced]
+description = "管理画面で、交換場所に選ばれている駅を削除しようとしたときのエラー"
+other = "This station is chosen as someone's trade spot, so it can't be deleted. Archive it instead"
+
+[admin_station_conflict_published_badge]
+description = "競合した駅の最新の状態が公開中であることを示す"
+other = "Published"
+
+[admin_station_conflict_archived_badge]
+description = "競合した駅の最新の状態がアーカイブであることを示す"
+other = "Archived"
+
+[admin_station_conflict_edit_link]
+description = "競合した駅の編集の画面へ戻るリンク"
+other = "Review station"
+
+[admin_station_archive_new_title]
+description = "管理画面の駅のアーカイブの画面のタイトル"
+other = "Archive station"
+
+[admin_station_archive_new_heading]
+description = "管理画面の駅のアーカイブの画面の見出し"
+other = "Archive station"
+
+[admin_station_archive_new_breadcrumb_my_page]
+description = "管理画面の駅のアーカイブの画面のパンくずにある、マイページへのリンクの文言"
+other = "My page"
+
+[admin_station_archive_new_breadcrumb_admin]
+description = "管理画面の駅のアーカイブの画面のパンくずにある、管理画面の入口へのリンクの文言"
+other = "Admin"
+
+[admin_station_archive_new_breadcrumb_stations]
+description = "管理画面の駅のアーカイブの画面のパンくずにある、駅の一覧へのリンクの文言"
+other = "Stations"
+
+[admin_station_archive_new_lead]
+description = "管理画面の駅のアーカイブの画面の説明。Nameは駅名"
+other = "\"{{.Name}}\" will be archived. It no longer appears in the station options for users' meeting places and can't be newly chosen. Users who already chose it can keep using it."
+
+[admin_station_archive_new_archive_message_label]
+description = "管理画面の駅のアーカイブの画面の、理由の入力欄のラベル"
+other = "Reason"
+
+[admin_station_archive_new_archive_message_hint]
+description = "管理画面の駅のアーカイブの画面の、理由の入力欄の補足"
+other = "Shown only in the admin. Note why, for future reference."
+
+[admin_station_archive_new_submit]
+description = "管理画面の駅のアーカイブの画面の送信ボタンの文言"
+other = "Archive"
+
+[item_kind_give]
+description = "譲れるリストの名前。リストを選ぶボタンや、リストの名前を差し込む文言に使う"
+other = "Can give"
+
+[item_kind_want]
+description = "ほしいリストの名前。リストを選ぶボタンや、リストの名前を差し込む文言に使う"
+other = "Want"
+
+[item_quantities_give]
+description = "イベントやカテゴリーの中で、譲れるリストに入れたアイテムの数量の合計のバッジ。Quantityは数量"
+other = "Can give: {{.Quantity}}"
+
+[item_quantities_want]
+description = "イベントやカテゴリーの中で、ほしいリストに入れたアイテムの数量の合計のバッジ。Quantityは数量"
+other = "Want: {{.Quantity}}"
+
+[event_index_title]
+description = "イベントの一覧のタイトル"
+other = "Events"
+
+[event_index_heading]
+description = "イベントの一覧の見出し"
+other = "Events"
+
+[event_index_breadcrumb_home]
+description = "イベントの一覧のパンくずの、ホームへのリンクの文言"
+other = "Home"
+
+[event_index_empty]
+description = "公開中のイベントが無いときの、イベントの一覧の文言"
+other = "No events yet"
+
+[event_index_summary]
+description = "イベントの開催期間とグッズの種類の数。Periodは開催期間 (event_period)、Countはグッズの種類の数"
+other = "{{.Period}} · {{.Count}} goods"
+
+[event_show_title]
+description = "イベントのカテゴリーの一覧のタイトル"
+other = "Event"
+
+[event_show_breadcrumb_home]
+description = "イベントのカテゴリーの一覧のパンくずの、ホームへのリンクの文言"
+other = "Home"
+
+[event_show_breadcrumb_events]
+description = "イベントのカテゴリーの一覧のパンくずの、イベントの一覧へのリンクの文言"
+other = "Events"
+
+[event_show_categories_heading]
+description = "イベントのカテゴリーの一覧の、カテゴリーを並べる欄の見出し"
+other = "Categories"
+
+[event_show_empty]
+description = "公開中のカテゴリーが無いときの、イベントのカテゴリーの一覧の文言"
+other = "No categories in this event yet"
+
+[event_show_goods_count]
+description = "イベントのカテゴリーの一覧の、カテゴリーごとのグッズの種類の数。Countは種類の数"
+other = "{{.Count}} goods"
+
+[event_category_show_title]
+description = "カテゴリーのグッズの一覧のタイトル"
+other = "Category goods"
+
+[event_category_show_breadcrumb_home]
+description = "カテゴリーのグッズの一覧のパンくずの、ホームへのリンクの文言"
+other = "Home"
+
+[event_category_show_breadcrumb_events]
+description = "カテゴリーのグッズの一覧のパンくずの、イベントの一覧へのリンクの文言"
+other = "Events"
+
+[event_category_show_empty]
+description = "公開中のグッズが無いときの、カテゴリーのグッズの一覧の文言"
+other = "No goods in this category yet"
+
+[event_category_show_lead]
+description = "カテゴリーのグッズの一覧の上の説明。Countはグッズの種類の数"
+other = "{{.Count}} goods. Tap “Can give” or “Want” to add one to your list with a quantity and a note"
+
+[event_category_show_not_listed]
+description = "カテゴリーのグッズの一覧で、どちらのリストにも入れていないグッズに添える文言"
+other = "Not in your lists"
+
+[event_category_show_give_listed]
+description = "カテゴリーのグッズの一覧で、譲れるリストに入れたグッズに添える文言。Quantityは数量"
+other = "{{.Quantity}} in your Can give list"
+
+[event_category_show_want_listed]
+description = "カテゴリーのグッズの一覧で、ほしいリストに入れたグッズに添える文言。Quantityは数量"
+other = "{{.Quantity}} in your Want list"
+
+[event_category_show_add_give_label]
+description = "カテゴリーのグッズの一覧の「譲れる」ボタンの、読み上げ用の名前。見える文言 (item_kind_give) を含める。Nameはグッズの名前"
+other = "Add {{.Name}} to your Can give list"
+
+[event_category_show_add_want_label]
+description = "カテゴリーのグッズの一覧の「ほしい」ボタンの、読み上げ用の名前。見える文言 (item_kind_want) を含める。Nameはグッズの名前"
+other = "Add {{.Name}} to your Want list"
+
+[event_category_show_edit_give_label]
+description = "カテゴリーのグッズの一覧の、譲れるリストに入れたグッズの「譲れる」ボタン (アイテムの編集へのリンク) の読み上げ用の名前。見える文言 (item_kind_give) を含める。Nameはグッズの名前"
+other = "Edit {{.Name}} in your Can give list"
+
+[event_category_show_edit_want_label]
+description = "カテゴリーのグッズの一覧の、ほしいリストに入れたグッズの「ほしい」ボタン (アイテムの編集へのリンク) の読み上げ用の名前。見える文言 (item_kind_want) を含める。Nameはグッズの名前"
+other = "Edit {{.Name}} in your Want list"
+
+[item_new_title]
+description = "リストに追加する画面のタイトル"
+other = "Add to list"
+
+[item_new_heading]
+description = "リストに追加する画面の見出し"
+other = "Add to list"
+
+[item_new_breadcrumb_home]
+description = "リストに追加する画面のパンくずの、ホームへのリンクの文言"
+other = "Home"
+
+[item_new_breadcrumb_events]
+description = "リストに追加する画面のパンくずの、イベントの一覧へのリンクの文言"
+other = "Events"
+
+[item_new_kind_label]
+description = "リストに追加する画面の、入れるリストを選ぶ欄のラベル"
+other = "List"
+
+[item_form_quantity_label]
+description = "リストに追加する画面とアイテムの編集の画面の、数量の入力欄のラベル"
+other = "Quantity"
+
+[item_form_quantity_hint]
+description = "リストに追加する画面とアイテムの編集の画面の、数量の入力欄の補足"
+other = "How many you can give or want. It goes down automatically when a trade is done."
+
+[item_form_note_label]
+description = "リストに追加する画面とアイテムの編集の画面の、ひとことの入力欄のラベル"
+other = "Note"
+
+[item_form_note_hint]
+description = "リストに追加する画面とアイテムの編集の画面の、ひとことの入力欄の補足"
+other = "Anything you want others to know, such as its condition. Up to 200 characters."
+
+[item_new_submit]
+description = "リストに追加する画面の送信ボタンの文言"
+other = "Add to list"
+
+[item_new_already_listed]
+description = "同じグッズが既に選んだリストにあって、追加しなかったときのエラー。Listはリストの名前 (item_kind_give / item_kind_want)"
+other = "These goods are already in your {{.List}} list"
+
+[item_edit_title]
+description = "リストのアイテムの編集の画面のタイトル"
+other = "Edit item"
+
+[item_edit_give_heading]
+description = "譲れるリストのアイテムの編集の画面の見出し"
+other = "Item in your Can give list"
+
+[item_edit_want_heading]
+description = "ほしいリストのアイテムの編集の画面の見出し"
+other = "Item in your Want list"
+
+[item_edit_breadcrumb_list]
+description = "リストのアイテムの編集の画面のパンくずの、リストへのリンクの文言"
+other = "List"
+
+[item_edit_submit]
+description = "リストのアイテムの編集の画面の保存ボタンの文言"
+other = "Save"
+
+[item_edit_remove]
+description = "リストのアイテムの編集の画面の、アイテムをリストから外すボタンの文言"
+other = "Remove from list"
+
+[item_edit_conflict_message]
+description = "アイテムの更新・リストから外す操作で、画面を開いたあとに変更があったときの案内"
+other = "This item changed since you opened the page. Nothing was changed. Review the latest details."
+
+[list_index_title]
+description = "リストのタイトル"
+other = "List"
+
+[list_index_heading]
+description = "リストの見出し"
+other = "List"
+
+[list_index_kind_nav_label]
+description = "リストの、譲れる・ほしいを切り替えるリンクの並びの名前 (読み上げ用)"
+other = "Switch list"
+
+[list_index_add_give_heading]
+description = "譲れるリストの、リストに追加する入口の見出し"
+other = "Add to your Can give list"
+
+[list_index_add_want_heading]
+description = "ほしいリストの、リストに追加する入口の見出し"
+other = "Add to your Want list"
+
+[list_index_add_from_events]
+description = "リストの、イベントの一覧 (リストに追加するグッズをたどる入口) へのリンクの文言"
+other = "Add from events"
+
+[list_index_give_empty]
+description = "譲れるリストにアイテムが無いときの文言"
+other = "Nothing in your Can give list yet"
+
+[list_index_want_empty]
+description = "ほしいリストにアイテムが無いときの文言"
+other = "Nothing in your Want list yet"
+
+[list_index_item_name]
+description = "リストの、アイテムのグッズの名前。Categoryはカテゴリーの名前、Goodsはグッズの名前"
+other = "{{.Category}} · {{.Goods}}"
+
+[list_index_quantity]
+description = "リストの、アイテムの数量と、イベントごとの数量の合計。Quantityは数量"
+other = "Qty {{.Quantity}}"
+
+[list_index_quantity_with_note]
+description = "リストの、ひとことのあるアイテムの数量とひとこと。Quantityは数量、Noteはひとこと"
+other = "Qty {{.Quantity}} · {{.Note}}"
+
+[match_index_title]
+description = "マッチ候補の画面のタイトル"
+other = "Matches"
+
+[match_index_heading]
+description = "マッチ候補の画面の見出し"
+other = "Matches"
+
+[match_index_breadcrumb_trades]
+description = "マッチ候補の画面のパンくずの、交換へのリンクの文言"
+other = "Trades"
+
+[match_index_lead]
+description = "マッチ候補の画面の説明"
+other = "People who share a prefecture in their trade spots and can give what each other wants."
+
+[match_index_empty]
+description = "マッチ候補の画面で、候補がいないときの文"
+other = "No one to trade with yet. Adding items to your lists makes it easier to find someone."
+
+[match_index_empty_link]
+description = "マッチ候補の画面で、候補がいないときに置くリストへのリンクの文言"
+other = "View your lists"
+
+[match_index_no_places]
+description = "マッチ候補の画面で、交換場所をまだ選んでいないときの文"
+other = "Add your trade spots and we'll start looking for people you can trade with."
+
+[match_index_no_places_link]
+description = "マッチ候補の画面で、交換場所をまだ選んでいないときに置く交換場所の画面へのリンクの文言"
+other = "Add trade spots"
+
+[match_index_receivable]
+description = "マッチ候補の画面の、候補からもらえるものの見出し。Quantityは交換できる数量の合計"
+other = "You get · Qty {{.Quantity}}"
+
+[match_index_givable]
+description = "マッチ候補の画面の、候補に渡せるものの見出し。Quantityは交換できる数量の合計"
+other = "You give · Qty {{.Quantity}}"
+
+[match_item_name]
+description = "交換できるアイテムのグッズの名前。Categoryはカテゴリーの名前、Goodsはグッズの名前"
+other = "{{.Category}} · {{.Goods}}"
+
+[match_item_quantity]
+description = "交換できるアイテムの数量 (2点以上のときに添える)。Quantityは数量"
+other = "×{{.Quantity}}"
+
+[profile_other_title]
+description = "ほかのユーザーのプロフィールのタイトル"
+other = "Profile"
+
+[profile_other_heading]
+description = "ほかのユーザーのプロフィールの見出し。Atnameはそのユーザーのアットネーム"
+other = "@{{.Atname}}"
+
+[profile_other_breadcrumb_trades]
+description = "ほかのユーザーのプロフィールのパンくずの、交換へのリンクの文言"
+other = "Trades"
+
+[profile_other_breadcrumb_matches]
+description = "ほかのユーザーのプロフィールのパンくずの、マッチ候補へのリンクの文言"
+other = "Matches"
+
+[profile_other_places_heading]
+description = "ほかのユーザーのプロフィールの、交換場所の見出し"
+other = "Trade spots"
+
+[profile_other_places_empty]
+description = "ほかのユーザーのプロフィールで、交換場所が無いときの文"
+other = "No trade spots yet"
+
+[profile_other_place_note_label]
+description = "ほかのユーザーのプロフィールの、「ほかに出られるところ」のラベル"
+other = "Other places they can go"
+
+[profile_other_trade_heading]
+description = "ほかのユーザーのプロフィールの、あなたとの間で交換できるものの見出し"
+other = "Trading with you"
+
+[profile_other_receivable]
+description = "ほかのユーザーのプロフィールの、あなたがもらえるものの見出し。Quantityは交換できる数量の合計"
+other = "You get · Qty {{.Quantity}}"
+
+[profile_other_givable]
+description = "ほかのユーザーのプロフィールの、あなたが渡せるものの見出し。Quantityは交換できる数量の合計"
+other = "You give · Qty {{.Quantity}}"
+
+[profile_other_match_empty]
+description = "ほかのユーザーのプロフィールで、もらえるもの・渡せるものが無いときの文"
+other = "None right now"
+
+[validation_trade_receive_required]
+description = "交換の申し込みで、もらうものを1つも選んでいないときのエラー"
+other = "Choose at least one item to receive"
+
+[validation_trade_give_required]
+description = "交換の申し込みで、渡すものを1つも選んでいないときのエラー"
+other = "Choose at least one item to give"
+
+[validation_trade_items_unavailable]
+description = "交換の申し込みで、選べなくなったアイテム (画面を開いたあとにリストから外されたものなど) を選んでいたときのエラー"
+other = "Some of the items you chose are no longer available. Choose again"
+
+[validation_trade_rate_limited]
+description = "交換の申し込みが続いて、レート制限の上限を超えたときのエラー。Minutesは解除までの分数 (切り上げ)"
+other = "You've sent too many trade offers. You can send another in {{.Minutes}} min"
+
+[settings_message_consent_withdraw_trade_in_progress]
+description = "メッセージの利用の画面で、進行中の交換 (返事待ち・マッチ成立) があって同意をやめられないときのエラー"
+other = "You can't withdraw your agreement while a trade is in progress. Try again after it ends"
+
+[flash_trade_created]
+description = "交換を申し込んだときのメッセージ。Atnameは申し込んだ相手のアットネーム"
+other = "Sent a trade offer to @{{.Atname}}"
+
+[match_index_propose]
+description = "マッチ候補のカードの、交換を申し込む組み合わせを選ぶ画面へのボタン"
+other = "Offer a trade"
+
+[match_index_propose_label]
+description = "マッチ候補のカードの、交換を申し込むボタンの読み上げ用の名前。候補ごとにボタンを見分けるため相手を含める。Atnameは候補のアットネーム"
+other = "Offer a trade to @{{.Atname}}"
+
+[profile_other_propose]
+description = "ほかのユーザーのプロフィールの、交換を申し込む組み合わせを選ぶ画面へのボタン"
+other = "Offer a trade"
+
+[trade_breadcrumb_trades]
+description = "交換を申し込む画面のパンくずの、交換へのリンク"
+other = "Trades"
+
+[trade_breadcrumb_matches]
+description = "交換を申し込む画面のパンくずの、マッチ候補へのリンク"
+other = "Matches"
+
+[trade_breadcrumb_profile]
+description = "交換を申し込む画面のパンくずの、申し込む相手のプロフィールへのリンク。Atnameは相手のアットネーム"
+other = "@{{.Atname}}"
+
+[trade_consent_required_heading]
+description = "交換を申し込む画面と交換のメッセージのページで、メッセージの取り扱いへの有効な同意が無いときの案内の見出し"
+other = "Agreement on messages is required"
+
+[trade_consent_required_message]
+description = "交換を申し込む画面で、メッセージの取り扱いへの有効な同意が無いときの案内の文"
+other = "After you offer a trade, you and your trading partner talk through messages. Before offering, review how messages are handled and agree to it"
+
+[trade_consent_required_link]
+description = "交換を申し込む画面と交換のメッセージのページの、メッセージの利用の画面へのボタン"
+other = "Review messaging"
+
+[trade_new_title]
+description = "組み合わせを選ぶ画面のタイトル"
+other = "Choose items to trade"
+
+[trade_new_heading]
+description = "組み合わせを選ぶ画面の見出し"
+other = "Choose items to trade"
+
+[trade_new_lead]
+description = "組み合わせを選ぶ画面の見出しの下の説明。Atnameは申し込む相手のアットネーム"
+other = "Choose at least one item to receive and one to give. @{{.Atname}} decides whether to accept"
+
+[trade_new_receive_legend]
+description = "組み合わせを選ぶ画面の、もらうもの (相手の譲れるアイテム) を選ぶ欄の名前"
+other = "Items to receive"
+
+[trade_new_give_legend]
+description = "組み合わせを選ぶ画面の、渡すもの (自分の譲れるアイテム) を選ぶ欄の名前"
+other = "Items to give"
+
+[trade_new_choice_hint]
+description = "組み合わせを選ぶ画面の、もらうもの・渡すものの欄の名前に添える選び方"
+other = "at least one"
+
+[trade_new_submit]
+description = "組み合わせを選ぶ画面の、申し込み内容の確認へ進むボタン"
+other = "Next"
+
+[trade_new_not_tradable]
+description = "組み合わせを選ぶ画面で、もらえるものか渡せるものが無く申し込めないときの文。Atnameは相手のアットネーム"
+other = "There's nothing you can trade with @{{.Atname}} right now. Try reviewing your lists"
+
+[trade_new_not_tradable_link]
+description = "組み合わせを選ぶ画面で、申し込めないときのリストへのボタン"
+other = "View your lists"
+
+[trade_confirmation_title]
+description = "申し込み内容の確認の画面のタイトル"
+other = "Review your offer"
+
+[trade_confirmation_heading]
+description = "申し込み内容の確認の画面の見出し"
+other = "Review your offer"
+
+[trade_confirmation_give_heading]
+description = "申し込み内容の確認の画面の、渡すものの見出し。Quantityは選んだ点数"
+other = "You give ({{.Quantity}})"
+
+[trade_confirmation_receive_heading]
+description = "申し込み内容の確認の画面の、もらうものの見出し。Atnameは相手のアットネーム、Quantityは選んだ点数"
+other = "You get from @{{.Atname}} ({{.Quantity}})"
+
+[trade_confirmation_note_label]
+description = "申し込み内容の確認の画面の、ひとことの入力欄の名前"
+other = "Message"
+
+[trade_confirmation_note_hint]
+description = "申し込み内容の確認の画面の、ひとことの入力欄の補足。Atnameは相手のアットネーム"
+other = "Your message is sent to @{{.Atname}} as the first message of the trade"
+
+[trade_confirmation_submit]
+description = "申し込み内容の確認の画面の、申し込むボタン"
+other = "Send this offer"
+
+[trade_confirmation_change_link]
+description = "申し込み内容の確認の画面の、組み合わせを選ぶ画面へ戻るリンク"
+other = "Change items"
+
+[flash_trade_message_consent_required]
+description = "交換を申し込もうとしたときに、メッセージの取り扱いへの有効な同意が無かったときのメッセージ。メッセージの利用の画面へ送ったうえで出す"
+other = "To offer a trade, agree to how messages are handled"
+
+[main_nav_trade]
+description = "メインメニューの、交換へのリンクの文言"
+other = "Trades"
+
+[main_nav_trade_awaiting_label]
+description = "メインメニューの、返事や確認を待っている交換があるときの交換へのリンクの読み上げ用の名前。Countは待っている交換の数"
+other = "Trades ({{.Count}} awaiting you)"
+
+[main_nav_message]
+description = "メインメニューの、メッセージの一覧へのリンクの文言"
+other = "Messages"
+
+[main_nav_message_unread_label]
+description = "メインメニューの、未読のメッセージがあるときのメッセージの一覧へのリンクの読み上げ用の名前。Countは未読のメッセージの数"
+other = "Messages ({{.Count}} unread)"
+
+[trade_index_title]
+description = "交換の画面のタイトル"
+other = "Trades"
+
+[trade_index_heading]
+description = "交換の画面の見出し"
+other = "Trades"
+
+[trade_index_in_progress_heading]
+description = "交換の画面の、進行中の交換の見出し"
+other = "In progress"
+
+[trade_index_in_progress_count]
+description = "交換の画面の、進行中の交換の件数。Countは件数"
+other = "Total: {{.Count}}"
+
+[trade_index_in_progress_empty]
+description = "交換の画面で、進行中の交換が無いときの文"
+other = "No trades in progress. You can offer a trade to one of your matches."
+
+[trade_index_partner]
+description = "交換の画面の、マッチ候補の各行の相手の名前。Atnameは相手のアットネーム"
+other = "@{{.Atname}}"
+
+[trade_index_quantities]
+description = "交換の画面の進行中の交換の行の、もらう品と渡す品の点数。Receiveはもらう点数、Giveは渡す点数"
+other = "Get {{.Receive}} ⇄ Give {{.Give}}"
+
+[trade_index_matches_heading]
+description = "交換の画面の、マッチ候補の見出し"
+other = "Matches"
+
+[trade_index_matches_link]
+description = "交換の画面の、マッチ候補の画面へのリンクの文言。Countはマッチ候補の人数"
+other = "See all ({{.Count}})"
+
+[trade_index_matches_empty]
+description = "交換の画面で、マッチ候補がいないときの文"
+other = "No one to trade with yet"
+
+[trade_index_match_quantities]
+description = "交換の画面のマッチ候補の行の、もらえるものと渡せるものの数量。Receiveはもらえる数量、Giveは渡せる数量"
+other = "You get {{.Receive}} · You give {{.Give}}"
+
+[trade_status_awaiting_your_reply]
+description = "交換の段階のバッジ。申し込まれて、あなたの返事を待っている"
+other = "Awaiting your reply"
+
+[trade_status_awaiting_partner_reply]
+description = "交換の段階のバッジ。申し込んで、相手の返事を待っている"
+other = "Awaiting their reply"
+
+[trade_status_awaiting_your_confirmation]
+description = "交換の段階のバッジ。相手が「交換できた」を押し、あなたの確認を待っている"
+other = "Awaiting your confirmation"
+
+[trade_status_awaiting_partner_confirmation]
+description = "交換の段階のバッジ。あなたが「交換できた」を押し、相手の確認を待っている"
+other = "Awaiting their confirmation"
+
+[trade_status_matched]
+description = "交換の段階のバッジ。承認され、2人が会って交換するのを待っている"
+other = "Matched"
+
+[trade_status_completed]
+description = "交換の段階のバッジ。2人とも「交換できた」を押して終わった"
+other = "Completed"
+
+[trade_status_withdrawn]
+description = "交換の段階のバッジ。申し込んだ人が取り下げて終わった"
+other = "Withdrawn"
+
+[trade_status_declined]
+description = "交換の段階のバッジ。申し込まれた人がお断りして終わった"
+other = "Declined"
+
+[trade_status_failed]
+description = "交換の段階のバッジ。どちらかが「交換できなかった」を記録して終わった"
+other = "Didn't happen"
+
+[trade_status_cancelled]
+description = "交換の段階のバッジ。どちらかが交換をやめて終わった"
+other = "Cancelled"
+
+[trade_partner_name]
+description = "交換・メッセージの画面で、交換の相手を示す名前。Atnameは相手のアットネーム"
+other = "@{{.Atname}}"
+
+[trade_partner_name_withdrawn]
+description = "交換・メッセージの画面で、交換の相手が退会しているときに、相手を示す名前"
+other = "Withdrawn user"
+
+[trade_event_proposed_self]
+description = "交換のページのこれまでの流れの、あなたが申し込んだ出来事"
+other = "You sent the offer"
+
+[trade_event_proposed_partner]
+description = "交換のページのこれまでの流れの、相手が申し込んだ出来事。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "{{.Name}} sent the offer"
+
+[trade_event_withdrawn_self]
+description = "交換のページのこれまでの流れの、あなたが申し込みを取り下げた出来事"
+other = "You withdrew the offer"
+
+[trade_event_withdrawn_partner]
+description = "交換のページのこれまでの流れの、相手が申し込みを取り下げた出来事。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "{{.Name}} withdrew the offer"
+
+[trade_event_approved_self]
+description = "交換のページのこれまでの流れの、あなたが承認した出来事"
+other = "You accepted the offer"
+
+[trade_event_approved_partner]
+description = "交換のページのこれまでの流れの、相手が承認した出来事。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "{{.Name}} accepted the offer"
+
+[trade_event_declined_self]
+description = "交換のページのこれまでの流れの、あなたがお断りした出来事"
+other = "You declined the offer"
+
+[trade_event_declined_partner]
+description = "交換のページのこれまでの流れの、相手がお断りした出来事。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "{{.Name}} declined the offer"
+
+[trade_event_completed_self]
+description = "交換のページのこれまでの流れの、あなたが「交換できた」を押した出来事"
+other = "You marked the trade as done"
+
+[trade_event_completed_partner]
+description = "交換のページのこれまでの流れの、相手が「交換できた」を押した出来事。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "{{.Name}} marked the trade as done"
+
+[trade_event_failed_self]
+description = "交換のページのこれまでの流れの、あなたが「交換できなかった」を記録した出来事"
+other = "You reported that the trade didn't happen"
+
+[trade_event_failed_partner]
+description = "交換のページのこれまでの流れの、相手が「交換できなかった」を記録した出来事。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "{{.Name}} reported that the trade didn't happen"
+
+[trade_event_cancelled_self]
+description = "交換のページのこれまでの流れの、あなたが交換をやめた出来事"
+other = "You cancelled the trade"
+
+[trade_event_cancelled_partner]
+description = "交換のページのこれまでの流れの、相手が交換をやめた出来事。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "{{.Name}} cancelled the trade"
+
+[trade_show_title]
+description = "交換のページのタイトル"
+other = "Trade"
+
+[trade_show_heading]
+description = "交換のページの見出し。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "Trade with {{.Name}}"
+
+[trade_show_breadcrumb_trades]
+description = "交換のページのパンくずの、交換へのリンクの文言"
+other = "Trades"
+
+[trade_show_status_heading]
+description = "交換のページの、段階と交換の品のカードの見出し (読み上げ用)"
+other = "Trade details"
+
+[trade_show_receive_heading]
+description = "交換のページの、もらう品の見出し。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "You get (from {{.Name}})"
+
+[trade_show_give_heading]
+description = "交換のページの、渡す品の見出し"
+other = "You give"
+
+[trade_show_withdraw_button]
+description = "交換のページの、申し込みを取り下げる確認ダイアログを開くボタン"
+other = "Withdraw offer"
+
+[trade_show_withdraw_confirm_title]
+description = "申し込みを取り下げる前の確認ダイアログの見出し"
+other = "Withdraw this offer?"
+
+[trade_show_withdraw_confirm_message]
+description = "申し込みを取り下げる前の確認ダイアログの説明。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "Withdrawing ends this trade. To offer a trade to {{.Name}} again, you'll choose the items again."
+
+[trade_show_withdraw_cancel]
+description = "申し込みを取り下げる前の確認ダイアログの、取り下げずに閉じるボタン"
+other = "Cancel"
+
+[trade_show_withdraw_submit]
+description = "申し込みを取り下げる前の確認ダイアログの、取り下げるボタン"
+other = "Withdraw"
+
+[trade_show_events_heading]
+description = "交換のページの、これまでの流れの見出し"
+other = "History"
+
+[trade_show_profile_link]
+description = "交換のページの、相手のプロフィールへのリンクの文言。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "{{.Name}}'s profile"
+
+[trade_show_privacy]
+description = "交換のページの、交換とメッセージを見られる人の案内。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "Only you and {{.Name}} can see this trade and its messages."
+
+[trade_show_help_contact_lead]
+description = "交換のページの、ヘルプのお問い合わせのページへのリンクの前置き"
+other = "If something goes wrong with this trade"
+
+[flash_trade_withdrawn]
+description = "交換の申し込みを取り下げたときのメッセージ"
+other = "Withdrew your offer"
+
+[flash_trade_withdrawal_conflict]
+description = "申し込みを取り下げようとしたときに、先に相手が返事をしていたなどで取り下げられなかったときのメッセージ"
+other = "This offer is no longer awaiting a reply, so it couldn't be withdrawn"
+
+[trade_show_status_note_matched]
+description = "交換のページの、マッチ成立のバッジの横に添える、次にすることの案内"
+other = "Decide on a place and time in messages"
+
+[trade_show_status_note_awaiting_your_confirmation]
+description = "交換のページの、あなたの確認待ちのバッジの横に添える、次にすることの案内。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "{{.Name}} marked the trade as done. If you've received your items, mark it as done too"
+
+[trade_show_status_note_awaiting_partner_confirmation]
+description = "交換のページの、相手の確認待ちのバッジの横に添える案内。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "The trade will finish when {{.Name}} marks it as done too"
+
+[trade_show_status_note_completed]
+description = "交換のページの、交換できたのバッジの横に添える、終わった日の文。Dateは終わった日"
+other = "Both of you marked the trade as done on {{.Date}}"
+
+[trade_show_status_note_failed]
+description = "交換のページの、交換できなかったのバッジの横に添える、終わった日の文。Dateは記録された日"
+other = "Recorded on {{.Date}}"
+
+[trade_show_status_note_withdrawn_self]
+description = "交換のページの、取り下げのバッジの横に添える、あなたが取り下げた日の文。Dateは取り下げた日"
+other = "You withdrew the offer on {{.Date}}"
+
+[trade_show_status_note_withdrawn_partner]
+description = "交換のページの、取り下げのバッジの横に添える、相手が取り下げた日の文。Dateは取り下げた日、Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "{{.Name}} withdrew the offer on {{.Date}}"
+
+[trade_show_status_note_declined_self]
+description = "交換のページの、お断りのバッジの横に添える、あなたがお断りした日の文。Dateはお断りした日"
+other = "You declined the offer on {{.Date}}"
+
+[trade_show_status_note_declined_partner]
+description = "交換のページの、お断りのバッジの横に添える、相手がお断りした日の文。Dateはお断りした日、Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "{{.Name}} declined the offer on {{.Date}}"
+
+[trade_show_status_note_cancelled_self]
+description = "交換のページの、やめたのバッジの横に添える、あなたが交換をやめた日の文。Dateはやめた日"
+other = "You cancelled the trade on {{.Date}}"
+
+[trade_show_status_note_cancelled_partner]
+description = "交換のページの、やめたのバッジの横に添える、相手が交換をやめた日の文。Dateはやめた日、Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "{{.Name}} cancelled the trade on {{.Date}}"
+
+[trade_show_received_heading]
+description = "交換のページの、交換できた交換で、もらった品の見出し。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "You got (from {{.Name}})"
+
+[trade_show_gave_heading]
+description = "交換のページの、交換できた交換で、渡した品の見出し"
+other = "You gave"
+
+[trade_show_would_receive_heading]
+description = "交換のページの、交換できずに終わった交換で、もらう予定だった品の見出し。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "You would have gotten (from {{.Name}})"
+
+[trade_show_would_give_heading]
+description = "交換のページの、交換できずに終わった交換で、渡す予定だった品の見出し"
+other = "You would have given"
+
+[trade_show_breadcrumb_history]
+description = "終わった交換のページのパンくずの、これまでの交換へのリンクの文言"
+other = "Past trades"
+
+[trade_index_history_link]
+description = "交換の画面の、これまでの交換の画面へのリンクの文言"
+other = "Past trades"
+
+[trade_history_index_title]
+description = "これまでの交換の画面のタイトル"
+other = "Past trades"
+
+[trade_history_index_heading]
+description = "これまでの交換の画面の見出し"
+other = "Past trades"
+
+[trade_history_index_breadcrumb_trades]
+description = "これまでの交換の画面のパンくずの、交換へのリンクの文言"
+other = "Trades"
+
+[trade_history_index_empty]
+description = "これまでの交換の画面で、終わった交換が無いときの文"
+other = "No past trades yet"
+
+[trade_history_index_row_summary]
+description = "これまでの交換の画面の各行の、終わった日と、もらう品と渡す品の点数。Dateは終わった日、Receiveはもらう点数、Giveは渡す点数"
+other = "{{.Date}} · Get {{.Receive}} ⇄ Give {{.Give}}"
+
+[trade_history_count_completed]
+description = "これまでの交換への行に添える、交換できた交換の数。Countは件数"
+other = "Completed {{.Count}}"
+
+[trade_history_count_failed]
+description = "これまでの交換への行に添える、交換できなかった交換の数。Countは件数"
+other = "Didn't happen {{.Count}}"
+
+[trade_history_count_cancelled]
+description = "これまでの交換への行に添える、やめた交換の数。Countは件数"
+other = "Cancelled {{.Count}}"
+
+[trade_history_count_declined]
+description = "これまでの交換への行に添える、お断りで終わった交換の数。Countは件数"
+other = "Declined {{.Count}}"
+
+[trade_history_count_withdrawn]
+description = "これまでの交換への行に添える、取り下げで終わった交換の数。Countは件数"
+other = "Withdrawn {{.Count}}"
+
+[trade_history_counts_separator]
+description = "これまでの交換への行に添える、段階ごとの数の区切り"
+other = ", "
+
+[trade_history_counts_empty]
+description = "これまでの交換への行に添える、終わった交換が無いときの文"
+other = "None yet"
+
+[completed_trade_count_label]
+description = "プロフィールとマイページの、「交換できた」で終えた交換の件数の見出し"
+other = "Completed trades"
+
+[completed_trade_count_value]
+description = "プロフィールとマイページの、「交換できた」で終えた交換の件数。Countは件数"
+other = "{{.Count}}"
+
+[profile_show_history_link]
+description = "マイページの、これまでの交換の画面へのリンクの文言"
+other = "Past trades"
+
+[trade_show_complete_button]
+description = "交換のページの、「交換できた」の画面へのボタン"
+other = "Mark as done"
+
+[trade_show_approve_button]
+description = "交換のページの、申し込みを承認するボタン"
+other = "Approve"
+
+[trade_show_approve_consent_required]
+description = "交換のページで、メッセージの取り扱いへの有効な同意が無いときに、承認するボタンの代わりに出す案内"
+other = "Once you approve, you'll exchange messages with the other person. Before approving, please review and agree to how messages are handled"
+
+[trade_show_decline_button]
+description = "交換のページの、申し込みをお断りする画面へのボタン"
+other = "Decline"
+
+[trade_event_reason]
+description = "交換のこれまでの流れとメッセージの流れの、出来事で選んだ理由。Reasonは理由の文言"
+other = "Reason: {{.Reason}}"
+
+[trade_decline_title]
+description = "申し込みをお断りする画面のタイトル"
+other = "Decline offer"
+
+[trade_decline_heading]
+description = "申し込みをお断りする画面の見出し"
+other = "Decline offer"
+
+[trade_decline_proposal_heading]
+description = "申し込みをお断りする画面の、申し込みの内容のカードの見出し。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "Offer from {{.Name}}"
+
+[trade_decline_reason_label]
+description = "申し込みをお断りする画面の、理由の欄のラベル"
+other = "Reason"
+
+[trade_decline_reason_already_decided]
+description = "お断りの理由の選択肢"
+other = "Already arranged a trade with someone else"
+
+[trade_decline_reason_place_mismatch]
+description = "お断りの理由の選択肢"
+other = "Meeting place doesn't work"
+
+[trade_decline_reason_other_items]
+description = "お断りの理由の選択肢"
+other = "Prefer to trade for other items"
+
+[trade_decline_reason_other]
+description = "お断りの理由の選択肢"
+other = "Other"
+
+[trade_decline_note_label]
+description = "申し込みをお断りする画面の、ひとことの欄のラベル"
+other = "Note"
+
+[trade_decline_submit]
+description = "申し込みをお断りする画面の、お断りするボタン"
+other = "Decline"
+
+[trade_decline_submit_hint]
+description = "申し込みをお断りする画面の、お断りするボタンの補足。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "{{.Name}} will see the reason and your note in messages."
+
+[trade_decline_submit_hint_without_note]
+description = "申し込みをお断りする画面で、メッセージの取り扱いへの有効な同意が無くひとことの欄を出さないときの、お断りするボタンの補足。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "{{.Name}} will see the reason in messages. To add a note, you need to agree to how messages are handled."
+
+[flash_trade_approved]
+description = "交換の申し込みを承認したときのメッセージ"
+other = "Approved. Decide on a place and time in messages"
+
+[flash_trade_declined]
+description = "交換の申し込みをお断りしたときのメッセージ"
+other = "Declined the offer"
+
+[flash_trade_reply_conflict]
+description = "申し込みを承認・お断りしようとしたときに、先に相手が取り下げていたなどで返事ができなかったときのメッセージ"
+other = "This offer is no longer awaiting a reply, so you couldn't reply"
+
+[flash_trade_approval_consent_required]
+description = "申し込みを承認しようとしたときに、メッセージの取り扱いへの有効な同意が無かったときのメッセージ。メッセージの利用の画面へ送ったうえで出す"
+other = "You need to agree to how messages are handled before approving"
+
+[flash_trade_decline_consent_required]
+description = "ひとことを添えて申し込みをお断りしようとしたときに、メッセージの取り扱いへの有効な同意が無かったときのメッセージ。メッセージの利用の画面へ送ったうえで出す"
+other = "You need to agree to how messages are handled before adding a note"
+
+[trade_completion_title]
+description = "「交換できた」を記録する画面のタイトル"
+other = "Mark as done"
+
+[trade_completion_heading]
+description = "「交換できた」を記録する画面の見出し"
+other = "Mark as done"
+
+[trade_completion_trade_heading]
+description = "「交換できた」を記録する画面の、交換の品のカードの見出し。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "Trade with {{.Name}}"
+
+[trade_completion_receive_heading]
+description = "「交換できた」を記録する画面の、受け取った品の見出し。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "You received (from {{.Name}})"
+
+[trade_completion_give_heading]
+description = "「交換できた」を記録する画面の、渡した品の見出し"
+other = "You gave"
+
+[trade_completion_note_label]
+description = "「交換できた」を記録する画面の、ひとことの欄のラベル"
+other = "Note"
+
+[trade_completion_note_hint]
+description = "「交換できた」を記録する画面の、ひとことの欄の補足。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "{{.Name}} will see your note in messages."
+
+[trade_completion_notice_awaiting_partner]
+description = "「交換できた」を記録する画面で、相手がまだ押していないときの案内。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "The trade will finish when {{.Name}} marks it as done too. Then the quantities of the items you gave and received will each decrease by one. Items with none left will be removed from your lists."
+
+[trade_completion_notice_final]
+description = "「交換できた」を記録する画面で、相手がすでに押しているときの案内。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "{{.Name}} has already marked the trade as done. Once you record it, the trade finishes and the quantities of the items you gave and received each decrease by one. Items with none left will be removed from your lists."
+
+[trade_completion_submit]
+description = "「交換できた」を記録する画面の、記録するボタン"
+other = "Record as done"
+
+[flash_trade_completion_recorded]
+description = "「交換できた」を記録し、相手が押すのを待つときのメッセージ"
+other = "Marked as done. The trade will finish when your partner marks it too"
+
+[flash_trade_completed]
+description = "2人とも「交換できた」を押して、交換が終わったときのメッセージ"
+other = "The trade is complete. Thank you!"
+
+[flash_trade_completion_conflict]
+description = "「交換できた」を記録しようとしたときに、交換が終わっていたか、すでに記録していたときのメッセージ"
+other = "This trade has already finished, or you have already marked it as done"
+
+[flash_trade_completion_consent_required]
+description = "ひとことを添えて「交換できた」を記録しようとしたときに、メッセージの取り扱いへの有効な同意が無かったときのメッセージ。メッセージの利用の画面へ送ったうえで出す"
+other = "You need to agree to how messages are handled before adding a note"
+
+[trade_show_fail_link]
+description = "交換のページの、「交換できなかった」を記録する画面への行"
+other = "The trade didn't happen"
+
+[trade_show_cancel_link]
+description = "交換のページの、交換をやめる画面への行"
+other = "Cancel this trade"
+
+[trade_failure_title]
+description = "「交換できなかった」を記録する画面のタイトル"
+other = "Trade didn't happen"
+
+[trade_failure_heading]
+description = "「交換できなかった」を記録する画面の見出し"
+other = "Trade didn't happen"
+
+[trade_failure_lead]
+description = "「交換できなかった」を記録する画面の、記録すると交換が終わることの説明。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "Record that your trade with {{.Name}} didn't happen. Once you record it, this trade ends."
+
+[trade_failure_reason_label]
+description = "「交換できなかった」を記録する画面の、理由の欄のラベル"
+other = "Reason"
+
+[trade_failure_reason_no_show]
+description = "「交換できなかった」の理由の選択肢"
+other = "Couldn't meet on the day"
+
+[trade_failure_reason_not_exchanged]
+description = "「交換できなかった」の理由の選択肢"
+other = "Met, but didn't trade"
+
+[trade_failure_reason_unavailable]
+description = "「交換できなかった」の理由の選択肢"
+other = "Became unavailable"
+
+[trade_failure_reason_lost_contact]
+description = "「交換できなかった」の理由の選択肢"
+other = "Lost contact"
+
+[trade_failure_reason_other]
+description = "「交換できなかった」の理由の選択肢"
+other = "Other"
+
+[trade_failure_note_label]
+description = "「交換できなかった」を記録する画面の、ひとことの欄のラベル"
+other = "Note"
+
+[trade_failure_submit]
+description = "「交換できなかった」を記録する画面の、記録するボタン"
+other = "Record"
+
+[trade_failure_submit_hint]
+description = "「交換できなかった」を記録する画面の、記録するボタンの補足。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "{{.Name}} will see the reason and your note in messages."
+
+[trade_failure_submit_hint_without_note]
+description = "「交換できなかった」を記録する画面で、メッセージの取り扱いへの有効な同意が無くひとことの欄を出さないときの、記録するボタンの補足。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "{{.Name}} will see the reason in messages. To add a note, you need to agree to how messages are handled."
+
+[trade_cancellation_title]
+description = "交換をやめる画面のタイトル"
+other = "Cancel this trade"
+
+[trade_cancellation_heading]
+description = "交換をやめる画面の見出し"
+other = "Cancel this trade"
+
+[trade_cancellation_lead]
+description = "交換をやめる画面の、やめると元に戻せないことの説明。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "Cancel your trade with {{.Name}}. You can't undo this."
+
+[trade_cancellation_reason_label]
+description = "交換をやめる画面の、理由の欄のラベル"
+other = "Reason"
+
+[trade_cancellation_reason_decided_elsewhere]
+description = "交換をやめる理由の選択肢"
+other = "Arranged a trade with someone else"
+
+[trade_cancellation_reason_schedule_mismatch]
+description = "交換をやめる理由の選択肢"
+other = "Schedules no longer match"
+
+[trade_cancellation_reason_item_unavailable]
+description = "交換をやめる理由の選択肢"
+other = "No longer have the item"
+
+[trade_cancellation_reason_other]
+description = "交換をやめる理由の選択肢"
+other = "Other"
+
+[trade_cancellation_note_label]
+description = "交換をやめる画面の、ひとことの欄のラベル"
+other = "Note"
+
+[trade_cancellation_note_hint]
+description = "交換をやめる画面の、ひとことの欄の補足。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "{{.Name}} will see the reason and your note in messages."
+
+[trade_cancellation_submit]
+description = "交換をやめる画面の、交換をやめるボタン"
+other = "Cancel trade"
+
+[trade_cancellation_consent_required]
+description = "交換をやめる画面で、メッセージの取り扱いへの有効な同意が無いときに、フォームの代わりに出す案内"
+other = "When you cancel a trade, your note is sent to your partner as a message. Before cancelling, review how messages are handled and agree to it"
+
+[flash_trade_failed]
+description = "「交換できなかった」を記録して、交換が終わったときのメッセージ"
+other = "Recorded that the trade didn't happen"
+
+[flash_trade_failure_conflict]
+description = "「交換できなかった」を記録しようとしたときに、交換がすでに終わっていたときのメッセージ"
+other = "This trade has already ended, so it couldn't be recorded"
+
+[flash_trade_failure_consent_required]
+description = "ひとことを添えて「交換できなかった」を記録しようとしたときに、メッセージの取り扱いへの有効な同意が無かったときのメッセージ。メッセージの利用の画面へ送ったうえで出す"
+other = "You need to agree to how messages are handled before adding a note"
+
+[flash_trade_cancelled]
+description = "交換をやめたときのメッセージ"
+other = "You cancelled this trade"
+
+[flash_trade_cancellation_conflict]
+description = "交換をやめようとしたときに、交換が終わっていたか、どちらかが「交換できた」を押していたときのメッセージ"
+other = "This trade has already ended or been marked as done, so it couldn't be cancelled"
+
+[flash_trade_cancellation_consent_required]
+description = "交換をやめようとしたときに、メッセージの取り扱いへの有効な同意が無かったときのメッセージ。メッセージの利用の画面へ送ったうえで出す"
+other = "You need to agree to how messages are handled before cancelling a trade"
+
+[time_hour_minute_layout]
+description = "時刻の書式 (Goの時刻のレイアウト。15が時、04が分を表す)"
+other = "3:04 PM"
+
+[profile_other_propose_hint]
+description = "ほかのユーザーのプロフィールの、交換を申し込むボタンの補足。Atnameは相手のアットネーム"
+other = "After you offer a trade, you can message @{{.Atname}}."
+
+[trade_confirmation_submit_hint]
+description = "申し込み内容の確認の画面の、申し込むボタンの補足。Atnameは相手のアットネーム"
+other = "After you offer, you can message @{{.Atname}} even before they accept."
+
+[trade_show_messages_link]
+description = "交換のページの、交換のメッセージのページへのリンクの文言。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "Messages with {{.Name}}"
+
+[trade_message_index_title]
+description = "交換のメッセージのページのタイトル"
+other = "Messages"
+
+[trade_message_index_heading]
+description = "交換のメッセージのページの見出し。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "Messages with {{.Name}}"
+
+[trade_message_index_breadcrumb_messages]
+description = "交換のメッセージのページのパンくずの、メッセージの一覧へのリンクの文言"
+other = "Messages"
+
+[trade_message_index_quantities]
+description = "交換のメッセージのページの上の行の、もらう品と渡す品の点数。Receiveはもらう点数、Giveは渡す点数"
+other = "Get {{.Receive}} ⇄ Give {{.Give}}"
+
+[trade_message_index_trade_link]
+description = "交換のメッセージのページの上の行の、交換のページへのリンクの文言"
+other = "Trade page"
+
+[trade_message_index_privacy]
+description = "交換のメッセージのページの、交換とメッセージを見られる人の案内。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "Only you and {{.Name}} can see this trade and its messages."
+
+[trade_message_index_sender_self]
+description = "交換のメッセージのページの、あなたが送ったメッセージの前に読み上げる送った人 (読み上げ用)"
+other = "You: "
+
+[trade_message_index_sender_partner]
+description = "交換のメッセージのページの、相手が送ったメッセージの前に読み上げる送った人 (読み上げ用)。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "{{.Name}}: "
+
+[trade_message_index_retracted]
+description = "交換のメッセージのページの、自分が取り消したメッセージの代わりに出す文"
+other = "Message removed"
+
+[trade_message_index_retracted_partner]
+description = "交換のメッセージのページの、相手が取り消したメッセージの代わりに出す文。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "{{.Name}} removed a message"
+
+[trade_message_index_unread_start]
+description = "交換のメッセージのページの、まだ読んでいなかったメッセージの前に置く境目の文"
+other = "New messages"
+
+[trade_message_index_retract_button]
+description = "交換のメッセージのページの、自分が送ったメッセージを取り消す確認ダイアログを開くボタンの名前"
+other = "Remove"
+
+[trade_message_index_retract_confirm_title]
+description = "メッセージを取り消す前の確認ダイアログのタイトル"
+other = "Remove this message?"
+
+[trade_message_index_retract_confirm_message]
+description = "メッセージを取り消す前の確認ダイアログの説明。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "You can't undo this. {{.Name}} will see that you removed a message. Cutre keeps what you removed so it can check it if a problem is reported."
+
+[trade_message_index_retract_cancel]
+description = "メッセージを取り消す前の確認ダイアログの、取り消さずに閉じるボタンの名前"
+other = "Cancel"
+
+[trade_message_index_retract_submit]
+description = "メッセージを取り消す前の確認ダイアログの、取り消すボタンの名前"
+other = "Remove"
+
+[trade_message_index_ended]
+description = "交換のメッセージのページの、終わった交換ではメッセージを送れないことの案内"
+other = "This trade has ended. You can't send messages, but you can read them anytime."
+
+[trade_message_index_help_contact_lead]
+description = "交換のメッセージのページの、ヘルプのお問い合わせのページへのリンクの前置き"
+other = "If something goes wrong with this trade"
+
+[trade_message_index_consent_required_message]
+description = "交換のメッセージのページで、メッセージの取り扱いへの有効な同意が無いときの案内の文"
+other = "Before sending messages, review how messages are handled and agree to it"
+
+[trade_message_index_body_label]
+description = "交換のメッセージのページの、本文の入力欄のラベル (読み上げ用)"
+other = "Message"
+
+[trade_message_index_body_placeholder]
+description = "交換のメッセージのページの、本文の入力欄のプレースホルダー"
+other = "Write a message"
+
+[trade_message_index_guide_awaiting_partner_reply]
+description = "交換のメッセージのページの、送信の欄の下の案内。申し込んで、相手の返事を待っているとき"
+other = "You can send messages before your proposal is approved"
+
+[trade_message_index_guide_awaiting_your_reply]
+description = "交換のメッセージのページの、送信の欄の下の案内。申し込まれて、あなたの返事を待っているとき"
+other = "You can approve or decline on the trade page. You can reply before approving"
+
+[trade_message_index_guide_awaiting_your_confirmation]
+description = "交換のメッセージのページの、送信の欄の下の案内。相手だけが「交換できた」を押し、あなたの確認を待っているとき"
+other = "Once you've received your items, tap “Mark as done” on the trade page"
+
+[trade_message_index_body_hint]
+description = "交換のメッセージのページの、本文の入力欄の補足。やり取りの決まりを伝える"
+other = "Don't ask to move to other contacts or social media, and don't exchange money"
+
+[trade_message_index_submit]
+description = "交換のメッセージのページの、送るボタンの名前 (アイコンだけのボタンの読み上げ用)"
+other = "Send"
+
+[validation_trade_message_rate_limited]
+description = "交換のメッセージの送信が続いて、レート制限の上限を超えたときのエラー。Minutesは解除までの分数 (切り上げ)"
+other = "You've sent too many messages. You can send another in {{.Minutes}} min"
+
+[flash_trade_message_trade_ended]
+description = "交換のメッセージを送ろうとしたときに、交換が終わっていて送れなかったときのメッセージ"
+other = "This trade has ended, so your message wasn't sent"
+
+[flash_message_send_consent_required]
+description = "交換のメッセージを送ろうとしたときに、メッセージの取り扱いへの有効な同意が無かったときのメッセージ。メッセージの利用の画面へ送ったうえで出す"
+other = "To send messages, agree to how messages are handled"
+
+[flash_trade_message_retracted]
+description = "メッセージを取り消したときのメッセージ"
+other = "Removed your message"
+
+[trade_message_preview_empty]
+description = "メッセージの一覧と交換のページの、交換にまだメッセージが無いときの文"
+other = "No messages yet"
+
+[trade_message_preview_self]
+description = "メッセージの一覧と交換のページの、自分が送った最新のメッセージの抜き出し。Bodyはメッセージの本文"
+other = "You: {{.Body}}"
+
+[trade_message_preview_retracted_self]
+description = "メッセージの一覧と交換のページの、自分が取り消した最新のメッセージの代わりに出す文"
+other = "You removed a message"
+
+[trade_message_preview_retracted_partner]
+description = "メッセージの一覧と交換のページの、相手が取り消した最新のメッセージの代わりに出す文。Nameは相手の名前 (@アットネームか、退会したユーザー)"
+other = "{{.Name}} removed a message"
+
+[trade_message_unread_count]
+description = "メッセージの一覧と交換のページの、未読のメッセージの数のバッジの読み上げ用の文。Countは未読のメッセージの数"
+other = "{{.Count}} unread"
+
+[message_index_title]
+description = "メッセージの一覧のタイトル"
+other = "Messages"
+
+[message_index_heading]
+description = "メッセージの一覧の見出し"
+other = "Messages"
+
+[message_index_description]
+description = "メッセージの一覧の見出しの下の説明"
+other = "Each trade has its own messages. You can read messages from finished trades anytime."
+
+[message_index_empty]
+description = "メッセージの一覧で、交換が1つも無いときの案内"
+other = "No messages yet. Once you offer a trade, you can message the other person."
+
+[message_index_quantities]
+description = "メッセージの一覧の行の、もらう品と渡す品の点数。Receiveはもらう点数、Giveは渡す点数"
+other = "Get {{.Receive}} ⇄ Give {{.Give}}"
+
+[message_index_ended]
+description = "メッセージの一覧の行の、終わった交換に添えるバッジの文言"
+other = "Ended"
