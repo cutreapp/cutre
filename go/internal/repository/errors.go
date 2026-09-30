@@ -13,6 +13,9 @@ var (
 	ErrUserAtnameTaken = errors.New("アットネームは既に使われています")
 )
 
+// ItemRepository.Create が、同じユーザーの同じリストに同じグッズのアイテムが既にあるときに返すエラー。
+var ErrItemAlreadyListed = errors.New("同じグッズのアイテムが既にリストにあります")
+
 // uniqueViolationSQLState は、一意制約に違反したときにPostgreSQLが返すSQLSTATE。
 const uniqueViolationSQLState = "23505"
 

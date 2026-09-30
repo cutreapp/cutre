@@ -3,6 +3,7 @@ package repository_test
 import (
 	"context"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -84,6 +85,22 @@ func TestUserRepository_FindByID(t *testing.T) {
 
 		if user.ID != userID {
 			t.Errorf("ID = %s、期待値 = %s", user.ID, userID)
+		}
+
+		if user.Role != model.UserRoleUser {
+			t.Errorf("Role = %q、期待値 = %q", user.Role, model.UserRoleUser)
+		}
+	})
+
+	t.Run("役割を読み戻せる", func(t *testing.T) {
+		editorID := testutil.NewUserBuilder(t, tx).WithRole(model.UserRoleEditor).Build()
+		user, err := repo.FindByID(ctx, editorID)
+		if err != nil || user == nil {
+			t.Fatalf("FindByID() = (%v, %v)、ユーザーを期待", user, err)
+		}
+
+		if user.Role != model.UserRoleEditor {
+			t.Errorf("Role = %q、期待値 = %q", user.Role, model.UserRoleEditor)
 		}
 	})
 
@@ -268,6 +285,36 @@ func TestUserRepository_Create_Taken(t *testing.T) {
 	}
 }
 
+// TestUserRepository_UpdatePlaces は、版が一致したときだけ「ほかに出られるところ」と版を書き換え、
+// 古い版と退会したユーザーは書き換えないことを検証する。
+func TestUserRepository_UpdatePlaces(t *testing.T) {
+	t.Parallel()
+
+	db, tx := testutil.SetupTx(t)
+	ctx := context.Background()
+	repo := repository.NewUserRepository(db).WithTx(tx)
+	userID := testutil.NewUserBuilder(t, tx).Build()
+
+	if updated, err := repo.UpdatePlaces(ctx, userID, "平日の夜なら新宿の近く", 0); err != nil || !updated {
+		t.Fatalf("UpdatePlaces() = (%v, %v)、更新を期待", updated, err)
+	}
+	if user, err := repo.FindByID(ctx, userID); err != nil || user.PlaceNote != "平日の夜なら新宿の近く" || user.PlaceLockVersion != 1 {
+		t.Errorf("FindByID() = (%+v, %v)、書き換えた値と版1を期待", user, err)
+	}
+	if updated, err := repo.UpdatePlaces(ctx, userID, "古い版", 0); err != nil || updated {
+		t.Errorf("古い版のUpdatePlaces() = (%v, %v)、更新しないことを期待", updated, err)
+	}
+
+	withdrawnID := testutil.NewUserBuilder(t, tx).WithDeletedAt(time.Now()).Build()
+	if updated, err := repo.UpdatePlaces(ctx, withdrawnID, "書き換えない", 0); err != nil || updated {
+		t.Fatalf("退会したユーザーのUpdatePlaces() = (%v, %v)、更新しないことを期待", updated, err)
+	}
+	var placeNote string
+	if err := tx.QueryRowContext(ctx, "SELECT place_note FROM users WHERE id = $1", uuid.UUID(withdrawnID)).Scan(&placeNote); err != nil || placeNote != "" {
+		t.Errorf("退会したユーザーのほかに出られるところ = (%q, %v)、空のままを期待", placeNote, err)
+	}
+}
+
 // TestUserRepository_Withdraw は、退会した時刻を入れて個人の属性を共通の値に置き換え、
 // 元の値を空けること、退会済みのユーザーは更新しないことを検証する。
 func TestUserRepository_Withdraw(t *testing.T) {
@@ -282,15 +329,18 @@ func TestUserRepository_Withdraw(t *testing.T) {
 	userID := testutil.NewUserBuilder(t, tx).WithEmail(email).WithAtname(atname).WithLocale(model.LocaleEn).WithTimeZone("America/New_York").Build()
 	anonymizedEmail := model.AnonymizedEmail(userID)
 	anonymizedAtname := model.AnonymizedAtname(userID)
+	if updated, err := repo.UpdatePlaces(ctx, userID, "平日の夜なら新宿の近く", 0); err != nil || !updated {
+		t.Fatalf("UpdatePlaces() = (%v, %v)、更新を期待", updated, err)
+	}
 
 	withdrawn, err := repo.Withdraw(ctx, userID, anonymizedEmail, anonymizedAtname)
 	if err != nil || !withdrawn {
 		t.Fatalf("Withdraw() = (%t, %v)、(true, nil) を期待", withdrawn, err)
 	}
 
-	var gotEmail, gotAtname, gotLocale, gotTimeZone string
+	var gotEmail, gotAtname, gotLocale, gotTimeZone, gotPlaceNote string
 	var deletedAt *time.Time
-	if err := tx.QueryRowContext(ctx, "SELECT email, atname, locale, time_zone, deleted_at FROM users WHERE id = $1", uuid.UUID(userID)).Scan(&gotEmail, &gotAtname, &gotLocale, &gotTimeZone, &deletedAt); err != nil {
+	if err := tx.QueryRowContext(ctx, "SELECT email, atname, locale, time_zone, place_note, deleted_at FROM users WHERE id = $1", uuid.UUID(userID)).Scan(&gotEmail, &gotAtname, &gotLocale, &gotTimeZone, &gotPlaceNote, &deletedAt); err != nil {
 		t.Fatalf("退会したユーザーの行の取得のエラー = %v", err)
 	}
 	if gotEmail != anonymizedEmail || gotAtname != anonymizedAtname || deletedAt == nil {
@@ -298,6 +348,9 @@ func TestUserRepository_Withdraw(t *testing.T) {
 	}
 	if gotLocale != string(model.LocaleJa) || gotTimeZone != "Etc/UTC" {
 		t.Errorf("退会したユーザーのロケールとタイムゾーン = (%q, %q)、(ja, Etc/UTC) を期待", gotLocale, gotTimeZone)
+	}
+	if gotPlaceNote != "" {
+		t.Errorf("退会したユーザーのほかに出られるところ = %q、空を期待", gotPlaceNote)
 	}
 
 	// 空いたメールアドレスとアットネームで、別のユーザーが登録できる。
@@ -308,5 +361,95 @@ func TestUserRepository_Withdraw(t *testing.T) {
 	withdrawn, err = repo.Withdraw(ctx, userID, anonymizedEmail, anonymizedAtname)
 	if err != nil || withdrawn {
 		t.Errorf("退会済みのユーザーのWithdraw() = (%t, %v)、(false, nil) を期待", withdrawn, err)
+	}
+}
+
+// TestUserRepository_ListMatchCandidates は、交換場所の都道府県が1つ以上同じで、おたがいのほしいリストに相手の譲れるアイテムがある
+// 在籍中のユーザーを、自分を除いてアットネームの順に返すことを検証する。
+// 都道府県が違う人・片方にしか交換できるものが無い人・リストから外したアイテムでしか合わない人・退会した人は含めない。
+func TestUserRepository_ListMatchCandidates(t *testing.T) {
+	t.Parallel()
+
+	db, tx := testutil.SetupTx(t)
+	repo := repository.NewUserRepository(db).WithTx(tx)
+	categoryID := testutil.NewEventCategoryBuilder(t, tx, testutil.NewEventBuilder(t, tx).Build()).Build()
+	wantedGoods := testutil.NewGoodsBuilder(t, tx, categoryID).Build()
+	offeredGoods := testutil.NewGoodsBuilder(t, tx, categoryID).Build()
+	tokyo := testutil.NewStationBuilder(t, tx).WithPrefectureCode(13).Build()
+	anotherTokyo := testutil.NewStationBuilder(t, tx).WithPrefectureCode(13).WithArchived("閉業したため").Build()
+	kanagawa := testutil.NewStationBuilder(t, tx).WithPrefectureCode(14).Build()
+
+	me := testutil.NewUserBuilder(t, tx).Build()
+	testutil.NewUserStationBuilder(t, tx, me, tokyo).Build()
+	testutil.NewUserStationBuilder(t, tx, me, kanagawa).Build()
+	testutil.NewItemBuilder(t, tx, me, wantedGoods).WithKind(model.ItemKindWant).Build()
+	testutil.NewItemBuilder(t, tx, me, offeredGoods).Build()
+
+	// newPartner は、駅 stationID を交換場所に選んだユーザーを作り、give・want が真ならそれぞれ自分と合うアイテムを入れる。
+	newPartner := func(stationID model.StationID, give, want bool, builder *testutil.UserBuilder) model.UserID {
+		t.Helper()
+		id := builder.Build()
+		testutil.NewUserStationBuilder(t, tx, id, stationID).Build()
+		if give {
+			testutil.NewItemBuilder(t, tx, id, wantedGoods).Build()
+		}
+		if want {
+			testutil.NewItemBuilder(t, tx, id, offeredGoods).WithKind(model.ItemKindWant).Build()
+		}
+		return id
+	}
+	sameStation := newPartner(tokyo, true, true, testutil.NewUserBuilder(t, tx))
+	samePrefecture := newPartner(anotherTokyo, true, true, testutil.NewUserBuilder(t, tx))
+	newPartner(testutil.NewStationBuilder(t, tx).WithPrefectureCode(27).Build(), true, true, testutil.NewUserBuilder(t, tx))
+	newPartner(tokyo, true, false, testutil.NewUserBuilder(t, tx))
+	newPartner(tokyo, false, true, testutil.NewUserBuilder(t, tx))
+	newPartner(tokyo, true, true, testutil.NewUserBuilder(t, tx).WithDeletedAt(time.Now()))
+	removed := newPartner(tokyo, false, true, testutil.NewUserBuilder(t, tx))
+	testutil.NewItemBuilder(t, tx, removed, wantedGoods).WithRemoved().Build()
+
+	candidates, err := repo.ListMatchCandidates(context.Background(), me)
+	if err != nil {
+		t.Fatalf("ListMatchCandidates()のエラー = %v", err)
+	}
+	ids := make([]model.UserID, len(candidates))
+	for i, candidate := range candidates {
+		ids[i] = candidate.ID
+	}
+	if len(ids) != 2 || !slices.Contains(ids, sameStation) || !slices.Contains(ids, samePrefecture) {
+		t.Fatalf("ListMatchCandidates() = %v、同じ駅と同じ都道府県の2人を期待", ids)
+	}
+	if strings.ToLower(candidates[0].Atname) > strings.ToLower(candidates[1].Atname) {
+		t.Errorf("候補のアットネーム = [%s %s]、アットネームの順を期待", candidates[0].Atname, candidates[1].Atname)
+	}
+}
+
+// TestUserRepository_ListByIDs は、指定したIDのユーザーを、退会したユーザーも含めてまとめて返すことを検証する。
+func TestUserRepository_ListByIDs(t *testing.T) {
+	t.Parallel()
+
+	db, tx := testutil.SetupTx(t)
+	ctx := context.Background()
+	repo := repository.NewUserRepository(db).WithTx(tx)
+	activeID := testutil.NewUserBuilder(t, tx).Build()
+	withdrawnID := testutil.NewUserBuilder(t, tx).Build()
+	testutil.NewUserBuilder(t, tx).Build()
+	if withdrawn, err := repo.Withdraw(ctx, withdrawnID, model.AnonymizedEmail(withdrawnID), model.AnonymizedAtname(withdrawnID)); err != nil || !withdrawn {
+		t.Fatalf("Withdraw() = (%t, %v)、(true, nil) を期待", withdrawn, err)
+	}
+
+	users, err := repo.ListByIDs(ctx, []model.UserID{activeID, withdrawnID})
+	if err != nil {
+		t.Fatalf("ListByIDs()のエラー = %v", err)
+	}
+	got := map[model.UserID]*model.User{}
+	for _, user := range users {
+		got[user.ID] = user
+	}
+	if len(users) != 2 || got[activeID] == nil || got[withdrawnID] == nil || got[withdrawnID].DeletedAt == nil {
+		t.Errorf("ListByIDs() = %+v、在籍中と退会したユーザーの2人を期待", users)
+	}
+
+	if users, err := repo.ListByIDs(ctx, nil); err != nil || users != nil {
+		t.Errorf("空: ListByIDs() = (%v, %v)、(nil, nil) を期待", users, err)
 	}
 }

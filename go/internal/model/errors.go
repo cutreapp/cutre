@@ -75,6 +75,9 @@ const (
 	AppErrCodeConflict
 	// AppErrCodeInternal は想定済みの内部エラー (500相当)。
 	AppErrCodeInternal
+	// AppErrCodeMessageConsentRequired は、メッセージの取り扱いへの有効な同意が無く、
+	// 交換の申し込みや承認ができないこと。ハンドラーはメッセージの利用の画面への案内を出す。
+	AppErrCodeMessageConsentRequired
 )
 
 // AppError は業務レベルの既知の失敗を表す。

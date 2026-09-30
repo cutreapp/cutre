@@ -125,7 +125,7 @@ func (r *UserRepository) Create(ctx context.Context, input CreateUserInput) (*mo
 }
 
 // Withdraw はユーザーを退会した状態にし、メールアドレスとアットネームを匿名の値 (anonymizedEmail・anonymizedAtname) に置き換える。
-// ロケールとタイムゾーンも全員共通の値に置き換え、退会前の属性を残さない。
+// ロケールとタイムゾーンも全員共通の値に置き換え、交換場所の「ほかに出られるところ」も空にして、退会前の属性を残さない。
 // 行は消さずに残し、招待の経路を辿れるようにする。既に退会していて更新しなかったときはfalseを返す。
 func (r *UserRepository) Withdraw(ctx context.Context, id model.UserID, anonymizedEmail, anonymizedAtname string) (bool, error) {
 	affected, err := r.q.WithdrawUser(ctx, query.WithdrawUserParams{
@@ -140,6 +140,67 @@ func (r *UserRepository) Withdraw(ctx context.Context, id model.UserID, anonymiz
 	return affected > 0, nil
 }
 
+// UpdatePlaces は交換場所の版が一致するときだけ「ほかに出られるところ」を書き換え、版を進める。
+// 駅の置換と同じトランザクションで使う。退会したユーザーや版が違うときはfalseを返す。
+func (r *UserRepository) UpdatePlaces(ctx context.Context, id model.UserID, placeNote string, lockVersion int32) (bool, error) {
+	affected, err := r.q.UpdateUserPlaces(ctx, query.UpdateUserPlacesParams{ID: uuid.UUID(id), PlaceNote: placeNote, PlaceLockVersion: lockVersion})
+	if err != nil {
+		return false, err
+	}
+	return affected > 0, nil
+}
+
+// ListMatchCandidates はユーザー id のマッチ候補を、アットネームの順に返す。
+// 候補は、退会しておらず、交換場所の都道府県が1つ以上同じで、おたがいのほしいリストに相手の譲れるアイテムがあるユーザー。
+func (r *UserRepository) ListMatchCandidates(ctx context.Context, id model.UserID) ([]*model.User, error) {
+	rows, err := r.q.ListMatchCandidateUsers(ctx, uuid.UUID(id))
+	if err != nil {
+		return nil, err
+	}
+
+	users := make([]*model.User, len(rows))
+	for i, row := range rows {
+		users[i] = toUserModel(row)
+	}
+
+	return users, nil
+}
+
+// userUUIDs はユーザーのIDをクエリに渡すuuidの配列にする。
+func userUUIDs(ids []model.UserID) []uuid.UUID {
+	uuids := make([]uuid.UUID, len(ids))
+	for i, id := range ids {
+		uuids[i] = uuid.UUID(id)
+	}
+
+	return uuids
+}
+
+// ListByIDs は指定したIDのユーザーをまとめて返す。並び順は決めない。
+// 交換の相手を1回のクエリで引くのに使う。交換の記録は相手が退会しても残すため、FindByID と違い退会したユーザーも返す。
+// ids が空ならクエリを発行せずにnilを返す。
+func (r *UserRepository) ListByIDs(ctx context.Context, ids []model.UserID) ([]*model.User, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	uuids := make([]uuid.UUID, len(ids))
+	for i, id := range ids {
+		uuids[i] = uuid.UUID(id)
+	}
+	rows, err := r.q.ListUsersByIDs(ctx, uuids)
+	if err != nil {
+		return nil, err
+	}
+
+	users := make([]*model.User, len(rows))
+	for i, row := range rows {
+		users[i] = toUserModel(row)
+	}
+
+	return users, nil
+}
+
 // toUserModel はusersの行を model.User に変換する。
 // 生のuuidを型付きのIDに変換するのはこの境界だけで、上位の層はuuidを意識しない。
 //
@@ -147,13 +208,16 @@ func (r *UserRepository) Withdraw(ctx context.Context, id model.UserID, anonymiz
 // (UserSessionRepository など) が、UserRepositoryを組み立てずに同じ変換を使えるようにするため。
 func toUserModel(row query.User) *model.User {
 	return &model.User{
-		ID:        model.UserID(row.ID),
-		Email:     row.Email,
-		Atname:    row.Atname,
-		Locale:    model.Locale(row.Locale),
-		TimeZone:  row.TimeZone,
-		DeletedAt: row.DeletedAt,
-		CreatedAt: row.CreatedAt,
-		UpdatedAt: row.UpdatedAt,
+		ID:               model.UserID(row.ID),
+		Email:            row.Email,
+		Atname:           row.Atname,
+		Locale:           model.Locale(row.Locale),
+		TimeZone:         row.TimeZone,
+		Role:             model.UserRole(row.Role),
+		PlaceNote:        row.PlaceNote,
+		PlaceLockVersion: row.PlaceLockVersion,
+		DeletedAt:        row.DeletedAt,
+		CreatedAt:        row.CreatedAt,
+		UpdatedAt:        row.UpdatedAt,
 	}
 }

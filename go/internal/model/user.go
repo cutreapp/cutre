@@ -10,6 +10,12 @@ type User struct {
 	Atname   string
 	Locale   Locale
 	TimeZone string
+	Role     UserRole
+	// PlaceNote は交換場所の「ほかに出られるところ」。相手が読むための自由なひとことで、マッチの条件には使わない。
+	// 入れていないときは空文字。
+	PlaceNote string
+	// PlaceLockVersion は交換場所の駅と「ほかに出られるところ」を一緒に編集するときの版。
+	PlaceLockVersion int32
 
 	// DeletedAt は退会した時刻。nilは在籍中を表す。
 	// 認証とルックアップのクエリは非nilの行を除外するため、退会したユーザーは
@@ -18,6 +24,29 @@ type User struct {
 
 	CreatedAt time.Time
 	UpdatedAt time.Time
+}
+
+// UserRole はユーザーの役割。
+// 役割を変える画面は持たず、運営がデータベースの users.role を直接書き換える。
+type UserRole string
+
+const (
+	// UserRoleUser は一般のユーザー。登録したアカウントはこの役割になる。
+	UserRoleUser UserRole = "user"
+	// UserRoleEditor は編集者。管理画面でマスタを作成・編集・アーカイブできる。
+	UserRoleEditor UserRole = "editor"
+	// UserRoleAdmin は管理者。編集者のできることに加えて、マスタを削除できる。
+	UserRoleAdmin UserRole = "admin"
+)
+
+// IsAdmin は管理者かを返す。
+func (u *User) IsAdmin() bool {
+	return u.Role == UserRoleAdmin
+}
+
+// IsEditorOrAbove は編集者か管理者かを返す。
+func (u *User) IsEditorOrAbove() bool {
+	return u.Role == UserRoleEditor || u.IsAdmin()
 }
 
 // DefaultTimeZone は登録したアカウントに設定するタイムゾーン。
