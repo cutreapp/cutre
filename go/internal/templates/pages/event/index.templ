@@ -1,0 +1,48 @@
+package event
+
+import (
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+	"github.com/cutreapp/cutre/go/internal/viewmodel"
+)
+
+// IndexPageData はユーザー向けのイベントの一覧の描画に使うデータ。
+type IndexPageData struct {
+	// Events は公開中のイベントを開始日の新しい順に並べたもの。
+	Events []viewmodel.EventRow
+}
+
+// Index はユーザー向けのイベントの一覧を描画する。
+// 各行はイベントのカテゴリーの一覧へのリンクにし、開催期間とグッズの種類の数、自分がリストに入れた数量を添える。
+templ Index(data IndexPageData) {
+	<div class="flex w-full flex-1 flex-col gap-3 py-4 md:mx-auto md:max-w-180">
+		@components.PageHeading(components.PageHeadingData{
+			Title: templates.T(ctx, "event_index_heading"),
+			Breadcrumbs: []components.Breadcrumb{
+				{Label: templates.T(ctx, "event_index_breadcrumb_home"), Path: templates.HomePath},
+			},
+		})
+		if len(data.Events) == 0 {
+			<p class="page-card text-sm text-muted-foreground">{ templates.T(ctx, "event_index_empty") }</p>
+		} else {
+			<ul class="page-card divide-y py-0">
+				for _, row := range data.Events {
+					<li>
+						<a href={ templ.SafeURL(templates.EventPath(row.ID)) } class="-mx-4 flex min-h-12 items-center gap-3 px-4 py-3">
+							<span aria-hidden="true" class="flex size-13 shrink-0 items-center justify-center rounded-xl border border-brand-border bg-brand-subtle text-brand-strong">
+								<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12v8a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-8"></path><rect height="5" rx="1" width="20" x="2" y="7"></rect><path d="M12 21V7"></path></svg>
+							</span>
+							<span class="flex min-w-0 flex-1 flex-col gap-0.5">
+								<span class="font-semibold">{ row.Name }</span>
+								<span class="text-sm text-muted-foreground">
+									{ templates.T(ctx, "event_index_summary", map[string]any{"Period": row.Period, "Count": row.GoodsCount}) }
+								</span>
+							</span>
+							@components.ItemQuantities(row.Quantities)
+						</a>
+					</li>
+				}
+			</ul>
+		}
+	</div>
+}
