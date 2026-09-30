@@ -13,6 +13,10 @@ type Handler struct {
 	errorRenderer              *httperror.Renderer
 	getInvitationRedemptionsUC *usecase.GetInvitationRedemptionsUsecase
 	getTwoFactorAuthStatusUC   *usecase.GetTwoFactorAuthStatusUsecase
+	getMessageConsentUC        *usecase.GetMessageConsentUsecase
+	getPlacesUC                *usecase.GetPlacesUsecase
+	getProfileUC               *usecase.GetProfileUsecase
+	getEndedTradeCountsUC      *usecase.GetEndedTradeCountsUsecase
 }
 
 // NewHandler は Handler を生成する。
@@ -21,11 +25,19 @@ func NewHandler(
 	errorRenderer *httperror.Renderer,
 	getInvitationRedemptionsUC *usecase.GetInvitationRedemptionsUsecase,
 	getTwoFactorAuthStatusUC *usecase.GetTwoFactorAuthStatusUsecase,
+	getMessageConsentUC *usecase.GetMessageConsentUsecase,
+	getPlacesUC *usecase.GetPlacesUsecase,
+	getProfileUC *usecase.GetProfileUsecase,
+	getEndedTradeCountsUC *usecase.GetEndedTradeCountsUsecase,
 ) *Handler {
 	return &Handler{
 		cfg:                        cfg,
 		errorRenderer:              errorRenderer,
 		getInvitationRedemptionsUC: getInvitationRedemptionsUC,
 		getTwoFactorAuthStatusUC:   getTwoFactorAuthStatusUC,
+		getMessageConsentUC:        getMessageConsentUC,
+		getPlacesUC:                getPlacesUC,
+		getProfileUC:               getProfileUC,
+		getEndedTradeCountsUC:      getEndedTradeCountsUC,
 	}
 }
