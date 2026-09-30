@@ -16,7 +16,7 @@
   color-scheme: light;
 }
 
-/* Basecoatのボタン・バッジ・アラートに、Cutreのブランド色と状態色のバリアント (data-variant) を足す。
+/* Basecoatのボタンの既定の配色をCutreの色に差し替え、バッジ・アラートにブランド色と状態色のバリアント (data-variant) を足す。
    Basecoatと同じcomponents層に置き、Tailwindのユーティリティで上書きできるようにする。
    Basecoatより後に読み込まれ、セレクターの詳細度もBasecoatの既定 (`.btn` や `.alert`) 以上のため、背景や枠の色はこちらが優先される。 */
 @layer components {
@@ -27,10 +27,35 @@
     @apply rounded-full;
   }
 
-  /* 淡いピンクは地とのコントラストが低いため、一段濃いピンクの枠で輪郭を付ける。
+  /* 主ボタン (既定) は焦げ茶 (ダークではクリーム) で塗り、ピンクは選ぶボタンの押した状態やチェックに残して見分けられるようにする。
+     --primary は濃いピンクのままにして、チェックボックスやフォーカスリングの色は変えない。
      枠の色を上書きするとBasecoatのフォーカス時の枠の色も消えるため、付け直す。 */
-  .btn[data-variant="brand"] {
-    @apply border-brand-line bg-brand text-brand-foreground hover:bg-brand-hover focus-visible:border-ring;
+  .btn:not([data-variant]),
+  .btn[data-variant="primary"] {
+    @apply border-ink bg-ink text-ink-foreground hover:border-ink-hover hover:bg-ink-hover focus-visible:border-ring;
+  }
+
+  /* 選ぶボタン (「譲れる」「ほしい」など) と一覧の切り替えの押した状態。
+     ごく淡いピンクは白いカードとの差が小さいため、一段濃いピンクの枠で輪郭を付ける。
+     Basecoatはoutlineのダークの塗りを `dark:` で詳細度を上げて指定するため、同じく `dark:` でも指定して上書きする。
+     ボタンのほかに、リストに入れたグッズの状態を示す要素と、表示中のリストを示す切り替えのリンクと、
+     フォームで選ぶボタンの見た目にしたラジオボタンのラベルにも同じ色を使う。 */
+  .btn[aria-pressed="true"],
+  .btn[data-listed],
+  a.btn[aria-current="page"],
+  label.btn:has(> input:checked) {
+    @apply border-brand-line bg-brand-soft text-brand-strong hover:bg-brand-soft-hover focus-visible:border-ring dark:border-brand-line dark:bg-brand-soft dark:hover:bg-brand-soft-hover dark:focus-visible:border-ring;
+  }
+
+  /* 選ぶボタンの見た目にしたラジオボタンは見えなくしているため、キーボードで移ったときのフォーカスの輪をラベルに出す。 */
+  label.btn:has(> input:focus-visible) {
+    @apply border-ring ring-ring/50 ring-[3px];
+  }
+
+  /* 押せないボタンは半透明にせず、灰色で塗る。
+     押した状態と同じく、Basecoatのバリアントのダークの塗りに勝つよう `dark:` でも指定する。 */
+  .btn:disabled {
+    @apply border-border bg-muted text-muted-foreground dark:border-border dark:bg-muted opacity-100;
   }
 
   .badge[data-variant="brand"] {
@@ -43,6 +68,13 @@
 
   .badge[data-variant="warning"] {
     @apply bg-warning text-warning-foreground;
+  }
+
+  /* 通知の数字 (未読の数など)。アイコンやリンクの右上に重ねる位置は呼び出し側が決める。
+     1桁なら円、2桁以上なら横に伸びたピルになる。ふちはメニューの面 (card) と同じ色で、下の要素から切り抜いて見せる。
+     数字だけでは何の数か分からないため、重ねる先の要素の aria-label に数を含める。 */
+  .badge[data-variant="count"] {
+    @apply bg-primary text-primary-foreground h-5 min-w-5 justify-center rounded-full border-0 px-1.25 font-semibold tabular-nums shadow-[0_0_0_2px_var(--card)];
   }
 
   .alert[data-variant="brand"] {
@@ -65,5 +97,36 @@
      md未満は横幅いっぱいに広げて上下にだけ線を引き、md以上は角を丸めて四辺に線を引く。 */
   .page-card {
     @apply bg-card text-card-foreground border-y p-4 md:rounded-lg md:border;
+  }
+
+  /* メインメニューを画面の下に固定するログイン後の画面 (md未満) では、メニューの高さとセーフエリアのぶんを下に空ける。
+     本文の最後、Tabでフォーカスした要素 (scroll-padding)、画面の下に出るトーストがメニューに隠れないようにするため。
+     値はメニューの高さ (h-16) とセーフエリアの余白 (pb-[env(safe-area-inset-bottom)]) に揃える。 */
+  html[data-main-nav] {
+    --main-nav-offset: calc(4rem + env(safe-area-inset-bottom));
+    scroll-padding-bottom: var(--main-nav-offset);
+
+    @variant md {
+      --main-nav-offset: 0px;
+    }
+  }
+
+  html[data-main-nav] body {
+    padding-bottom: var(--main-nav-offset);
+  }
+
+  html[data-main-nav] .toaster {
+    bottom: var(--main-nav-offset);
+  }
+
+  /* 画面の下に留める送信の欄 (交換のメッセージ) があるページでは、Tabでフォーカスした要素が欄に隠れないよう、
+     欄の高さ (2行の入力欄・補足・上下の余白) とセーフエリアのぶんを scroll-padding で空ける。 */
+  html:has([data-sticky-composer]) {
+    scroll-padding-bottom: calc(7.5rem + env(safe-area-inset-bottom));
+  }
+
+  /* 補足の上に交換の段階の案内 (狭い画面で2行) を足した欄は、そのぶん高くなる。 */
+  html:has([data-sticky-composer="with-guide"]) {
+    scroll-padding-bottom: calc(10rem + env(safe-area-inset-bottom));
   }
 }
