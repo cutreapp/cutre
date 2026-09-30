@@ -1,0 +1,158 @@
+package admin_station
+
+import (
+	"strconv"
+
+	"github.com/cutreapp/cutre/go/internal/model"
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+	"github.com/cutreapp/cutre/go/internal/viewmodel"
+)
+
+// deleteDialogID は駅の削除の確認のダイアログのid。
+const deleteDialogID = "station-delete-dialog"
+
+// EditPageData は管理画面の駅の編集の画面の描画に使うデータ。
+type EditPageData struct {
+	// ProfilePath はパンくずに置くマイページ (自分のプロフィール) のパス。
+	ProfilePath string
+	// CSRFToken は編集・元に戻す・削除のフォームに載せるトークン。
+	CSRFToken string
+	// StationID はフォームの送信先を組み立てる駅のID。
+	StationID string
+	// StationName は見出しと削除の確認に出す、保存済みの駅名。
+	StationName string
+	// CurrentLockVersion は保存済みの駅の版。公開復帰と削除のフォームで使う。
+	CurrentLockVersion int32
+	// Prefectures は都道府県を選ぶ欄の選択肢。
+	Prefectures []viewmodel.PrefectureOption
+	// Form は編集のフォームに入れる値。入力の誤りで描き直すときは送られた値を戻す。
+	Form viewmodel.StationForm
+	// FormErrors は編集のフォームを受け付けなかったときのエラー。
+	FormErrors *model.ValidationError
+	// Archived は駅をアーカイブしているか。アーカイブの欄の出し分けに使う。
+	Archived bool
+	// ArchiveMessage はアーカイブした理由。Archived がfalseのときは空。
+	ArchiveMessage string
+	// CanDelete は駅を削除できるか (管理者か)。falseなら削除の欄を出さない。
+	CanDelete bool
+}
+
+// Edit は管理画面の駅の編集の画面を描画する。
+//
+// 編集のフォームは開いたときの駅の版を持ち回り、ほかの操作で先に更新されていたら上書きさせない。
+// フォームの下に、アーカイブ (公開中ならアーカイブの画面へのリンク、アーカイブ中なら理由と元に戻すボタン) と、
+// 管理者にだけ削除の欄を置く。削除は元に戻せないため、確認のダイアログを経てから送る。
+// HTMLのフォームはPATCH・DELETEを送れないため、POSTに _method を載せて上書きする。
+templ Edit(data EditPageData) {
+	<div class="flex w-full flex-1 flex-col gap-3 py-4 md:mx-auto md:max-w-180">
+		@components.PageHeading(components.PageHeadingData{
+			Title: data.StationName,
+			Breadcrumbs: []components.Breadcrumb{
+				{Label: templates.T(ctx, "admin_station_edit_breadcrumb_my_page"), Path: data.ProfilePath},
+				{Label: templates.T(ctx, "admin_station_edit_breadcrumb_admin"), Path: templates.AdminPath},
+				{Label: templates.T(ctx, "admin_station_edit_breadcrumb_stations"), Path: templates.AdminStationsPath},
+			},
+		})
+		<form
+			action={ templ.SafeURL(templates.AdminStationPath(data.StationID)) }
+			method="post"
+			class="page-card flex flex-col gap-4"
+			data-disable-on-submit
+		>
+			@components.FormErrors(data.FormErrors)
+			@components.FormErrorSummary(components.FormErrorSummaryData{Fields: summaryFields, Errors: data.FormErrors})
+			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+			<input type="hidden" name="_method" value="PATCH"/>
+			<input type="hidden" name="lock_version" value={ strconv.FormatInt(int64(data.Form.LockVersion), 10) }/>
+			@stationFields(data.Form, data.Prefectures, data.FormErrors)
+			<button type="submit" class="btn w-full">
+				{ templates.T(ctx, "admin_station_edit_submit") }
+			</button>
+		</form>
+		@archiveSection(data)
+		if data.CanDelete {
+			@deleteSection(data)
+		}
+	</div>
+}
+
+// archiveSection はアーカイブの欄を描画する。
+// 公開中ならアーカイブの画面 (理由の入力) へのリンクを、アーカイブ中なら理由と、公開に戻すフォームを出す。
+templ archiveSection(data EditPageData) {
+	<section class="flex flex-col gap-2" aria-labelledby="station-archive-heading">
+		<h2 id="station-archive-heading" class="px-4 font-semibold md:px-0">{ templates.T(ctx, "admin_station_edit_archive_heading") }</h2>
+		if data.Archived {
+			<form
+				action={ templ.SafeURL(templates.AdminStationArchivePath(data.StationID)) }
+				method="post"
+				class="page-card flex flex-col gap-3"
+				data-disable-on-submit
+			>
+				<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+				<input type="hidden" name="_method" value="DELETE"/>
+				<input type="hidden" name="lock_version" value={ strconv.FormatInt(int64(data.CurrentLockVersion), 10) }/>
+				<div class="flex flex-wrap items-center gap-2">
+					<span class="badge" data-variant="warning">{ templates.T(ctx, "admin_station_edit_archived_badge") }</span>
+				</div>
+				<div class="flex flex-col gap-1">
+					<h3 class="text-sm font-semibold">{ templates.T(ctx, "admin_station_edit_archive_message_label") }</h3>
+					<p class="text-sm whitespace-pre-line">{ data.ArchiveMessage }</p>
+				</div>
+				<p class="text-sm">{ templates.T(ctx, "admin_station_edit_unarchive_message") }</p>
+				<button type="submit" class="btn w-full" data-variant="outline">
+					{ templates.T(ctx, "admin_station_edit_unarchive_submit") }
+				</button>
+			</form>
+		} else {
+			<div class="page-card flex flex-col gap-3">
+				<p class="text-sm">{ templates.T(ctx, "admin_station_edit_archive_message") }</p>
+				<a href={ templ.SafeURL(templates.NewAdminStationArchivePath(data.StationID)) } class="btn w-full" data-variant="outline">
+					{ templates.T(ctx, "admin_station_edit_archive_link") }
+				</a>
+			</div>
+		}
+	</section>
+}
+
+// deleteSection は削除の欄と、削除の確認のダイアログを描画する。管理者にだけ出す。
+// 開閉はボタンの commandfor / command で行い、対応していないブラウザではJavaScriptが補う。
+templ deleteSection(data EditPageData) {
+	<section class="flex flex-col gap-2" aria-labelledby="station-delete-heading">
+		<h2 id="station-delete-heading" class="px-4 font-semibold md:px-0">{ templates.T(ctx, "admin_station_edit_delete_heading") }</h2>
+		<div class="page-card flex flex-col gap-3">
+			<p class="text-sm">{ templates.T(ctx, "admin_station_edit_delete_message") }</p>
+			<button type="button" class="btn w-full" data-variant="outline" commandfor={ deleteDialogID } command="show-modal">
+				{ templates.T(ctx, "admin_station_edit_delete_button") }
+			</button>
+		</div>
+		<dialog
+			id={ deleteDialogID }
+			class="alert-dialog"
+			aria-labelledby={ deleteDialogID + "-title" }
+			aria-describedby={ deleteDialogID + "-description" }
+		>
+			<div>
+				<header>
+					<h2 id={ deleteDialogID + "-title" }>{ templates.T(ctx, "admin_station_edit_delete_confirm_title") }</h2>
+					<p id={ deleteDialogID + "-description" }>
+						{ templates.T(ctx, "admin_station_edit_delete_confirm_message", map[string]any{"Name": data.StationName}) }
+					</p>
+				</header>
+				<footer>
+					<button type="button" class="btn" data-variant="outline" commandfor={ deleteDialogID } command="close">
+						{ templates.T(ctx, "admin_station_edit_delete_cancel") }
+					</button>
+					<form action={ templ.SafeURL(templates.AdminStationPath(data.StationID)) } method="post" class="contents" data-disable-on-submit>
+						<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+						<input type="hidden" name="_method" value="DELETE"/>
+						<input type="hidden" name="lock_version" value={ strconv.FormatInt(int64(data.CurrentLockVersion), 10) }/>
+						<button type="submit" class="btn" data-variant="destructive">
+							{ templates.T(ctx, "admin_station_edit_delete_submit") }
+						</button>
+					</form>
+				</footer>
+			</div>
+		</dialog>
+	</section>
+}

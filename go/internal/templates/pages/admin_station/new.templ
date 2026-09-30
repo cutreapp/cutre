@@ -1,0 +1,50 @@
+package admin_station
+
+import (
+	"github.com/cutreapp/cutre/go/internal/model"
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+	"github.com/cutreapp/cutre/go/internal/viewmodel"
+)
+
+// NewPageData は管理画面の駅の作成の画面の描画に使うデータ。
+type NewPageData struct {
+	// ProfilePath はパンくずに置くマイページ (自分のプロフィール) のパス。
+	ProfilePath string
+	// CSRFToken は作成のフォームに載せるトークン。
+	CSRFToken string
+	// Prefectures は都道府県を選ぶ欄の選択肢。
+	Prefectures []viewmodel.PrefectureOption
+	// Form はフォームに入れる値。エラーで描き直すときは送られた値を戻す。
+	Form viewmodel.StationForm
+	// FormErrors は作成のフォームを受け付けなかったときのエラー。
+	FormErrors *model.ValidationError
+}
+
+// New は管理画面の駅の作成の画面を描画する。
+templ New(data NewPageData) {
+	<div class="flex w-full flex-1 flex-col gap-3 py-4 md:mx-auto md:max-w-180">
+		@components.PageHeading(components.PageHeadingData{
+			Title: templates.T(ctx, "admin_station_new_heading"),
+			Breadcrumbs: []components.Breadcrumb{
+				{Label: templates.T(ctx, "admin_station_new_breadcrumb_my_page"), Path: data.ProfilePath},
+				{Label: templates.T(ctx, "admin_station_new_breadcrumb_admin"), Path: templates.AdminPath},
+				{Label: templates.T(ctx, "admin_station_new_breadcrumb_stations"), Path: templates.AdminStationsPath},
+			},
+		})
+		<form
+			action={ templ.SafeURL(templates.AdminStationsPath) }
+			method="post"
+			class="page-card flex flex-col gap-4"
+			data-disable-on-submit
+		>
+			@components.FormErrors(data.FormErrors)
+			@components.FormErrorSummary(components.FormErrorSummaryData{Fields: summaryFields, Errors: data.FormErrors})
+			<input type="hidden" name="csrf_token" value={ data.CSRFToken }/>
+			@stationFields(data.Form, data.Prefectures, data.FormErrors)
+			<button type="submit" class="btn w-full">
+				{ templates.T(ctx, "admin_station_new_submit") }
+			</button>
+		</form>
+	</div>
+}

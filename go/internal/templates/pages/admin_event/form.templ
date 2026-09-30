@@ -1,0 +1,93 @@
+package admin_event
+
+import (
+	"github.com/cutreapp/cutre/go/internal/model"
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+	"github.com/cutreapp/cutre/go/internal/viewmodel"
+)
+
+// summaryFields はエラーの要約に並べるフィールドを、フォームに現れる順で持つ。作成と編集のフォームで共通。
+var summaryFields = []components.FormErrorSummaryField{
+	{Name: "name", LabelKey: "admin_event_form_name_label"},
+	{Name: "starts_on", LabelKey: "admin_event_form_starts_on_label"},
+	{Name: "ends_on", LabelKey: "admin_event_form_ends_on_label"},
+}
+
+// eventFields はイベントの作成と編集のフォームに共通する入力欄 (名前・開始日・終了日) を描画する。
+// 開催期間は日付の入力欄で受け取る。終了日は空にでき、空なら終わりが決まっていないイベントになる。
+templ eventFields(form viewmodel.EventForm, formErrors *model.ValidationError) {
+	<div
+		role="group"
+		class="field"
+		if formErrors.HasFieldError("name") {
+			data-invalid
+		}
+	>
+		@components.RequiredFieldLabel("name", templates.T(ctx, "admin_event_form_name_label"))
+		<input
+			id="name"
+			name="name"
+			type="text"
+			value={ form.Name }
+			required
+			aria-describedby={ describedBy("name", formErrors) }
+			if formErrors.HasFieldError("name") {
+				aria-invalid="true"
+			}
+		/>
+		<p id="name-hint" class="text-sm">{ templates.T(ctx, "admin_event_form_name_hint") }</p>
+		@components.FieldErrors("name", formErrors)
+	</div>
+	<div
+		role="group"
+		class="field"
+		if formErrors.HasFieldError("starts_on") {
+			data-invalid
+		}
+	>
+		@components.RequiredFieldLabel("starts_on", templates.T(ctx, "admin_event_form_starts_on_label"))
+		<input
+			id="starts_on"
+			name="starts_on"
+			type="date"
+			value={ form.StartsOn }
+			required
+			if formErrors.HasFieldError("starts_on") {
+				aria-invalid="true"
+				aria-describedby={ components.FieldErrorsDescribedBy("starts_on", formErrors) }
+			}
+		/>
+		@components.FieldErrors("starts_on", formErrors)
+	</div>
+	<div
+		role="group"
+		class="field"
+		if formErrors.HasFieldError("ends_on") {
+			data-invalid
+		}
+	>
+		<label for="ends_on">{ templates.T(ctx, "admin_event_form_ends_on_label") }</label>
+		<input
+			id="ends_on"
+			name="ends_on"
+			type="date"
+			value={ form.EndsOn }
+			aria-describedby={ describedBy("ends_on", formErrors) }
+			if formErrors.HasFieldError("ends_on") {
+				aria-invalid="true"
+			}
+		/>
+		<p id="ends_on-hint" class="text-sm">{ templates.T(ctx, "admin_event_form_ends_on_hint") }</p>
+		@components.FieldErrors("ends_on", formErrors)
+	</div>
+}
+
+// describedBy は補足を持つ入力欄の aria-describedby を、補足とエラーメッセージのidから組み立てる。
+func describedBy(field string, formErrors *model.ValidationError) string {
+	if !formErrors.HasFieldError(field) {
+		return field + "-hint"
+	}
+
+	return field + "-hint " + components.FieldErrorsDescribedBy(field, formErrors)
+}

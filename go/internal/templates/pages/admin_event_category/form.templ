@@ -1,0 +1,76 @@
+package admin_event_category
+
+import (
+	"github.com/cutreapp/cutre/go/internal/model"
+	"github.com/cutreapp/cutre/go/internal/templates"
+	"github.com/cutreapp/cutre/go/internal/templates/components"
+	"github.com/cutreapp/cutre/go/internal/viewmodel"
+)
+
+// summaryFields はエラーの要約に並べるフィールドを、フォームに現れる順で持つ。作成と編集のフォームで共通。
+var summaryFields = []components.FormErrorSummaryField{
+	{Name: "name", LabelKey: "admin_event_category_form_name_label"},
+	{Name: "position", LabelKey: "admin_event_category_form_position_label"},
+}
+
+// eventCategoryFields はカテゴリーの作成と編集のフォームに共通する入力欄 (名前・並び順) を描画する。
+// 並び順は数値の入力欄で受け取り、小さいものから並べる。
+templ eventCategoryFields(form viewmodel.MasterForm, formErrors *model.ValidationError) {
+	<div
+		role="group"
+		class="field"
+		if formErrors.HasFieldError("name") {
+			data-invalid
+		}
+	>
+		@components.RequiredFieldLabel("name", templates.T(ctx, "admin_event_category_form_name_label"))
+		<input
+			id="name"
+			name="name"
+			type="text"
+			value={ form.Name }
+			required
+			aria-describedby={ describedBy("name", formErrors) }
+			if formErrors.HasFieldError("name") {
+				aria-invalid="true"
+			}
+		/>
+		<p id="name-hint" class="text-sm">{ templates.T(ctx, "admin_event_category_form_name_hint") }</p>
+		@components.FieldErrors("name", formErrors)
+	</div>
+	<div
+		role="group"
+		class="field"
+		if formErrors.HasFieldError("position") {
+			data-invalid
+		}
+	>
+		@components.RequiredFieldLabel("position", templates.T(ctx, "admin_event_category_form_position_label"))
+		<input
+			id="position"
+			name="position"
+			type="number"
+			inputmode="numeric"
+			min="0"
+			max="9999"
+			step="1"
+			value={ form.Position }
+			required
+			aria-describedby={ describedBy("position", formErrors) }
+			if formErrors.HasFieldError("position") {
+				aria-invalid="true"
+			}
+		/>
+		<p id="position-hint" class="text-sm">{ templates.T(ctx, "admin_event_category_form_position_hint") }</p>
+		@components.FieldErrors("position", formErrors)
+	</div>
+}
+
+// describedBy は補足を持つ入力欄の aria-describedby を、補足とエラーメッセージのidから組み立てる。
+func describedBy(field string, formErrors *model.ValidationError) string {
+	if !formErrors.HasFieldError(field) {
+		return field + "-hint"
+	}
+
+	return field + "-hint " + components.FieldErrorsDescribedBy(field, formErrors)
+}
