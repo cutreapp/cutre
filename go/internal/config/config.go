@@ -67,14 +67,30 @@ type Config struct {
 	// EmailFrom は送信するメールのFromに使うアドレス。ResendAPIKey を設定するときは必須。
 	EmailFrom string
 
-	// GitRev はデプロイしたGitコミットの短縮ハッシュ。本番 / テストのアセットバージョンに使う。
+	// GitRev はデプロイしたGitコミットの短縮ハッシュ。本番 / テストのアセットバージョンとSentryのReleaseに使う。
 	// 取れないときは開発・テスト環境では "dev" にし、本番では起動を止める (resolveGitRev)。
 	GitRev string
 
 	// LogFormat はログの出力形式。既定はText。
 	// 本番ではログの収集側がフィールドとしてそのまま取り込めるようJSONにする。
 	LogFormat logging.Format
+
+	// SentryDSN はエラーを送るSentryのプロジェクトのDSN。空のときはSentryを無効にする。
+	// 開発・テスト環境はこの状態で動かす。
+	SentryDSN string
+
+	// SentryEnvironment はSentryで環境を見分ける名前。既定は Env。
+	SentryEnvironment string
+
+	// SentryTracesSampleRate はパフォーマンスのトレースを送るリクエストの割合 (0〜1)。既定は0.5。
+	SentryTracesSampleRate float64
+
+	// SentryDebug はSentryのSDKのデバッグ出力を有効にするか。既定は無効。
+	SentryDebug bool
 }
+
+// defaultSentryTracesSampleRate はトレースを送るリクエストの既定の割合。姉妹プロジェクトと揃える。
+const defaultSentryTracesSampleRate = 0.5
 
 // Load は環境変数から設定を読み込む。
 // 必須の環境変数が無い場合はエラーを返し、起動を止める。
@@ -147,7 +163,43 @@ func Load() (*Config, error) {
 	}
 	cfg.LogFormat = logFormat
 
+	if err := loadSentry(cfg); err != nil {
+		return nil, err
+	}
+
 	return cfg, nil
+}
+
+// loadSentry はSentryの設定を読み取る。
+//
+// 読めない値は起動を止める。黙って既定値に戻すと、設定したつもりの割合やデバッグ出力が効いていないことに気付けないため。
+func loadSentry(cfg *Config) error {
+	cfg.SentryDSN = os.Getenv("CUTRE_SENTRY_DSN")
+
+	cfg.SentryEnvironment = os.Getenv("CUTRE_SENTRY_ENVIRONMENT")
+	if cfg.SentryEnvironment == "" {
+		cfg.SentryEnvironment = cfg.Env
+	}
+
+	cfg.SentryTracesSampleRate = defaultSentryTracesSampleRate
+	if value := os.Getenv("CUTRE_SENTRY_TRACES_SAMPLE_RATE"); value != "" {
+		rate, err := strconv.ParseFloat(value, 64)
+		// NaNはどの比較もfalseになるため、範囲の内側にあることを確かめる形で書く。
+		if err != nil || !(rate >= 0 && rate <= 1) {
+			return fmt.Errorf("環境変数 CUTRE_SENTRY_TRACES_SAMPLE_RATE には0から1までの数を設定してください: %q", value)
+		}
+		cfg.SentryTracesSampleRate = rate
+	}
+
+	if value := os.Getenv("CUTRE_SENTRY_DEBUG"); value != "" {
+		debug, err := strconv.ParseBool(value)
+		if err != nil {
+			return fmt.Errorf("環境変数 CUTRE_SENTRY_DEBUG には true か false を設定してください: %q", value)
+		}
+		cfg.SentryDebug = debug
+	}
+
+	return nil
 }
 
 // loadEmail はメールの送信の設定を読み取る。

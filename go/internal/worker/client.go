@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"os"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -18,8 +19,10 @@ import (
 	"github.com/cutreapp/cutre/go/internal/config"
 	"github.com/cutreapp/cutre/go/internal/dispatcher"
 	"github.com/cutreapp/cutre/go/internal/email"
+	"github.com/cutreapp/cutre/go/internal/logging"
 	"github.com/cutreapp/cutre/go/internal/ratelimit"
 	"github.com/cutreapp/cutre/go/internal/repository"
+	"github.com/cutreapp/cutre/go/internal/sentry"
 	"github.com/cutreapp/cutre/go/internal/usecase"
 )
 
@@ -93,11 +96,15 @@ func NewClient(ctx context.Context, cfg *config.Config, db *sql.DB) (*Client, er
 	river.AddWorker(workers, NewDeleteExpiredRateLimitsWorker(usecase.NewDeleteExpiredRateLimitsUsecase(limiter)))
 	river.AddWorker(workers, NewDeleteExpiredEmailConfirmationsWorker(usecase.NewDeleteExpiredEmailConfirmationsUsecase(emailConfirmationRepo)))
 
+	// Riverの内部のサービスは、一時的な接続の失敗をErrorで出力して自力で回復する。
+	// デフォルトのロガーに流すとSentryのイベントになってしまうため、同じ形式でSentryへのファンアウトだけを持たない基底のハンドラーを渡す。
+	// ジョブの失敗はRiverWorkerMiddlewareが送るため、対処が要るものは失われない。
 	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
 		Queues:       map[string]river.QueueConfig{river.QueueDefault: {MaxWorkers: defaultMaxWorkers}},
 		Workers:      workers,
 		PeriodicJobs: periodicJobs(),
-		Logger:       slog.Default(),
+		Middleware:   []rivertype.Middleware{sentry.RiverWorkerMiddleware()},
+		Logger:       slog.New(logging.NewBaseHandler(os.Stderr, cfg.LogFormat)),
 	})
 	if err != nil {
 		pool.Close()

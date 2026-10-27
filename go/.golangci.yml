@@ -450,6 +450,45 @@ linters:
             - pkg: github.com/cutreapp/cutre/go/internal/worker
               desc: "LoggingはWorkerに依存できません。"
 
+        # Sentry層: エラートラッカーのSentryへ送るイベントを組み立てるInfrastructure層のアダプタ。
+        # SDKとRiverだけに依存し、HTTPのルートやユーザーなどアプリケーションの情報は呼び出し元のミドルウェアが載せる。
+        sentry-layer:
+          files:
+            - "**/internal/sentry/**"
+          deny:
+            - pkg: github.com/cutreapp/cutre/go/internal/auth
+              desc: "SentryはAuthに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/config
+              desc: "SentryはConfigに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/database
+              desc: "SentryはDatabaseに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/handler
+              desc: "SentryはHandlerに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/httperror
+              desc: "SentryはHttperrorに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/i18n
+              desc: "SentryはI18nに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/metrics
+              desc: "SentryはMetricsに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/middleware
+              desc: "SentryはMiddlewareに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/model
+              desc: "SentryはModelに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/query
+              desc: "SentryはQueryに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/repository
+              desc: "SentryはRepositoryに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/session
+              desc: "SentryはSessionに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/templates
+              desc: "SentryはTemplatesに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/usecase
+              desc: "SentryはUseCaseに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/viewmodel
+              desc: "SentryはViewModelに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/worker
+              desc: "SentryはWorkerに依存できません。"
+
 formatters:
   enable:
     - gofmt # Go標準のフォーマット

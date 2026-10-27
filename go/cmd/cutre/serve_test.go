@@ -16,9 +16,11 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
+	"github.com/getsentry/sentry-go"
 	"github.com/google/uuid"
 	"github.com/pquerna/otp/totp"
 
@@ -747,6 +749,65 @@ func TestNewRouter_RequestID(t *testing.T) {
 				t.Errorf("X-Request-Id = %q、期待値 = 自前で採番した値", got)
 			}
 		})
+	}
+}
+
+// sentryTransport はSentryのクライアントが送るはずのイベントを集める。
+type sentryTransport struct {
+	mu     sync.Mutex
+	events []*sentry.Event
+}
+
+func (t *sentryTransport) Configure(sentry.ClientOptions)        {}
+func (t *sentryTransport) Flush(time.Duration) bool              { return true }
+func (t *sentryTransport) FlushWithContext(context.Context) bool { return true }
+func (t *sentryTransport) Close()                                {}
+func (t *sentryTransport) SendEventWithContext(_ context.Context, e *sentry.Event) {
+	t.SendEvent(e)
+}
+
+func (t *sentryTransport) SendEvent(e *sentry.Event) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.events = append(t.events, e)
+}
+
+// TestNewRouter_Sentry は、ルーターがリクエストのトレースをルートパターンとリクエストIDの付いた形でSentryへ送ることを検証する。
+// sentryhttpはcontextにHubがあればそれを使うため、テスト用のHubをリクエストに載せて、グローバルのHubには触らない。
+func TestNewRouter_Sentry(t *testing.T) {
+	t.Parallel()
+
+	transport := &sentryTransport{}
+	client, err := sentry.NewClient(sentry.ClientOptions{
+		Dsn:              "https://public@example.com/1",
+		Transport:        transport,
+		EnableTracing:    true,
+		TracesSampleRate: 1.0,
+	})
+	if err != nil {
+		t.Fatalf("sentry.NewClient()のエラー = %v", err)
+	}
+	hub := sentry.NewHub(client, sentry.NewScope())
+
+	router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir())
+
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	req = req.WithContext(sentry.SetHubOnContext(req.Context(), hub))
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+	hub.Flush(2 * time.Second)
+
+	transport.mu.Lock()
+	defer transport.mu.Unlock()
+	if len(transport.events) != 1 {
+		t.Fatalf("イベントの件数 = %d、期待値 = 1", len(transport.events))
+	}
+	event := transport.events[0]
+	if event.Type != "transaction" || event.Transaction != "GET /health" {
+		t.Errorf("イベント = %s %q、期待値 = transaction %q", event.Type, event.Transaction, "GET /health")
+	}
+	if got, want := event.Tags["request_id"], rec.Header().Get("X-Request-Id"); got == "" || got != want {
+		t.Errorf("タグrequest_id = %q、期待値 = レスポンスの X-Request-Id (%q)", got, want)
 	}
 }
 

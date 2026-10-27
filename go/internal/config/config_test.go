@@ -32,6 +32,10 @@ func setRequiredEnv(t *testing.T) {
 	// 本番 (APP_ENV=prod) はリビジョンが無いと起動しないため、gitコマンドに頼らない固定値を渡す。
 	t.Setenv("GIT_REV", "0123456789abcdef")
 	t.Setenv("CUTRE_LOG_FORMAT", "")
+	t.Setenv("CUTRE_SENTRY_DSN", "")
+	t.Setenv("CUTRE_SENTRY_ENVIRONMENT", "")
+	t.Setenv("CUTRE_SENTRY_TRACES_SAMPLE_RATE", "")
+	t.Setenv("CUTRE_SENTRY_DEBUG", "")
 }
 
 func TestLoad(t *testing.T) {
@@ -591,6 +595,79 @@ func TestLoad_LogFormat(t *testing.T) {
 
 			if cfg.LogFormat != tt.want {
 				t.Errorf("LogFormat = %q、期待値 = %q", cfg.LogFormat, tt.want)
+			}
+		})
+	}
+}
+
+func TestLoad_Sentry(t *testing.T) {
+	setRequiredEnv(t)
+	t.Setenv("CUTRE_SENTRY_DSN", "https://public@o0.ingest.sentry.io/1")
+	t.Setenv("CUTRE_SENTRY_ENVIRONMENT", "production")
+	t.Setenv("CUTRE_SENTRY_TRACES_SAMPLE_RATE", "0.1")
+	t.Setenv("CUTRE_SENTRY_DEBUG", "true")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load()のエラー = %v", err)
+	}
+
+	if cfg.SentryDSN != "https://public@o0.ingest.sentry.io/1" {
+		t.Errorf("SentryDSN = %q、期待値 = %q", cfg.SentryDSN, "https://public@o0.ingest.sentry.io/1")
+	}
+	if cfg.SentryEnvironment != "production" {
+		t.Errorf("SentryEnvironment = %q、期待値 = %q", cfg.SentryEnvironment, "production")
+	}
+	if cfg.SentryTracesSampleRate != 0.1 {
+		t.Errorf("SentryTracesSampleRate = %v、期待値 = %v", cfg.SentryTracesSampleRate, 0.1)
+	}
+	if !cfg.SentryDebug {
+		t.Error("SentryDebug = false、期待値 = true")
+	}
+}
+
+func TestLoad_SentryDefaults(t *testing.T) {
+	setRequiredEnv(t)
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load()のエラー = %v", err)
+	}
+
+	if cfg.SentryDSN != "" {
+		t.Errorf("SentryDSN = %q、期待値 = 空", cfg.SentryDSN)
+	}
+	if cfg.SentryEnvironment != "test" {
+		t.Errorf("SentryEnvironment = %q、期待値 = APP_ENV の値 (%q)", cfg.SentryEnvironment, "test")
+	}
+	if cfg.SentryTracesSampleRate != 0.5 {
+		t.Errorf("SentryTracesSampleRate = %v、期待値 = %v", cfg.SentryTracesSampleRate, 0.5)
+	}
+	if cfg.SentryDebug {
+		t.Error("SentryDebug = true、期待値 = false")
+	}
+}
+
+func TestLoad_InvalidSentry(t *testing.T) {
+	tests := []struct {
+		name  string
+		key   string
+		value string
+	}{
+		{name: "数でない割合", key: "CUTRE_SENTRY_TRACES_SAMPLE_RATE", value: "half"},
+		{name: "0未満の割合", key: "CUTRE_SENTRY_TRACES_SAMPLE_RATE", value: "-0.1"},
+		{name: "1を超える割合", key: "CUTRE_SENTRY_TRACES_SAMPLE_RATE", value: "1.5"},
+		{name: "NaNの割合", key: "CUTRE_SENTRY_TRACES_SAMPLE_RATE", value: "NaN"},
+		{name: "真偽値でないデバッグ", key: "CUTRE_SENTRY_DEBUG", value: "yes"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setRequiredEnv(t)
+			t.Setenv(tt.key, tt.value)
+
+			if _, err := Load(); err == nil {
+				t.Fatal("エラーを期待したが、nilだった")
 			}
 		})
 	}

@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 
@@ -74,6 +75,7 @@ import (
 	"github.com/cutreapp/cutre/go/internal/model"
 	"github.com/cutreapp/cutre/go/internal/ratelimit"
 	"github.com/cutreapp/cutre/go/internal/repository"
+	cutresentry "github.com/cutreapp/cutre/go/internal/sentry"
 	"github.com/cutreapp/cutre/go/internal/session"
 	"github.com/cutreapp/cutre/go/internal/templates"
 	"github.com/cutreapp/cutre/go/internal/turnstile"
@@ -96,6 +98,24 @@ func runServe() int {
 
 	baseHandler := logging.NewBaseHandler(os.Stderr, cfg.LogFormat)
 	slog.SetDefault(slog.New(baseHandler))
+
+	// ReleaseにはGitのリビジョンを使い、デプロイごとにイベントを見分けられるようにする。
+	err = cutresentry.Init(cutresentry.Config{
+		DSN:              cfg.SentryDSN,
+		Environment:      cfg.SentryEnvironment,
+		Release:          cfg.GitRev,
+		TracesSampleRate: cfg.SentryTracesSampleRate,
+		Debug:            cfg.SentryDebug,
+	})
+	if err != nil {
+		slog.Error("Sentryの初期化に失敗しました", "error", err)
+		return 1
+	}
+	// deferは逆順に走るため、ワーカーとデータベース接続を閉じたあとで、その間に出たイベントまで送り切る。
+	defer cutresentry.Flush(2 * time.Second)
+
+	// Error以上のログをSentryにも送る。データベース接続やワーカーの起動より前に差し替え、起動時のエラーも届くようにする。
+	slog.SetDefault(slog.New(cutresentry.NewSlogHandler(baseHandler)))
 
 	db, err := database.Connect(cfg.DatabaseURL)
 	if err != nil {
@@ -602,6 +622,13 @@ func newRouter(cfg *config.Config, db *sql.DB, staticDir string) *chi.Mux {
 	r.Use(middleware.AccessLog)
 	r.Use(chimiddleware.Recoverer)
 
+	// sentryhttpはリクエストごとのHubをcontextに載せ、panicを送ってからRecovererへ投げ直す (Repanic)。
+	// Recovererより内側に登録し、投げ直したpanicをRecovererが500にする。
+	// ルートパターンとリクエストIDをイベントへ載せるミドルウェアは、Hubを読むためさらに内側に置く。
+	r.Use(sentryhttp.New(sentryhttp.Options{Repanic: true}).Handle)
+	r.Use(middleware.SentryTransaction)
+	r.Use(middleware.SentryRequestID)
+
 	// リダイレクトの発行元は、内側が書いたステータスを見てから付ける。
 	// 末尾スラッシュの正規化より外側に置き、そこが出す301も覆う。
 	r.Use(middleware.RedirectBy)
@@ -623,6 +650,9 @@ func newRouter(cfg *config.Config, db *sql.DB, staticDir string) *chi.Mux {
 	// I18nは404 / 405のページを含む全ルートに掛かっており、その外側に置ける位置は同じく全ルートしかない。
 	// 静的アセットとヘルスチェックは利用者に依存しないため、セッションの検索・延長を行わない (outsideUserIndependentRoutes)。
 	r.Use(chimiddleware.Maybe(authMiddleware.SetUser, outsideUserIndependentRoutes))
+
+	// ログイン中のユーザーをSentryのイベントに載せる。ユーザーを読むためSetUserより内側に置く。
+	r.Use(middleware.SentryUserContext)
 
 	r.Use(middleware.I18n)
 

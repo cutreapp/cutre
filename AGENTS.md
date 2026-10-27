@@ -15,6 +15,7 @@ Cutreはキャラクターグッズの物々交換を簡単にするためのサ
   - database/sql + pgx (stdlibドライバ): PostgreSQLへの接続
   - sqlc: SQLクエリからGoコードを生成
   - river: バックグラウンドジョブキュー (PostgreSQLを使う。テーブルはdbmateのマイグレーションで管理する)
+  - sentry-go: エラーの追跡 (Sentry。DSNを設定しなければ無効)
 - PostgreSQL 18.6
 - dbmate: データベースマイグレーション
 - pnpm (Node.js 24)
