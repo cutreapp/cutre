@@ -31,6 +31,21 @@ const (
 	deleteExpiredEmailConfirmationsInterval = time.Hour
 )
 
+// ワーカーの接続プールとジョブの並行数の設定。値はAnnictにそろえる。
+//
+// プールはRiverの内部の処理 (ジョブの取得・完了の記録・LISTEN・リーダーの選出・定期ジョブの投入) が使う。
+// ジョブの中のUseCaseはdatabase/sqlの接続 (internal/database の MaxOpenConns) を使うため、
+// poolMaxConns はジョブの並行数に合わせて増やす必要が無い。
+// 並行数の上限は、ジョブがHTTPの側の接続を使い切らないよう MaxOpenConns より十分小さくする。
+// max_connections との関係は internal/database の MaxOpenConns のコメントを参照。
+const (
+	poolMaxConns        = 10
+	poolMinConns        = 2
+	poolMaxConnLifetime = 5 * time.Minute
+	poolMaxConnIdleTime = 2 * time.Minute
+	defaultMaxWorkers   = 10
+)
+
 // Client はRiverのクライアントと、それが使う接続プールをまとめて保持する。
 // 起動と停止を1つの単位として扱うため。
 type Client struct {
@@ -44,7 +59,16 @@ type Client struct {
 // ワーカーが呼ぶUseCaseのRepositoryは、HTTPの側と同じdbで組み立てる。
 // ワーカーだけが使う依存はここで組み立て、serve.goの配線へ漏らさない。
 func NewClient(ctx context.Context, cfg *config.Config, db *sql.DB) (*Client, error) {
-	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
+	poolConfig, err := pgxpool.ParseConfig(cfg.DatabaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("ワーカー用の接続文字列の解析に失敗: %w", err)
+	}
+	poolConfig.MaxConns = poolMaxConns
+	poolConfig.MinConns = poolMinConns
+	poolConfig.MaxConnLifetime = poolMaxConnLifetime
+	poolConfig.MaxConnIdleTime = poolMaxConnIdleTime
+
+	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
 		return nil, fmt.Errorf("ワーカー用の接続プールの作成に失敗: %w", err)
 	}
@@ -70,7 +94,7 @@ func NewClient(ctx context.Context, cfg *config.Config, db *sql.DB) (*Client, er
 	river.AddWorker(workers, NewDeleteExpiredEmailConfirmationsWorker(usecase.NewDeleteExpiredEmailConfirmationsUsecase(emailConfirmationRepo)))
 
 	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
-		Queues:       map[string]river.QueueConfig{river.QueueDefault: {MaxWorkers: 10}},
+		Queues:       map[string]river.QueueConfig{river.QueueDefault: {MaxWorkers: defaultMaxWorkers}},
 		Workers:      workers,
 		PeriodicJobs: periodicJobs(),
 		Logger:       slog.Default(),

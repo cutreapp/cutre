@@ -102,6 +102,7 @@ func runServe() int {
 			slog.Error("データベース接続のクローズに失敗しました", "error", err)
 		}
 	}()
+	database.SetServerPoolLimits(db)
 	slog.Info("データベースに接続しました")
 
 	// バックグラウンドジョブはHTTPサーバーと同じプロセスで処理する。

@@ -72,3 +72,24 @@ func TestConnect_Error(t *testing.T) {
 		})
 	}
 }
+
+// TestSetServerPoolLimits は、サーバー用の接続プールに開く接続の上限が設定されることを検証する。
+func TestSetServerPoolLimits(t *testing.T) {
+	t.Parallel()
+
+	db, err := Connect(os.Getenv("DATABASE_URL"))
+	if err != nil {
+		t.Fatalf("Connectのエラー = %v", err)
+	}
+	t.Cleanup(func() {
+		if err := db.Close(); err != nil {
+			t.Errorf("Closeのエラー = %v", err)
+		}
+	})
+
+	SetServerPoolLimits(db)
+
+	if got := db.Stats().MaxOpenConnections; got != MaxOpenConns {
+		t.Errorf("MaxOpenConnections = %d、期待値 = %d", got, MaxOpenConns)
+	}
+}
