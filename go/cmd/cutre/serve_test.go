@@ -28,6 +28,7 @@ import (
 	"github.com/cutreapp/cutre/go/internal/config"
 	"github.com/cutreapp/cutre/go/internal/database"
 	"github.com/cutreapp/cutre/go/internal/i18n"
+	"github.com/cutreapp/cutre/go/internal/metrics"
 	"github.com/cutreapp/cutre/go/internal/middleware"
 	"github.com/cutreapp/cutre/go/internal/model"
 	"github.com/cutreapp/cutre/go/internal/repository"
@@ -61,7 +62,7 @@ func withCSRFToken(req *http.Request) *http.Request {
 func TestNewRouter_Health(t *testing.T) {
 	t.Parallel()
 
-	router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir())
+	router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir(), nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	rec := httptest.NewRecorder()
@@ -111,7 +112,7 @@ func TestNewRouter_Health_PoolExhausted(t *testing.T) {
 			}
 			t.Cleanup(func() { _ = conn.Close() })
 
-			router := newRouter(testConfig(), db, t.TempDir())
+			router := newRouter(testConfig(), db, t.TempDir(), nil)
 			// ヘルスチェックの2秒より長い期限を設け、認証処理の接続待ちが残ってもテストを終了させる。
 			ctx, cancel := context.WithTimeout(t.Context(), 4*time.Second)
 			defer cancel()
@@ -151,7 +152,7 @@ func TestNewRouter_EmailConfirmation(t *testing.T) {
 
 	cfg := testConfig()
 	db := testutil.GetTestDB()
-	router := newRouter(cfg, db, t.TempDir())
+	router := newRouter(cfg, db, t.TempDir(), nil)
 	mgr := session.NewContinuationManager(cfg.ContinuationTokenKey)
 	invitationID := testutil.NewInvitationBuilder(t, db).Build()
 	cookies := httptest.NewRecorder()
@@ -185,7 +186,7 @@ func TestNewRouter_EmailConfirmationSubmit(t *testing.T) {
 	const token = "csrf-token"
 	cfg := testConfig()
 	db := testutil.GetTestDB()
-	router := newRouter(cfg, db, t.TempDir())
+	router := newRouter(cfg, db, t.TempDir(), nil)
 	mgr := session.NewContinuationManager(cfg.ContinuationTokenKey)
 
 	tests := []struct {
@@ -236,7 +237,7 @@ func TestNewRouter_Account(t *testing.T) {
 	const token = "csrf-token"
 	cfg := testConfig()
 	db := testutil.GetTestDB()
-	router := newRouter(cfg, db, t.TempDir())
+	router := newRouter(cfg, db, t.TempDir(), nil)
 	mgr := session.NewContinuationManager(cfg.ContinuationTokenKey)
 
 	tests := []struct {
@@ -302,7 +303,7 @@ func TestNewRouter_Welcome(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir())
+			router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir(), nil)
 
 			req := httptest.NewRequest(http.MethodGet, tt.path, nil)
 			rec := httptest.NewRecorder()
@@ -352,7 +353,7 @@ func TestNewRouter_I18n(t *testing.T) {
 
 			// newRouter が返すルーターに検証用のルートを足し、登録済みのミドルウェアを
 			// 通したあとのcontextを観測する。ルーターはテストごとに作り直すため共有されない。
-			router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir())
+			router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir(), nil)
 
 			var gotLocale string
 			observe := func(_ http.ResponseWriter, r *http.Request) {
@@ -406,7 +407,7 @@ func TestNewRouter_LocaleIndependentRoutes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			router := newRouter(testConfig(), testutil.GetTestDB(), staticDir)
+			router := newRouter(testConfig(), testutil.GetTestDB(), staticDir, nil)
 
 			for _, acceptLanguage := range []string{"", "en-US,en;q=0.9", "ja"} {
 				req := httptest.NewRequest(http.MethodGet, tt.path, nil)
@@ -442,7 +443,7 @@ func TestNewRouter_StaticAssets(t *testing.T) {
 		t.Fatalf("テスト用ファイルの作成のエラー = %v", err)
 	}
 
-	router := newRouter(testConfig(), testutil.GetTestDB(), staticDir)
+	router := newRouter(testConfig(), testutil.GetTestDB(), staticDir, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/static/css/style.css", nil)
 	rec := httptest.NewRecorder()
@@ -482,7 +483,7 @@ func TestNewRouter_StaticAssetsSkipSession(t *testing.T) {
 
 	cfg := testConfig()
 	cfg.Env = "prod"
-	router := newRouter(cfg, db, staticDir)
+	router := newRouter(cfg, db, staticDir, nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/static/style.css", nil)
 	req.AddCookie(&http.Cookie{Name: session.CookieName, Value: userSession.Token()})
@@ -514,7 +515,7 @@ func TestNewRouter_HealthSkipSession(t *testing.T) {
 		WithExpiresAt(time.Now().Add(24 * time.Hour))
 	userSession.Build()
 
-	router := newRouter(testConfig(), db, t.TempDir())
+	router := newRouter(testConfig(), db, t.TempDir(), nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	req.AddCookie(&http.Cookie{Name: session.CookieName, Value: userSession.Token()})
@@ -583,7 +584,7 @@ func TestNewRouter_LocaleSuggestion(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir())
+			router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir(), nil)
 
 			req := httptest.NewRequest(http.MethodGet, tt.path, nil)
 			req.Header.Set("Accept-Language", tt.acceptLanguage)
@@ -652,7 +653,7 @@ func TestNewRouter_SecurityHeaders(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			router := newRouter(testConfig(), testutil.GetTestDB(), staticDir)
+			router := newRouter(testConfig(), testutil.GetTestDB(), staticDir, nil)
 			router.Get("/test-panic", func(_ http.ResponseWriter, _ *http.Request) {
 				panic("テスト用のpanic")
 			})
@@ -706,7 +707,7 @@ func TestNewRouter_NotFound(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir())
+			router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir(), nil)
 
 			req := httptest.NewRequest(http.MethodGet, tt.path, nil)
 			rec := httptest.NewRecorder()
@@ -737,7 +738,7 @@ func TestNewRouter_RequestID(t *testing.T) {
 		t.Run(path, func(t *testing.T) {
 			t.Parallel()
 
-			router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir())
+			router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir(), nil)
 
 			req := httptest.NewRequest(http.MethodGet, path, nil)
 			req.Header.Set("X-Request-Id", "client-supplied")
@@ -749,6 +750,74 @@ func TestNewRouter_RequestID(t *testing.T) {
 				t.Errorf("X-Request-Id = %q、期待値 = 自前で採番した値", got)
 			}
 		})
+	}
+}
+
+// TestNewRouter_Metrics は、公開側のルーターがリクエストを数える一方で、メトリクスそのものは返さないことを検証する。
+func TestNewRouter_Metrics(t *testing.T) {
+	t.Parallel()
+
+	reg := metrics.NewRegistry()
+	router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir(), reg.NewHTTP())
+
+	router.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodGet, "/health", nil))
+
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, metrics.Path, nil))
+	if rec.Code != http.StatusNotFound {
+		t.Errorf("公開側の %s のステータスコード = %d、期待値 = %d", metrics.Path, rec.Code, http.StatusNotFound)
+	}
+	if strings.Contains(rec.Body.String(), "http_request_duration_seconds") {
+		t.Errorf("公開側の %s がメトリクスを返した", metrics.Path)
+	}
+
+	metricsRec := httptest.NewRecorder()
+	reg.Handler().ServeHTTP(metricsRec, httptest.NewRequest(http.MethodGet, metrics.Path, nil))
+	body := metricsRec.Body.String()
+	for _, want := range []string{
+		`http_request_duration_seconds_count{method="GET",route="/health",status="200"} 1`,
+		`http_request_duration_seconds_count{method="GET",route="",status="404"} 1`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Errorf("メトリクスに %s が含まれない\n%s", want, body)
+		}
+	}
+}
+
+// TestServeMetrics は、メトリクスのサーバーがリスナーでメトリクスを返し、Shutdownで止まることを検証する。
+func TestServeMetrics(t *testing.T) {
+	t.Parallel()
+
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("待ち受けのエラー = %v", err)
+	}
+	srv := serveMetrics(ln, metrics.NewRegistry())
+
+	metricsURL := "http://" + ln.Addr().String() + metrics.Path
+	resp, err := http.Get(metricsURL)
+	if err != nil {
+		t.Fatalf("メトリクスの取得のエラー = %v", err)
+	}
+	body, err := io.ReadAll(resp.Body)
+	_ = resp.Body.Close()
+	if err != nil {
+		t.Fatalf("本文の読み取りのエラー = %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("ステータスコード = %d、期待値 = %d", resp.StatusCode, http.StatusOK)
+	}
+	if !strings.Contains(string(body), "go_goroutines ") {
+		t.Errorf("本文にGoのランタイムのメトリクスが含まれない\n%s", body)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		t.Fatalf("Shutdown()のエラー = %v", err)
+	}
+	if _, err := http.Get(metricsURL); err == nil {
+		t.Error("Shutdownのあとも接続できた")
 	}
 }
 
@@ -789,7 +858,7 @@ func TestNewRouter_Sentry(t *testing.T) {
 	}
 	hub := sentry.NewHub(client, sentry.NewScope())
 
-	router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir())
+	router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir(), nil)
 
 	req := httptest.NewRequest(http.MethodGet, "/health", nil)
 	req = req.WithContext(sentry.SetHubOnContext(req.Context(), hub))
@@ -848,7 +917,7 @@ func TestNewRouter_MethodNotAllowed(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir())
+			router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir(), nil)
 
 			req := withCSRFToken(httptest.NewRequest(tt.method, tt.path, nil))
 			rec := httptest.NewRecorder()
@@ -881,7 +950,7 @@ func TestNewRouter_MethodNotAllowed(t *testing.T) {
 func TestAllowedMethods(t *testing.T) {
 	t.Parallel()
 
-	router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir())
+	router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir(), nil)
 	router.Head("/head-only", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
@@ -968,7 +1037,7 @@ func TestNewRouter_Head(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir())
+			router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir(), nil)
 
 			req := httptest.NewRequest(http.MethodHead, tt.path, nil)
 			rec := httptest.NewRecorder()
@@ -995,7 +1064,7 @@ func TestNewRouter_Head(t *testing.T) {
 func TestNewRouter_HeadSendsNoBody(t *testing.T) {
 	t.Parallel()
 
-	server := httptest.NewServer(newRouter(testConfig(), testutil.GetTestDB(), t.TempDir()))
+	server := httptest.NewServer(newRouter(testConfig(), testutil.GetTestDB(), t.TempDir(), nil))
 	t.Cleanup(server.Close)
 
 	conn, err := net.Dial("tcp", server.Listener.Addr().String())
@@ -1067,7 +1136,7 @@ func TestNewRouter_HeadRouting(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
-			router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir())
+			router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir(), nil)
 			var gotHandler, gotMethod string
 			if tt.registerGet {
 				router.Get("/test-head", func(w http.ResponseWriter, r *http.Request) {
@@ -1110,7 +1179,7 @@ func TestNewRouter_HeadStaticAsset(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(staticDir, "sample.css"), []byte(content), 0600); err != nil {
 		t.Fatalf("静的ファイルの作成のエラー = %v", err)
 	}
-	router := newRouter(testConfig(), testutil.GetTestDB(), staticDir)
+	router := newRouter(testConfig(), testutil.GetTestDB(), staticDir, nil)
 	get := httptest.NewRecorder()
 	router.ServeHTTP(get, httptest.NewRequest(http.MethodGet, "/static/sample.css", nil))
 	if get.Code != http.StatusOK || get.Body.String() != content {
@@ -1160,7 +1229,7 @@ func TestNewRouter_RedirectSlashes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir())
+			router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir(), nil)
 
 			rec := httptest.NewRecorder()
 			router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, tt.path, nil))
@@ -1207,7 +1276,7 @@ func TestNewRouter_NoRedirectForNormalizedPaths(t *testing.T) {
 		t.Run(path, func(t *testing.T) {
 			t.Parallel()
 
-			router := newRouter(testConfig(), testutil.GetTestDB(), staticDir)
+			router := newRouter(testConfig(), testutil.GetTestDB(), staticDir, nil)
 
 			rec := httptest.NewRecorder()
 			router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
@@ -1240,7 +1309,7 @@ func TestNewRouter_AssetDirectoryDoesNotLoop(t *testing.T) {
 		t.Fatalf("テスト用ファイルの作成のエラー = %v", err)
 	}
 
-	router := newRouter(testConfig(), testutil.GetTestDB(), staticDir)
+	router := newRouter(testConfig(), testutil.GetTestDB(), staticDir, nil)
 
 	rec := httptest.NewRecorder()
 	router.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/static/css/", nil))
@@ -1289,7 +1358,7 @@ func TestNewRouter_RedirectEscapedAssets(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(staticDir, tt.filename), []byte(wantBody), 0o600); err != nil {
 				t.Fatalf("テスト用ファイルの作成のエラー = %v", err)
 			}
-			server := httptest.NewServer(newRouter(testConfig(), testutil.GetTestDB(), staticDir))
+			server := httptest.NewServer(newRouter(testConfig(), testutil.GetTestDB(), staticDir, nil))
 			t.Cleanup(server.Close)
 
 			const query = "v=1&tag=a%26b&tag=c+d"
@@ -1493,7 +1562,7 @@ func TestNewRouter_CacheControl(t *testing.T) {
 			}
 
 			rec := httptest.NewRecorder()
-			newRouter(cfg, testutil.GetTestDB(), staticDir).ServeHTTP(rec, req)
+			newRouter(cfg, testutil.GetTestDB(), staticDir, nil).ServeHTTP(rec, req)
 			resp := rec.Result()
 			t.Cleanup(func() {
 				if err := resp.Body.Close(); err != nil {
@@ -1549,7 +1618,7 @@ func TestNewRouter_SetUser(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			router := newRouter(testConfig(), db, t.TempDir())
+			router := newRouter(testConfig(), db, t.TempDir(), nil)
 
 			var gotAtname string
 			var localeResolvedAfterUser bool
@@ -1597,7 +1666,7 @@ func TestNewRouter_CSRF(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Parallel()
 
-			router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir())
+			router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir(), nil)
 
 			handlerCalled := false
 			router.Post("/test-csrf", func(_ http.ResponseWriter, _ *http.Request) {
@@ -1632,7 +1701,7 @@ func TestNewRouter_MethodOverride(t *testing.T) {
 
 	const token = "csrf-token"
 
-	router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir())
+	router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir(), nil)
 
 	deleted := false
 	router.Delete("/test-method-override", func(_ http.ResponseWriter, _ *http.Request) {
@@ -1662,7 +1731,7 @@ func TestNewRouter_MethodOverride(t *testing.T) {
 func TestNewRouter_Flash(t *testing.T) {
 	t.Parallel()
 
-	router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir())
+	router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir(), nil)
 
 	var gotFlash *session.FlashMessage
 	router.Get("/test-flash", func(_ http.ResponseWriter, r *http.Request) {
@@ -1711,7 +1780,7 @@ func TestNewRouter_SignIn(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.GetTestDB()
-	router := newRouter(testConfig(), db, t.TempDir())
+	router := newRouter(testConfig(), db, t.TempDir(), nil)
 	remoteAddr := uniqueRemoteAddr(t)
 
 	// ログイン前の画面の言語 (日本語) とユーザーの言語 (英語) を違えて、ホームがユーザーの言語で出ることを確かめる。
@@ -1812,7 +1881,7 @@ func TestNewRouter_SignInTwoFactor(t *testing.T) {
 
 	db := testutil.GetTestDB()
 	cfg := testConfig()
-	router := newRouter(cfg, db, t.TempDir())
+	router := newRouter(cfg, db, t.TempDir(), nil)
 	remoteAddr := uniqueRemoteAddr(t)
 
 	email := testutil.UniqueEmail("router-sign-in-two-factor")
@@ -1915,7 +1984,7 @@ func TestNewRouter_SignInTwoFactorRecovery(t *testing.T) {
 	t.Parallel()
 	db := testutil.GetTestDB()
 	cfg := testConfig()
-	router := newRouter(cfg, db, t.TempDir())
+	router := newRouter(cfg, db, t.TempDir(), nil)
 	userID := testutil.NewUserBuilder(t, db).Build()
 	testutil.NewUserTwoFactorAuthBuilder(t, db, userID).WithEnabledAt(time.Now()).Build()
 	key, err := auth.NewTwoFactorKey(cfg.TOTPEncryptionKey)
@@ -2001,7 +2070,7 @@ func TestNewRouter_SignInTwoFactorRecovery(t *testing.T) {
 func TestNewRouter_SignInRoutes(t *testing.T) {
 	t.Parallel()
 
-	router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir())
+	router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir(), nil)
 
 	tests := []struct {
 		path         string
@@ -2062,7 +2131,7 @@ func TestNewRouter_SignOut(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.GetTestDB()
-	router := newRouter(testConfig(), db, t.TempDir())
+	router := newRouter(testConfig(), db, t.TempDir(), nil)
 
 	userID := testutil.NewUserBuilder(t, db).Build()
 	userSession := testutil.NewUserSessionBuilder(t, db).WithUserID(userID)
@@ -2097,7 +2166,7 @@ func TestNewRouter_SettingsInvitation(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.GetTestDB()
-	router := newRouter(testConfig(), db, t.TempDir())
+	router := newRouter(testConfig(), db, t.TempDir(), nil)
 
 	userSession := testutil.NewUserSessionBuilder(t, db).WithUserID(testutil.NewUserBuilder(t, db).Build())
 	userSession.Build()
@@ -2126,7 +2195,7 @@ func TestNewRouter_Admin(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.GetTestDB()
-	router := newRouter(testConfig(), db, t.TempDir())
+	router := newRouter(testConfig(), db, t.TempDir(), nil)
 	sessionToken := func(role model.UserRole) string {
 		userSession := testutil.NewUserSessionBuilder(t, db).WithUserID(testutil.NewUserBuilder(t, db).WithRole(role).Build())
 		userSession.Build()
@@ -2226,7 +2295,7 @@ func TestNewRouter_Item(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.GetTestDB()
-	router := newRouter(testConfig(), db, t.TempDir())
+	router := newRouter(testConfig(), db, t.TempDir(), nil)
 	userID := testutil.NewUserBuilder(t, db).Build()
 	userSession := testutil.NewUserSessionBuilder(t, db).WithUserID(userID)
 	userSession.Build()
@@ -2289,7 +2358,7 @@ func TestNewRouter_Trade(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.GetTestDB()
-	router := newRouter(testConfig(), db, t.TempDir())
+	router := newRouter(testConfig(), db, t.TempDir(), nil)
 	userID := testutil.NewUserBuilder(t, db).Build()
 	testutil.NewMessageConsentBuilder(t, db, userID).Build()
 	userSession := testutil.NewUserSessionBuilder(t, db).WithUserID(userID)
@@ -2349,7 +2418,7 @@ func TestNewRouter_TradePage(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.GetTestDB()
-	router := newRouter(testConfig(), db, t.TempDir())
+	router := newRouter(testConfig(), db, t.TempDir(), nil)
 	userID := testutil.NewUserBuilder(t, db).Build()
 	userSession := testutil.NewUserSessionBuilder(t, db).WithUserID(userID)
 	userSession.Build()
@@ -2406,7 +2475,7 @@ func TestNewRouter_SettingsInvitationRecreate(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.GetTestDB()
-	router := newRouter(testConfig(), db, t.TempDir())
+	router := newRouter(testConfig(), db, t.TempDir(), nil)
 
 	userID := testutil.NewUserBuilder(t, db).Build()
 	userSession := testutil.NewUserSessionBuilder(t, db).WithUserID(userID)
@@ -2454,7 +2523,7 @@ func TestNewRouter_SettingsMessageConsent(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.GetTestDB()
-	router := newRouter(testConfig(), db, t.TempDir())
+	router := newRouter(testConfig(), db, t.TempDir(), nil)
 
 	userID := testutil.NewUserBuilder(t, db).Build()
 	userSession := testutil.NewUserSessionBuilder(t, db).WithUserID(userID)
@@ -2511,7 +2580,7 @@ func TestNewRouter_SettingsTwoFactorAuth(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.GetTestDB()
-	router := newRouter(testConfig(), db, t.TempDir())
+	router := newRouter(testConfig(), db, t.TempDir(), nil)
 
 	userSession := testutil.NewUserSessionBuilder(t, db).WithUserID(testutil.NewUserBuilder(t, db).Build())
 	userSession.Build()
@@ -2567,7 +2636,7 @@ func TestNewRouter_InvitationAcceptance(t *testing.T) {
 	t.Parallel()
 
 	db := testutil.GetTestDB()
-	router := newRouter(testConfig(), db, t.TempDir())
+	router := newRouter(testConfig(), db, t.TempDir(), nil)
 	remoteAddr := uniqueRemoteAddr(t)
 
 	for _, prefix := range []string{"", "/en"} {
@@ -2657,7 +2726,7 @@ func TestNewRouter_Password(t *testing.T) {
 
 	const csrfToken = "csrf-token"
 	db := testutil.GetTestDB()
-	router := newRouter(testConfig(), db, t.TempDir())
+	router := newRouter(testConfig(), db, t.TempDir(), nil)
 
 	assertHeaders := func(label string, rec *httptest.ResponseRecorder) {
 		t.Helper()

@@ -23,6 +23,7 @@ func setRequiredEnv(t *testing.T) {
 	t.Setenv("CUTRE_PORT", "8080")
 	t.Setenv("CUTRE_DOMAIN", "cutre.example.com")
 	t.Setenv("CUTRE_LISTEN_HOST", "")
+	t.Setenv("CUTRE_METRICS_PORT", "")
 	t.Setenv("CUTRE_TRUSTED_PROXIES", "")
 	t.Setenv("CUTRE_TURNSTILE_SITE_KEY", "")
 	t.Setenv("CUTRE_TURNSTILE_SECRET_KEY", "")
@@ -222,6 +223,100 @@ func TestConfig_ListenAddr(t *testing.T) {
 
 			if got := cfg.ListenAddr(); got != tt.want {
 				t.Errorf("ListenAddr() = %q、期待値 = %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestLoad_MetricsPort(t *testing.T) {
+	tests := []struct {
+		name        string
+		metricsPort string
+		wantAddr    string
+	}{
+		{name: "未設定ならリスナーを立てない", metricsPort: ""},
+		{name: "設定したポートで127.0.0.1だけで待ち受ける", metricsPort: "9100", wantAddr: "127.0.0.1:9100"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setRequiredEnv(t)
+			// 公開側を0.0.0.0で待ち受けても、メトリクスは127.0.0.1に留まることを確かめる。
+			t.Setenv("CUTRE_LISTEN_HOST", "0.0.0.0")
+			t.Setenv("CUTRE_METRICS_PORT", tt.metricsPort)
+
+			cfg, err := Load()
+			if err != nil {
+				t.Fatalf("Load()のエラー = %v", err)
+			}
+
+			if cfg.MetricsPort != tt.metricsPort {
+				t.Errorf("MetricsPort = %q、期待値 = %q", cfg.MetricsPort, tt.metricsPort)
+			}
+			if tt.wantAddr != "" {
+				if got := cfg.MetricsAddr(); got != tt.wantAddr {
+					t.Errorf("MetricsAddr() = %q、期待値 = %q", got, tt.wantAddr)
+				}
+			}
+		})
+	}
+}
+
+// TestLoad_MetricsPort_PublicPort は、公開側のサービス名を許しつつ、別表記の同一ポートを拒否することを検証する。
+func TestLoad_MetricsPort_PublicPort(t *testing.T) {
+	tests := []struct {
+		name        string
+		publicPort  string
+		metricsPort string
+		wantErr     string
+	}{
+		{name: "メトリクス側の先頭ゼロ", publicPort: "8080", metricsPort: "08080", wantErr: "CUTRE_PORT と異なるポート"},
+		{name: "公開側の先頭ゼロ", publicPort: "08080", metricsPort: "8080", wantErr: "CUTRE_PORT と異なるポート"},
+		{name: "サービス名と同じポート", publicPort: "http", metricsPort: "80", wantErr: "CUTRE_PORT と異なるポート"},
+		{name: "サービス名と異なるポート", publicPort: "http", metricsPort: "9100"},
+		{name: "先頭ゼロがあっても異なるポート", publicPort: "08080", metricsPort: "09100"},
+		{name: "解決できない公開側のポート", publicPort: "invalid-port-name", metricsPort: "9100", wantErr: "CUTRE_PORT"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setRequiredEnv(t)
+			t.Setenv("CUTRE_PORT", tt.publicPort)
+			t.Setenv("CUTRE_METRICS_PORT", tt.metricsPort)
+			cfg, err := Load()
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("Load()のエラー = %v、期待値 = %q を含むエラー", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Load()のエラー = %v", err)
+			}
+			if cfg.Port != tt.publicPort || cfg.MetricsPort != tt.metricsPort {
+				t.Errorf("ポートの設定 = %q / %q、期待値 = %q / %q", cfg.Port, cfg.MetricsPort, tt.publicPort, tt.metricsPort)
+			}
+		})
+	}
+}
+
+func TestLoad_InvalidMetricsPort(t *testing.T) {
+	tests := []struct {
+		name        string
+		metricsPort string
+	}{
+		{name: "数でないポート", metricsPort: "metrics"},
+		{name: "0のポート", metricsPort: "0"},
+		{name: "65535を超えるポート", metricsPort: "65536"},
+		{name: "HTTPサーバーと同じポート", metricsPort: "8080"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setRequiredEnv(t)
+			t.Setenv("CUTRE_METRICS_PORT", tt.metricsPort)
+
+			if _, err := Load(); err == nil {
+				t.Fatal("エラーを期待したが、nilだった")
 			}
 		})
 	}

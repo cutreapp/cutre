@@ -174,6 +174,12 @@ func (c *Client) Client() *river.Client[pgx.Tx] {
 	return c.riverClient
 }
 
+// PoolStat はワーカーの接続プールの状態を返す。
+// メトリクス (internal/metrics) が、プールそのものを受け取らずに読み取るために使う。
+func (c *Client) PoolStat() *pgxpool.Stat {
+	return c.pool.Stat()
+}
+
 // newEmailSender は設定に応じたメールの送信の手段を返す。
 // APIキーを設定していればResendで送り、空ならログへ出力する。本番でAPIキーが空の場合は設定の読み込みが起動を止める。
 // メールを送るのはワーカーだけのため、選択もここに置く。

@@ -38,6 +38,10 @@ type Config struct {
 	// 本番では前段 (cloudflared) だけが届くよう 127.0.0.1 にする。
 	ListenHost string
 
+	// MetricsPort はメトリクス (internal/metrics) を返す内部向けのリスナーのポート。
+	// 空のときはリスナーを立てない。待ち受けるアドレスは ListenHost によらず 127.0.0.1 に固定する (MetricsAddr)。
+	MetricsPort string
+
 	// TrustedProxies はアプリの前段に立つリバースプロキシが接続してくるネットワーク。
 	//
 	// ここに挙げたアドレスから届いたリクエストは、運んできた X-Forwarded-For から
@@ -97,6 +101,10 @@ type Config struct {
 // defaultListenHost は待ち受けるアドレスの既定値。
 const defaultListenHost = "0.0.0.0"
 
+// metricsHost はメトリクスのリスナーが待ち受けるアドレス。
+// メトリクスは同じVPSの収集 (vmagent) だけに返すため、外から届くアドレスでは待ち受けない。
+const metricsHost = "127.0.0.1"
+
 // defaultSentryTracesSampleRate はトレースを送るリクエストの既定の割合。姉妹プロジェクトと揃える。
 const defaultSentryTracesSampleRate = 0.5
 
@@ -133,6 +141,10 @@ func Load() (*Config, error) {
 	cfg.ListenHost = os.Getenv("CUTRE_LISTEN_HOST")
 	if cfg.ListenHost == "" {
 		cfg.ListenHost = defaultListenHost
+	}
+
+	if err := loadMetricsPort(cfg); err != nil {
+		return nil, err
 	}
 
 	trustedProxies, err := parseTrustedProxies(os.Getenv("CUTRE_TRUSTED_PROXIES"))
@@ -181,6 +193,32 @@ func Load() (*Config, error) {
 	}
 
 	return cfg, nil
+}
+
+// loadMetricsPort はメトリクスのリスナーのポートを読み取る。
+//
+// HTTPサーバーと同じポートは許さない。どちらの待ち受けにも SO_REUSEPORT を付けるため、
+// 同じポートだと127.0.0.1へ届いたリクエストが2つのリスナーに振り分けられ、公開側とメトリクスが入り混じる。
+func loadMetricsPort(cfg *Config) error {
+	cfg.MetricsPort = os.Getenv("CUTRE_METRICS_PORT")
+	if cfg.MetricsPort == "" {
+		return nil
+	}
+
+	port, err := strconv.Atoi(cfg.MetricsPort)
+	if err != nil || port < 1 || port > 65535 {
+		return fmt.Errorf("環境変数 CUTRE_METRICS_PORT には1から65535までのポート番号を設定してください: %q", cfg.MetricsPort)
+	}
+	// サービス名や先頭ゼロを含む表記も、実際に待ち受けるポート番号で比較する。
+	publicPort, err := net.LookupPort("tcp", cfg.Port)
+	if err != nil {
+		return fmt.Errorf("環境変数 CUTRE_PORT のポートを解決できません: %w", err)
+	}
+	if port == publicPort {
+		return errors.New("環境変数 CUTRE_METRICS_PORT には CUTRE_PORT と異なるポートを設定してください")
+	}
+
+	return nil
 }
 
 // loadSentry はSentryの設定を読み取る。
@@ -307,6 +345,11 @@ func (c *Config) IsProduction() bool {
 // IPv6アドレスのホストも角括弧で囲んで組み立てる。
 func (c *Config) ListenAddr() string {
 	return net.JoinHostPort(c.ListenHost, c.Port)
+}
+
+// MetricsAddr はメトリクスのリスナーが待ち受けるアドレス (ホストとポート) を返す。
+func (c *Config) MetricsAddr() string {
+	return net.JoinHostPort(metricsHost, c.MetricsPort)
 }
 
 // AppURL はアプリケーションのベースURLを返す。

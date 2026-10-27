@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -72,6 +73,7 @@ import (
 	"github.com/cutreapp/cutre/go/internal/httperror"
 	"github.com/cutreapp/cutre/go/internal/i18n"
 	"github.com/cutreapp/cutre/go/internal/logging"
+	"github.com/cutreapp/cutre/go/internal/metrics"
 	"github.com/cutreapp/cutre/go/internal/middleware"
 	"github.com/cutreapp/cutre/go/internal/model"
 	"github.com/cutreapp/cutre/go/internal/ratelimit"
@@ -152,13 +154,23 @@ func runServe() int {
 		}
 	}()
 
+	// メトリクスは、返すリスナーを設定したときだけ集める。設定しなければ数える処理も通さない。
+	var metricsRegistry *metrics.Registry
+	var httpMetrics *metrics.HTTP
+	if cfg.MetricsPort != "" {
+		metricsRegistry = metrics.NewRegistry()
+		metricsRegistry.RegisterDB(db, "main")
+		metricsRegistry.RegisterPgxPool(workerClient.PoolStat, "river")
+		httpMetrics = metricsRegistry.NewHTTP()
+	}
+
 	// 静的アセットの配信元は、プロセスの作業ディレクトリからの相対パスで指す。
 	// go/ で起動する前提のため、リポジトリのgo/staticに解決される。
 	const staticDir = "./static"
 
 	// ルーターの構築は失敗するとpanicするため、systemdへ起動の完了を伝える前に済ませる。
 	srv := &http.Server{
-		Handler:        newRouter(cfg, db, staticDir),
+		Handler:        newRouter(cfg, db, staticDir, httpMetrics),
 		ReadTimeout:    15 * time.Second,
 		WriteTimeout:   15 * time.Second,
 		IdleTimeout:    60 * time.Second,
@@ -171,6 +183,23 @@ func runServe() int {
 		slog.Error("待ち受けの開始に失敗しました", "addr", addr, "error", err)
 		return 1
 	}
+
+	// メトリクスのリスナーも、待ち受けに失敗したら起動を失敗させる。設定したのに集められない状態で動き続けないようにするため。
+	// HTTPサーバーと同じく SO_REUSEPORT を付け、デプロイで新旧のプロセスが並ぶ間も新しいプロセスが待ち受けられるようにする。
+	var metricsSrv *http.Server
+	if metricsRegistry != nil {
+		metricsAddr := cfg.MetricsAddr()
+		metricsLn, err := daemon.Listen(context.Background(), metricsAddr)
+		if err != nil {
+			slog.Error("メトリクスの待ち受けの開始に失敗しました", "addr", metricsAddr, "error", err)
+			if err := ln.Close(); err != nil {
+				slog.Error("待ち受けのクローズに失敗しました", "error", err)
+			}
+			return 1
+		}
+		metricsSrv = serveMetrics(metricsLn, metricsRegistry)
+		slog.Info("メトリクスのサーバーを起動します", "addr", metricsAddr)
+	}
 	slog.Info("サーバーを起動します", "addr", addr, "env", cfg.Env, "revision", cfg.GitRev)
 
 	// 待ち受けを始めた時点で接続はカーネルのキューに溜まるため、Serveを呼ぶ前に起動の完了を伝えてよい。
@@ -179,6 +208,11 @@ func runServe() int {
 		slog.Error("systemdへの起動の通知に失敗しました", "error", err)
 		if err := ln.Close(); err != nil {
 			slog.Error("待ち受けのクローズに失敗しました", "error", err)
+		}
+		if metricsSrv != nil {
+			if err := metricsSrv.Close(); err != nil {
+				slog.Error("メトリクスのサーバーのクローズに失敗しました", "error", err)
+			}
 		}
 		return 1
 	}
@@ -192,6 +226,16 @@ func runServe() int {
 
 		slog.Info("シャットダウンシグナルを受信しました")
 
+		// メトリクスは先に止める。デプロイで新旧のプロセスが同じポートを共有する間、
+		// 収集が止まりゆく古いプロセスへ振り分けられる時間を短くするため。
+		if metricsSrv != nil {
+			metricsCtx, metricsCancel := context.WithTimeout(context.Background(), 5*time.Second)
+			if err := metricsSrv.Shutdown(metricsCtx); err != nil {
+				slog.Error("メトリクスのサーバーのシャットダウンに失敗しました", "error", err)
+			}
+			metricsCancel()
+		}
+
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer shutdownCancel()
 
@@ -203,6 +247,11 @@ func runServe() int {
 
 	if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		slog.Error("サーバーの起動に失敗しました", "error", err)
+		if metricsSrv != nil {
+			if err := metricsSrv.Close(); err != nil {
+				slog.Error("メトリクスのサーバーのクローズに失敗しました", "error", err)
+			}
+		}
 		return 1
 	}
 
@@ -211,6 +260,25 @@ func runServe() int {
 	slog.Info("サーバーを停止しました")
 
 	return 0
+}
+
+// serveMetrics はlnでメトリクスを返すサーバーを別のゴルーチンで動かし、止めるためのサーバーを返す。
+// 公開側のルーターとはミドルウェアも共有しない。前段を通らず同じVPSから届くリクエストだけを受けるため。
+func serveMetrics(ln net.Listener, reg *metrics.Registry) *http.Server {
+	srv := &http.Server{
+		Handler:           reg.Handler(),
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+
+	go func() {
+		if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			slog.Error("メトリクスのサーバーが停止しました", "error", err)
+		}
+	}()
+
+	return srv
 }
 
 // staticPathPrefix は静的アセットを配信するURLのパス接頭辞。
@@ -228,7 +296,9 @@ const healthPath = "/health"
 //
 // 静的アセットの配信元を引数で受け取るのは、テストが作業ディレクトリに依存せず、
 // ビルド済みのアセットも要求せずに配信の配線を確認できるようにするため。
-func newRouter(cfg *config.Config, db *sql.DB, staticDir string) *chi.Mux {
+//
+// httpMetricsがnilのときは、リクエストのメトリクスを数えない (メトリクスのリスナーを設定していないとき)。
+func newRouter(cfg *config.Config, db *sql.DB, staticDir string, httpMetrics *metrics.HTTP) *chi.Mux {
 	userRepo := repository.NewUserRepository(db)
 	userPasswordRepo := repository.NewUserPasswordRepository(db)
 	userSessionRepo := repository.NewUserSessionRepository(db)
@@ -634,8 +704,12 @@ func newRouter(cfg *config.Config, db *sql.DB, staticDir string) *chi.Mux {
 
 	// chimiddleware.RealIP はGHSA-3fxj-6jh8-hvhxのため使わない。
 	// アクセスログにリクエストIDを載せ、panicから返す500も記録するため、この順に並べる。
+	// メトリクスもアクセスログと同じ理由でRecovererより外側に置く。
 	r.Use(middleware.RequestID)
 	r.Use(middleware.AccessLog)
+	if httpMetrics != nil {
+		r.Use(middleware.Metrics(httpMetrics))
+	}
 	r.Use(chimiddleware.Recoverer)
 
 	// sentryhttpはリクエストごとのHubをcontextに載せ、panicを送ってからRecovererへ投げ直す (Repanic)。
