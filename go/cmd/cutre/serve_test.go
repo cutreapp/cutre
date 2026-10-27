@@ -24,6 +24,7 @@ import (
 
 	"github.com/cutreapp/cutre/go/internal/auth"
 	"github.com/cutreapp/cutre/go/internal/config"
+	"github.com/cutreapp/cutre/go/internal/database"
 	"github.com/cutreapp/cutre/go/internal/i18n"
 	"github.com/cutreapp/cutre/go/internal/middleware"
 	"github.com/cutreapp/cutre/go/internal/model"
@@ -79,6 +80,66 @@ func TestNewRouter_Health(t *testing.T) {
 	}
 	if body["status"] != "ok" {
 		t.Errorf("status = %q、期待値 = %q", body["status"], "ok")
+	}
+	if body["database"] != "ok" {
+		t.Errorf("database = %q、期待値 = %q", body["database"], "ok")
+	}
+}
+
+// TestNewRouter_Health_PoolExhausted は、セッションCookieの有無にかかわらず、
+// 接続プールが埋まっていてもヘルスチェックの期限で503を返すことを検証する。
+func TestNewRouter_Health_PoolExhausted(t *testing.T) {
+	t.Parallel()
+
+	for _, withCookie := range []bool{false, true} {
+		t.Run(fmt.Sprintf("セッションCookieあり=%v", withCookie), func(t *testing.T) {
+			t.Parallel()
+
+			// 共有プールの上限を変えると並行する他のテストを止めるため、専用のプールを使う。
+			db, err := database.Connect(os.Getenv("DATABASE_URL"))
+			if err != nil {
+				t.Fatalf("データベース接続のエラー = %v", err)
+			}
+			t.Cleanup(func() { _ = db.Close() })
+			db.SetMaxOpenConns(1)
+
+			conn, err := db.Conn(t.Context())
+			if err != nil {
+				t.Fatalf("接続の取得のエラー = %v", err)
+			}
+			t.Cleanup(func() { _ = conn.Close() })
+
+			router := newRouter(testConfig(), db, t.TempDir())
+			// ヘルスチェックの2秒より長い期限を設け、認証処理の接続待ちが残ってもテストを終了させる。
+			ctx, cancel := context.WithTimeout(t.Context(), 4*time.Second)
+			defer cancel()
+			req := httptest.NewRequest(http.MethodGet, "/health", nil).WithContext(ctx)
+			if withCookie {
+				req.AddCookie(&http.Cookie{Name: session.CookieName, Value: "health-check-session"})
+			}
+			rec := httptest.NewRecorder()
+
+			started := time.Now()
+			router.ServeHTTP(rec, req)
+			elapsed := time.Since(started)
+
+			// スケジューリングの余裕を1秒見込み、リクエスト側の4秒の期限で戻った場合と区別する。
+			if elapsed >= 3*time.Second {
+				t.Errorf("応答時間 = %v、3秒未満を期待", elapsed)
+			}
+			if err := ctx.Err(); err != nil {
+				t.Errorf("ヘルスチェックより先にリクエストの期限に到達: %v", err)
+			}
+			if rec.Code != http.StatusServiceUnavailable {
+				t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusServiceUnavailable)
+			}
+			if got := rec.Header().Get("Retry-After"); got != "5" {
+				t.Errorf("Retry-After = %q、期待値 = 5", got)
+			}
+			if got := rec.Header().Get("Cache-Control"); got != "no-store" {
+				t.Errorf("Cache-Control = %q、期待値 = no-store", got)
+			}
+		})
 	}
 }
 
@@ -330,7 +391,7 @@ func TestNewRouter_LocaleIndependentRoutes(t *testing.T) {
 		{
 			name: "ヘルスチェック",
 			path: "/health",
-			want: `{"status":"ok"}`,
+			want: `{"database":"ok","status":"ok"}`,
 		},
 		{
 			name: "静的アセット",
@@ -435,6 +496,35 @@ func TestNewRouter_StaticAssetsSkipSession(t *testing.T) {
 	}
 	if got := rec.Header().Get("Cache-Control"); got != "public, max-age=31536000, immutable" {
 		t.Errorf("Cache-Control = %q、期待値 = %q", got, "public, max-age=31536000, immutable")
+	}
+}
+
+// TestNewRouter_HealthSkipSession は、ヘルスチェックが利用者ごとに値の変わるミドルウェア
+// (セッション・CSRF・フラッシュ) の対象から外れ、
+// 延長の対象のセッションやCSRFのCookieを持たないリクエストにもSet-Cookieを返さないことを固定する。
+func TestNewRouter_HealthSkipSession(t *testing.T) {
+	t.Parallel()
+
+	db := testutil.GetTestDB()
+	userSession := testutil.NewUserSessionBuilder(t, db).
+		WithUserID(testutil.NewUserBuilder(t, db).Build()).
+		WithLastSeenAt(time.Now().Add(-48 * time.Hour)).
+		WithExpiresAt(time.Now().Add(24 * time.Hour))
+	userSession.Build()
+
+	router := newRouter(testConfig(), db, t.TempDir())
+
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	req.AddCookie(&http.Cookie{Name: session.CookieName, Value: userSession.Token()})
+	req.AddCookie(&http.Cookie{Name: session.FlashCookieName, Value: "flash"})
+	rec := httptest.NewRecorder()
+	router.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Errorf("ステータスコード = %d、期待値 = %d", rec.Code, http.StatusOK)
+	}
+	if got := rec.Header().Get("Set-Cookie"); got != "" {
+		t.Errorf("Set-Cookie = %q、期待値 = 空文字列", got)
 	}
 }
 

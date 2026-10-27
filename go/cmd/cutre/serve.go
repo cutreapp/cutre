@@ -177,6 +177,10 @@ func runServe() int {
 // 接頭辞を1か所に持たせて片方だけがずれないようにする。
 const staticPathPrefix = "/static"
 
+// healthPath はヘルスチェックのパス。
+// ルートと、そこを利用者ごとに値が変わるミドルウェアから外す条件の両方がこの値を使う。
+const healthPath = "/health"
+
 // newRouter はルーティングとミドルウェアを登録したルーターを返す。
 // 具体型を返すのは、テストが登録済みのミドルウェアを通る検証用のルートを足せるようにするため。
 //
@@ -192,7 +196,7 @@ func newRouter(cfg *config.Config, db *sql.DB, staticDir string) *chi.Mux {
 	authMiddleware := middleware.NewAuth(sessionMgr)
 	csrfMiddleware := middleware.NewCSRF()
 
-	healthHandler := health.NewHandler()
+	healthHandler := health.NewHandler(usecase.NewCheckHealthUsecase(repository.NewHealthRepository(db)))
 	welcomeHandler := welcome.NewHandler(cfg)
 
 	userTwoFactorAuthRepo := repository.NewUserTwoFactorAuthRepository(db)
@@ -610,30 +614,29 @@ func newRouter(cfg *config.Config, db *sql.DB, staticDir string) *chi.Mux {
 	// 現在のユーザーの解決はI18nより先に置く。
 	// ログイン後のページの表示言語は users.locale で決めるため、ロケールを決める側がユーザーを見られる必要がある。
 	// I18nは404 / 405のページを含む全ルートに掛かっており、その外側に置ける位置は同じく全ルートしかない。
-	// 静的アセットは利用者に依存しない公開キャッシュ対象のため、セッションの検索・延長を行わない。
-	// 延長時のSet-Cookieを public, immutable の応答へ載せないことも、この除外で保証する。
-	r.Use(chimiddleware.Maybe(authMiddleware.SetUser, outsideStaticAssets))
+	// 静的アセットとヘルスチェックは利用者に依存しないため、セッションの検索・延長を行わない (outsideUserIndependentRoutes)。
+	r.Use(chimiddleware.Maybe(authMiddleware.SetUser, outsideUserIndependentRoutes))
 
 	r.Use(middleware.I18n)
 
 	// CSRFの検証とトークンの発行。フォームを描くページより外側であればどこでもよいが、
-	// 安全なリクエストにトークンのCookieを発行するため、SetUserと同じく静的アセットからは外す。
-	r.Use(chimiddleware.Maybe(csrfMiddleware.Middleware, outsideStaticAssets))
+	// 安全なリクエストにトークンのCookieを発行するため、SetUserと同じく利用者に依存しないルートからは外す。
+	r.Use(chimiddleware.Maybe(csrfMiddleware.Middleware, outsideUserIndependentRoutes))
 
 	// _method によるメソッドの上書きはCSRFの検証より内側に置く。
 	// 検証を通す前に書き換えると、上書き後のメソッドを基準に検証することになる。
 	r.Use(middleware.MethodOverride)
 
 	// フラッシュメッセージの読み取りは、応答にCookieの消去を載せる。
-	// 静的アセットのリクエストで消費されると、ページが読む前にメッセージが消えるため同じく外す。
-	r.Use(chimiddleware.Maybe(flashMgr.Middleware, outsideStaticAssets))
+	// 静的アセットやヘルスチェックのリクエストで消費されると、ページが読む前にメッセージが消えるため同じく外す。
+	r.Use(chimiddleware.Maybe(flashMgr.Middleware, outsideUserIndependentRoutes))
 
 	// 静的アセットはビルド結果をディスクから読んで配信する。
 	// キャッシュ方針はページと異なるため、このルートにだけAssetCacheを重ねる。
 	fileServer := http.FileServer(assetFileSystem{http.Dir(staticDir)})
 	r.With(middleware.AssetCache(cfg)).Handle(staticPathPrefix+"/*", http.StripPrefix(staticPathPrefix, fileServer))
 
-	r.Get("/health", healthHandler.Show)
+	r.Get(healthPath, healthHandler.Show)
 
 	// 公開ページの言語版はURLで表す。日本語版は言語コードを持たず、英語版だけが /en 配下に来る。
 	// トップページはログイン前の訪問者向けのため、ログイン済みの訪問者はホームへ送る。
@@ -817,12 +820,14 @@ func newRouter(cfg *config.Config, db *sql.DB, staticDir string) *chi.Mux {
 	return r
 }
 
-// outsideStaticAssets は静的アセット以外のリクエストかどうかを返す。
+// outsideUserIndependentRoutes は、利用者に依存しないルート (静的アセット・ヘルスチェック) 以外のリクエストかどうかを返す。
 //
 // 利用者ごとに値が変わるミドルウェア (セッション・CSRF・フラッシュ) を掛ける範囲をこれで決める。
 // 静的アセットの応答は公開キャッシュの対象で、利用者固有のSet-Cookieを載せられない。
-func outsideStaticAssets(r *http.Request) bool {
-	return !strings.HasPrefix(r.URL.Path, staticPathPrefix+"/")
+// ヘルスチェックは外形監視が繰り返し叩くため、DBの確認より前にセッションの検索で待たせず、
+// Cookieを保存しない監視へ毎回CSRFのトークンを発行しない。
+func outsideUserIndependentRoutes(r *http.Request) bool {
+	return r.URL.Path != healthPath && !strings.HasPrefix(r.URL.Path, staticPathPrefix+"/")
 }
 
 // assetFileSystem は包んだファイルシステムのディレクトリを存在しないものとして扱う。
