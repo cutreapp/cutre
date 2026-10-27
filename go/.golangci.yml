@@ -409,6 +409,49 @@ linters:
             - pkg: github.com/cutreapp/cutre/go/internal/viewmodel
               desc: "ClientIPはViewModelに依存できません。"
 
+        # Daemon層: 常駐プロセスとしての待ち受けと、systemdへの起動の通知を扱う技術ユーティリティ。
+        # 設定もHTTPも知らず、標準ライブラリと golang.org/x/sys だけで完結させる。
+        daemon-layer:
+          files:
+            - "**/internal/daemon/**"
+          deny:
+            - pkg: github.com/cutreapp/cutre/go/internal/auth
+              desc: "DaemonはAuthに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/config
+              desc: "DaemonはConfigに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/database
+              desc: "DaemonはDatabaseに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/handler
+              desc: "DaemonはHandlerに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/httperror
+              desc: "DaemonはHttperrorに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/i18n
+              desc: "DaemonはI18nに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/logging
+              desc: "DaemonはLoggingに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/metrics
+              desc: "DaemonはMetricsに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/middleware
+              desc: "DaemonはMiddlewareに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/model
+              desc: "DaemonはModelに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/query
+              desc: "DaemonはQueryに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/repository
+              desc: "DaemonはRepositoryに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/sentry
+              desc: "DaemonはSentryに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/session
+              desc: "DaemonはSessionに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/templates
+              desc: "DaemonはTemplatesに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/usecase
+              desc: "DaemonはUseCaseに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/viewmodel
+              desc: "DaemonはViewModelに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/worker
+              desc: "DaemonはWorkerに依存できません。"
+
         # Logging層: ログの出力形式とリクエストIDを扱う技術ユーティリティ。
         # 設定もHTTPも知らず、すべての層から使えるよう標準ライブラリだけで完結させる。
         logging-layer:

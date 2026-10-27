@@ -20,6 +20,7 @@ import (
 
 	"github.com/cutreapp/cutre/go/internal/auth"
 	"github.com/cutreapp/cutre/go/internal/config"
+	"github.com/cutreapp/cutre/go/internal/daemon"
 	"github.com/cutreapp/cutre/go/internal/database"
 	"github.com/cutreapp/cutre/go/internal/dispatcher"
 	"github.com/cutreapp/cutre/go/internal/handler/account"
@@ -155,16 +156,31 @@ func runServe() int {
 	// go/ で起動する前提のため、リポジトリのgo/staticに解決される。
 	const staticDir = "./static"
 
-	addr := fmt.Sprintf("0.0.0.0:%s", cfg.Port)
-	slog.Info("サーバーを起動します", "addr", addr, "env", cfg.Env, "revision", cfg.GitRev)
-
+	// ルーターの構築は失敗するとpanicするため、systemdへ起動の完了を伝える前に済ませる。
 	srv := &http.Server{
-		Addr:           addr,
 		Handler:        newRouter(cfg, db, staticDir),
 		ReadTimeout:    15 * time.Second,
 		WriteTimeout:   15 * time.Second,
 		IdleTimeout:    60 * time.Second,
 		MaxHeaderBytes: 1 << 20,
+	}
+
+	addr := cfg.ListenAddr()
+	ln, err := daemon.Listen(context.Background(), addr)
+	if err != nil {
+		slog.Error("待ち受けの開始に失敗しました", "addr", addr, "error", err)
+		return 1
+	}
+	slog.Info("サーバーを起動します", "addr", addr, "env", cfg.Env, "revision", cfg.GitRev)
+
+	// 待ち受けを始めた時点で接続はカーネルのキューに溜まるため、Serveを呼ぶ前に起動の完了を伝えてよい。
+	// 通知に失敗すると、systemdは起動の完了を待ち続けた末にこのプロセスを止めるため、早めに起動を失敗させる。
+	if err := daemon.NotifyReady(); err != nil {
+		slog.Error("systemdへの起動の通知に失敗しました", "error", err)
+		if err := ln.Close(); err != nil {
+			slog.Error("待ち受けのクローズに失敗しました", "error", err)
+		}
+		return 1
 	}
 
 	// SIGINT / SIGTERMを受けたら新規接続の受け付けを止め、処理中のリクエストの完了を (タイムアウトまで) 待つ。
@@ -185,12 +201,12 @@ func runServe() int {
 		close(shutdownDone)
 	}()
 
-	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		slog.Error("サーバーの起動に失敗しました", "error", err)
 		return 1
 	}
 
-	// ListenAndServe は Shutdown の呼び出し直後に戻るため、ドレインの完了を待ってから終了する。
+	// Serve は Shutdown の呼び出し直後に戻るため、ドレインの完了を待ってから終了する。
 	<-shutdownDone
 	slog.Info("サーバーを停止しました")
 

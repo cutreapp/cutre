@@ -22,6 +22,7 @@ func setRequiredEnv(t *testing.T) {
 	t.Setenv("DATABASE_URL", "postgres://postgres@localhost:5432/cutre_test?sslmode=disable")
 	t.Setenv("CUTRE_PORT", "8080")
 	t.Setenv("CUTRE_DOMAIN", "cutre.example.com")
+	t.Setenv("CUTRE_LISTEN_HOST", "")
 	t.Setenv("CUTRE_TRUSTED_PROXIES", "")
 	t.Setenv("CUTRE_TURNSTILE_SITE_KEY", "")
 	t.Setenv("CUTRE_TURNSTILE_SECRET_KEY", "")
@@ -169,6 +170,58 @@ func TestConfig_AssetVersion(t *testing.T) {
 
 			if got := cfg.AssetVersion(); got != "abc1234" {
 				t.Errorf("AssetVersion() = %q、期待値 = %q", got, "abc1234")
+			}
+		})
+	}
+}
+
+func TestLoad_ListenHost(t *testing.T) {
+	tests := []struct {
+		name       string
+		listenHost string
+		want       string
+	}{
+		{name: "未設定なら0.0.0.0で待ち受ける", listenHost: "", want: "0.0.0.0"},
+		{name: "設定した値で待ち受ける", listenHost: "127.0.0.1", want: "127.0.0.1"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setRequiredEnv(t)
+			t.Setenv("CUTRE_LISTEN_HOST", tt.listenHost)
+
+			cfg, err := Load()
+			if err != nil {
+				t.Fatalf("Load()のエラー = %v", err)
+			}
+
+			if cfg.ListenHost != tt.want {
+				t.Errorf("ListenHost = %q、期待値 = %q", cfg.ListenHost, tt.want)
+			}
+		})
+	}
+}
+
+func TestConfig_ListenAddr(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		listenHost string
+		want       string
+	}{
+		{name: "IPv4アドレスはそのままポートと繋ぐ", listenHost: "127.0.0.1", want: "127.0.0.1:8080"},
+		{name: "IPv6アドレスは角括弧で囲む", listenHost: "::1", want: "[::1]:8080"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			cfg := &Config{ListenHost: tt.listenHost, Port: "8080"}
+
+			if got := cfg.ListenAddr(); got != tt.want {
+				t.Errorf("ListenAddr() = %q、期待値 = %q", got, tt.want)
 			}
 		})
 	}

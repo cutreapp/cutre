@@ -121,6 +121,13 @@ jobs:
       - name: Get dependencies
         run: go mod download
 
+      # 旧リスナーの未accept接続の移行を、本番と同じカーネル設定で検証する。
+      # 設定できない場合はここで失敗させ、続く make test-go で回帰テストがスキップされたままCIを通さない。
+      - name: Enable TCP connection migration
+        run: |
+          sudo sysctl -w net.ipv4.tcp_migrate_req=1
+          test "$(cat /proc/sys/net/ipv4/tcp_migrate_req)" = "1"
+
       # test-go はテスト用データベースの構築 (db-setup-test) を前提ターゲットに持つため、
       # ここで別ステップとして呼ばない。
       - name: Run tests

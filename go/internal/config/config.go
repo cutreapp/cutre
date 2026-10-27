@@ -4,6 +4,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net"
 	"net/mail"
 	"net/netip"
 	"os"
@@ -32,6 +33,10 @@ type Config struct {
 
 	Port   string
 	Domain string
+
+	// ListenHost はHTTPサーバーが待ち受けるアドレス。既定は 0.0.0.0 (すべてのIPv4アドレス)。
+	// 本番では前段 (cloudflared) だけが届くよう 127.0.0.1 にする。
+	ListenHost string
 
 	// TrustedProxies はアプリの前段に立つリバースプロキシが接続してくるネットワーク。
 	//
@@ -89,6 +94,9 @@ type Config struct {
 	SentryDebug bool
 }
 
+// defaultListenHost は待ち受けるアドレスの既定値。
+const defaultListenHost = "0.0.0.0"
+
 // defaultSentryTracesSampleRate はトレースを送るリクエストの既定の割合。姉妹プロジェクトと揃える。
 const defaultSentryTracesSampleRate = 0.5
 
@@ -120,6 +128,11 @@ func Load() (*Config, error) {
 	cfg.Domain = os.Getenv("CUTRE_DOMAIN")
 	if cfg.Domain == "" {
 		return nil, errors.New("必須の環境変数 CUTRE_DOMAIN が設定されていません")
+	}
+
+	cfg.ListenHost = os.Getenv("CUTRE_LISTEN_HOST")
+	if cfg.ListenHost == "" {
+		cfg.ListenHost = defaultListenHost
 	}
 
 	trustedProxies, err := parseTrustedProxies(os.Getenv("CUTRE_TRUSTED_PROXIES"))
@@ -288,6 +301,12 @@ func (c *Config) IsTest() bool {
 // IsProduction は本番環境かどうかを返す。
 func (c *Config) IsProduction() bool {
 	return c.Env == "prod"
+}
+
+// ListenAddr はHTTPサーバーが待ち受けるアドレス (ホストとポート) を返す。
+// IPv6アドレスのホストも角括弧で囲んで組み立てる。
+func (c *Config) ListenAddr() string {
+	return net.JoinHostPort(c.ListenHost, c.Port)
 }
 
 // AppURL はアプリケーションのベースURLを返す。
