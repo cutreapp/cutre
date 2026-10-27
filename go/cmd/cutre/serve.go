@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -14,11 +15,13 @@ import (
 	"syscall"
 	"time"
 
+	sentryhttp "github.com/getsentry/sentry-go/http"
 	"github.com/go-chi/chi/v5"
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 
 	"github.com/cutreapp/cutre/go/internal/auth"
 	"github.com/cutreapp/cutre/go/internal/config"
+	"github.com/cutreapp/cutre/go/internal/daemon"
 	"github.com/cutreapp/cutre/go/internal/database"
 	"github.com/cutreapp/cutre/go/internal/dispatcher"
 	"github.com/cutreapp/cutre/go/internal/handler/account"
@@ -69,10 +72,13 @@ import (
 	"github.com/cutreapp/cutre/go/internal/handler/welcome"
 	"github.com/cutreapp/cutre/go/internal/httperror"
 	"github.com/cutreapp/cutre/go/internal/i18n"
+	"github.com/cutreapp/cutre/go/internal/logging"
+	"github.com/cutreapp/cutre/go/internal/metrics"
 	"github.com/cutreapp/cutre/go/internal/middleware"
 	"github.com/cutreapp/cutre/go/internal/model"
 	"github.com/cutreapp/cutre/go/internal/ratelimit"
 	"github.com/cutreapp/cutre/go/internal/repository"
+	cutresentry "github.com/cutreapp/cutre/go/internal/sentry"
 	"github.com/cutreapp/cutre/go/internal/session"
 	"github.com/cutreapp/cutre/go/internal/templates"
 	"github.com/cutreapp/cutre/go/internal/turnstile"
@@ -84,13 +90,35 @@ import (
 // runServe はHTTPサーバーを起動し、シャットダウンが完了するまでブロックする。
 // 戻り値はプロセスの終了コード。
 func runServe() int {
-	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})))
+	// 出力形式は設定から決まるため、設定を読み終えるまではText形式で出す。
+	slog.SetDefault(slog.New(logging.NewBaseHandler(os.Stderr, logging.FormatText)))
 
 	cfg, err := config.Load()
 	if err != nil {
 		slog.Error("設定の読み込みに失敗しました", "error", err)
 		return 1
 	}
+
+	baseHandler := logging.NewBaseHandler(os.Stderr, cfg.LogFormat)
+	slog.SetDefault(slog.New(baseHandler))
+
+	// ReleaseにはGitのリビジョンを使い、デプロイごとにイベントを見分けられるようにする。
+	err = cutresentry.Init(cutresentry.Config{
+		DSN:              cfg.SentryDSN,
+		Environment:      cfg.SentryEnvironment,
+		Release:          cfg.GitRev,
+		TracesSampleRate: cfg.SentryTracesSampleRate,
+		Debug:            cfg.SentryDebug,
+	})
+	if err != nil {
+		slog.Error("Sentryの初期化に失敗しました", "error", err)
+		return 1
+	}
+	// deferは逆順に走るため、ワーカーとデータベース接続を閉じたあとで、その間に出たイベントまで送り切る。
+	defer cutresentry.Flush(2 * time.Second)
+
+	// Error以上のログをSentryにも送る。データベース接続やワーカーの起動より前に差し替え、起動時のエラーも届くようにする。
+	slog.SetDefault(slog.New(cutresentry.NewSlogHandler(baseHandler)))
 
 	db, err := database.Connect(cfg.DatabaseURL)
 	if err != nil {
@@ -102,6 +130,7 @@ func runServe() int {
 			slog.Error("データベース接続のクローズに失敗しました", "error", err)
 		}
 	}()
+	database.SetServerPoolLimits(db)
 	slog.Info("データベースに接続しました")
 
 	// バックグラウンドジョブはHTTPサーバーと同じプロセスで処理する。
@@ -125,20 +154,67 @@ func runServe() int {
 		}
 	}()
 
+	// メトリクスは、返すリスナーを設定したときだけ集める。設定しなければ数える処理も通さない。
+	var metricsRegistry *metrics.Registry
+	var httpMetrics *metrics.HTTP
+	if cfg.MetricsPort != "" {
+		metricsRegistry = metrics.NewRegistry()
+		metricsRegistry.RegisterDB(db, "main")
+		metricsRegistry.RegisterPgxPool(workerClient.PoolStat, "river")
+		httpMetrics = metricsRegistry.NewHTTP()
+	}
+
 	// 静的アセットの配信元は、プロセスの作業ディレクトリからの相対パスで指す。
 	// go/ で起動する前提のため、リポジトリのgo/staticに解決される。
 	const staticDir = "./static"
 
-	addr := fmt.Sprintf("0.0.0.0:%s", cfg.Port)
-	slog.Info("サーバーを起動します", "addr", addr, "env", cfg.Env)
-
+	// ルーターの構築は失敗するとpanicするため、systemdへ起動の完了を伝える前に済ませる。
 	srv := &http.Server{
-		Addr:           addr,
-		Handler:        newRouter(cfg, db, staticDir),
+		Handler:        newRouter(cfg, db, staticDir, httpMetrics),
 		ReadTimeout:    15 * time.Second,
 		WriteTimeout:   15 * time.Second,
 		IdleTimeout:    60 * time.Second,
 		MaxHeaderBytes: 1 << 20,
+	}
+
+	addr := cfg.ListenAddr()
+	ln, err := daemon.Listen(context.Background(), addr)
+	if err != nil {
+		slog.Error("待ち受けの開始に失敗しました", "addr", addr, "error", err)
+		return 1
+	}
+
+	// メトリクスのリスナーも、待ち受けに失敗したら起動を失敗させる。設定したのに集められない状態で動き続けないようにするため。
+	// HTTPサーバーと同じく SO_REUSEPORT を付け、デプロイで新旧のプロセスが並ぶ間も新しいプロセスが待ち受けられるようにする。
+	var metricsSrv *http.Server
+	if metricsRegistry != nil {
+		metricsAddr := cfg.MetricsAddr()
+		metricsLn, err := daemon.Listen(context.Background(), metricsAddr)
+		if err != nil {
+			slog.Error("メトリクスの待ち受けの開始に失敗しました", "addr", metricsAddr, "error", err)
+			if err := ln.Close(); err != nil {
+				slog.Error("待ち受けのクローズに失敗しました", "error", err)
+			}
+			return 1
+		}
+		metricsSrv = serveMetrics(metricsLn, metricsRegistry)
+		slog.Info("メトリクスのサーバーを起動します", "addr", metricsAddr)
+	}
+	slog.Info("サーバーを起動します", "addr", addr, "env", cfg.Env, "revision", cfg.GitRev)
+
+	// 待ち受けを始めた時点で接続はカーネルのキューに溜まるため、Serveを呼ぶ前に起動の完了を伝えてよい。
+	// 通知に失敗すると、systemdは起動の完了を待ち続けた末にこのプロセスを止めるため、早めに起動を失敗させる。
+	if err := daemon.NotifyReady(); err != nil {
+		slog.Error("systemdへの起動の通知に失敗しました", "error", err)
+		if err := ln.Close(); err != nil {
+			slog.Error("待ち受けのクローズに失敗しました", "error", err)
+		}
+		if metricsSrv != nil {
+			if err := metricsSrv.Close(); err != nil {
+				slog.Error("メトリクスのサーバーのクローズに失敗しました", "error", err)
+			}
+		}
+		return 1
 	}
 
 	// SIGINT / SIGTERMを受けたら新規接続の受け付けを止め、処理中のリクエストの完了を (タイムアウトまで) 待つ。
@@ -150,6 +226,16 @@ func runServe() int {
 
 		slog.Info("シャットダウンシグナルを受信しました")
 
+		// メトリクスは先に止める。デプロイで新旧のプロセスが同じポートを共有する間、
+		// 収集が止まりゆく古いプロセスへ振り分けられる時間を短くするため。
+		if metricsSrv != nil {
+			metricsCtx, metricsCancel := context.WithTimeout(context.Background(), 5*time.Second)
+			if err := metricsSrv.Shutdown(metricsCtx); err != nil {
+				slog.Error("メトリクスのサーバーのシャットダウンに失敗しました", "error", err)
+			}
+			metricsCancel()
+		}
+
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer shutdownCancel()
 
@@ -159,16 +245,40 @@ func runServe() int {
 		close(shutdownDone)
 	}()
 
-	if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		slog.Error("サーバーの起動に失敗しました", "error", err)
+		if metricsSrv != nil {
+			if err := metricsSrv.Close(); err != nil {
+				slog.Error("メトリクスのサーバーのクローズに失敗しました", "error", err)
+			}
+		}
 		return 1
 	}
 
-	// ListenAndServe は Shutdown の呼び出し直後に戻るため、ドレインの完了を待ってから終了する。
+	// Serve は Shutdown の呼び出し直後に戻るため、ドレインの完了を待ってから終了する。
 	<-shutdownDone
 	slog.Info("サーバーを停止しました")
 
 	return 0
+}
+
+// serveMetrics はlnでメトリクスを返すサーバーを別のゴルーチンで動かし、止めるためのサーバーを返す。
+// 公開側のルーターとはミドルウェアも共有しない。前段を通らず同じVPSから届くリクエストだけを受けるため。
+func serveMetrics(ln net.Listener, reg *metrics.Registry) *http.Server {
+	srv := &http.Server{
+		Handler:           reg.Handler(),
+		ReadHeaderTimeout: 5 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
+	}
+
+	go func() {
+		if err := srv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			slog.Error("メトリクスのサーバーが停止しました", "error", err)
+		}
+	}()
+
+	return srv
 }
 
 // staticPathPrefix は静的アセットを配信するURLのパス接頭辞。
@@ -177,12 +287,18 @@ func runServe() int {
 // 接頭辞を1か所に持たせて片方だけがずれないようにする。
 const staticPathPrefix = "/static"
 
+// healthPath はヘルスチェックのパス。
+// ルートと、そこを利用者ごとに値が変わるミドルウェアから外す条件の両方がこの値を使う。
+const healthPath = "/health"
+
 // newRouter はルーティングとミドルウェアを登録したルーターを返す。
 // 具体型を返すのは、テストが登録済みのミドルウェアを通る検証用のルートを足せるようにするため。
 //
 // 静的アセットの配信元を引数で受け取るのは、テストが作業ディレクトリに依存せず、
 // ビルド済みのアセットも要求せずに配信の配線を確認できるようにするため。
-func newRouter(cfg *config.Config, db *sql.DB, staticDir string) *chi.Mux {
+//
+// httpMetricsがnilのときは、リクエストのメトリクスを数えない (メトリクスのリスナーを設定していないとき)。
+func newRouter(cfg *config.Config, db *sql.DB, staticDir string, httpMetrics *metrics.HTTP) *chi.Mux {
 	userRepo := repository.NewUserRepository(db)
 	userPasswordRepo := repository.NewUserPasswordRepository(db)
 	userSessionRepo := repository.NewUserSessionRepository(db)
@@ -192,7 +308,7 @@ func newRouter(cfg *config.Config, db *sql.DB, staticDir string) *chi.Mux {
 	authMiddleware := middleware.NewAuth(sessionMgr)
 	csrfMiddleware := middleware.NewCSRF()
 
-	healthHandler := health.NewHandler()
+	healthHandler := health.NewHandler(usecase.NewCheckHealthUsecase(repository.NewHealthRepository(db)))
 	welcomeHandler := welcome.NewHandler(cfg)
 
 	userTwoFactorAuthRepo := repository.NewUserTwoFactorAuthRepository(db)
@@ -587,9 +703,21 @@ func newRouter(cfg *config.Config, db *sql.DB, staticDir string) *chi.Mux {
 	r.Use(middleware.SecurityHeaders)
 
 	// chimiddleware.RealIP はGHSA-3fxj-6jh8-hvhxのため使わない。
-	r.Use(chimiddleware.Logger)
-	r.Use(chimiddleware.RequestID)
+	// アクセスログにリクエストIDを載せ、panicから返す500も記録するため、この順に並べる。
+	// メトリクスもアクセスログと同じ理由でRecovererより外側に置く。
+	r.Use(middleware.RequestID)
+	r.Use(middleware.AccessLog)
+	if httpMetrics != nil {
+		r.Use(middleware.Metrics(httpMetrics))
+	}
 	r.Use(chimiddleware.Recoverer)
+
+	// sentryhttpはリクエストごとのHubをcontextに載せ、panicを送ってからRecovererへ投げ直す (Repanic)。
+	// Recovererより内側に登録し、投げ直したpanicをRecovererが500にする。
+	// ルートパターンとリクエストIDをイベントへ載せるミドルウェアは、Hubを読むためさらに内側に置く。
+	r.Use(sentryhttp.New(sentryhttp.Options{Repanic: true}).Handle)
+	r.Use(middleware.SentryTransaction)
+	r.Use(middleware.SentryRequestID)
 
 	// リダイレクトの発行元は、内側が書いたステータスを見てから付ける。
 	// 末尾スラッシュの正規化より外側に置き、そこが出す301も覆う。
@@ -610,30 +738,32 @@ func newRouter(cfg *config.Config, db *sql.DB, staticDir string) *chi.Mux {
 	// 現在のユーザーの解決はI18nより先に置く。
 	// ログイン後のページの表示言語は users.locale で決めるため、ロケールを決める側がユーザーを見られる必要がある。
 	// I18nは404 / 405のページを含む全ルートに掛かっており、その外側に置ける位置は同じく全ルートしかない。
-	// 静的アセットは利用者に依存しない公開キャッシュ対象のため、セッションの検索・延長を行わない。
-	// 延長時のSet-Cookieを public, immutable の応答へ載せないことも、この除外で保証する。
-	r.Use(chimiddleware.Maybe(authMiddleware.SetUser, outsideStaticAssets))
+	// 静的アセットとヘルスチェックは利用者に依存しないため、セッションの検索・延長を行わない (outsideUserIndependentRoutes)。
+	r.Use(chimiddleware.Maybe(authMiddleware.SetUser, outsideUserIndependentRoutes))
+
+	// ログイン中のユーザーをSentryのイベントに載せる。ユーザーを読むためSetUserより内側に置く。
+	r.Use(middleware.SentryUserContext)
 
 	r.Use(middleware.I18n)
 
 	// CSRFの検証とトークンの発行。フォームを描くページより外側であればどこでもよいが、
-	// 安全なリクエストにトークンのCookieを発行するため、SetUserと同じく静的アセットからは外す。
-	r.Use(chimiddleware.Maybe(csrfMiddleware.Middleware, outsideStaticAssets))
+	// 安全なリクエストにトークンのCookieを発行するため、SetUserと同じく利用者に依存しないルートからは外す。
+	r.Use(chimiddleware.Maybe(csrfMiddleware.Middleware, outsideUserIndependentRoutes))
 
 	// _method によるメソッドの上書きはCSRFの検証より内側に置く。
 	// 検証を通す前に書き換えると、上書き後のメソッドを基準に検証することになる。
 	r.Use(middleware.MethodOverride)
 
 	// フラッシュメッセージの読み取りは、応答にCookieの消去を載せる。
-	// 静的アセットのリクエストで消費されると、ページが読む前にメッセージが消えるため同じく外す。
-	r.Use(chimiddleware.Maybe(flashMgr.Middleware, outsideStaticAssets))
+	// 静的アセットやヘルスチェックのリクエストで消費されると、ページが読む前にメッセージが消えるため同じく外す。
+	r.Use(chimiddleware.Maybe(flashMgr.Middleware, outsideUserIndependentRoutes))
 
 	// 静的アセットはビルド結果をディスクから読んで配信する。
 	// キャッシュ方針はページと異なるため、このルートにだけAssetCacheを重ねる。
 	fileServer := http.FileServer(assetFileSystem{http.Dir(staticDir)})
 	r.With(middleware.AssetCache(cfg)).Handle(staticPathPrefix+"/*", http.StripPrefix(staticPathPrefix, fileServer))
 
-	r.Get("/health", healthHandler.Show)
+	r.Get(healthPath, healthHandler.Show)
 
 	// 公開ページの言語版はURLで表す。日本語版は言語コードを持たず、英語版だけが /en 配下に来る。
 	// トップページはログイン前の訪問者向けのため、ログイン済みの訪問者はホームへ送る。
@@ -817,12 +947,14 @@ func newRouter(cfg *config.Config, db *sql.DB, staticDir string) *chi.Mux {
 	return r
 }
 
-// outsideStaticAssets は静的アセット以外のリクエストかどうかを返す。
+// outsideUserIndependentRoutes は、利用者に依存しないルート (静的アセット・ヘルスチェック) 以外のリクエストかどうかを返す。
 //
 // 利用者ごとに値が変わるミドルウェア (セッション・CSRF・フラッシュ) を掛ける範囲をこれで決める。
 // 静的アセットの応答は公開キャッシュの対象で、利用者固有のSet-Cookieを載せられない。
-func outsideStaticAssets(r *http.Request) bool {
-	return !strings.HasPrefix(r.URL.Path, staticPathPrefix+"/")
+// ヘルスチェックは外形監視が繰り返し叩くため、DBの確認より前にセッションの検索で待たせず、
+// Cookieを保存しない監視へ毎回CSRFのトークンを発行しない。
+func outsideUserIndependentRoutes(r *http.Request) bool {
+	return r.URL.Path != healthPath && !strings.HasPrefix(r.URL.Path, staticPathPrefix+"/")
 }
 
 // assetFileSystem は包んだファイルシステムのディレクトリを存在しないものとして扱う。

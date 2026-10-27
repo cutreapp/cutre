@@ -91,3 +91,18 @@ func SetupTx(t *testing.T) (*sql.DB, *sql.Tx) {
 
 	return db, tx
 }
+
+// OpenUnreachableDB は接続を拒まれるデータベースを指す接続プールを返す。
+// データベースに届かないときの振る舞いを確かめるテストで使う。
+// ポート1は待ち受けているプロセスが無く、即座に接続を拒否される。
+func OpenUnreachableDB(t *testing.T) *sql.DB {
+	t.Helper()
+
+	db, err := sql.Open("pgx", "postgres://postgres@127.0.0.1:1/cutre_test?sslmode=disable&connect_timeout=1")
+	if err != nil {
+		t.Fatalf("sql.Openのエラー = %v", err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+
+	return db
+}

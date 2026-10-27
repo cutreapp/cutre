@@ -409,6 +409,168 @@ linters:
             - pkg: github.com/cutreapp/cutre/go/internal/viewmodel
               desc: "ClientIPはViewModelに依存できません。"
 
+        # Daemon層: 常駐プロセスとしての待ち受けと、systemdへの起動の通知を扱う技術ユーティリティ。
+        # 設定もHTTPも知らず、標準ライブラリと golang.org/x/sys だけで完結させる。
+        daemon-layer:
+          files:
+            - "**/internal/daemon/**"
+          deny:
+            - pkg: github.com/cutreapp/cutre/go/internal/auth
+              desc: "DaemonはAuthに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/config
+              desc: "DaemonはConfigに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/database
+              desc: "DaemonはDatabaseに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/handler
+              desc: "DaemonはHandlerに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/httperror
+              desc: "DaemonはHttperrorに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/i18n
+              desc: "DaemonはI18nに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/logging
+              desc: "DaemonはLoggingに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/metrics
+              desc: "DaemonはMetricsに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/middleware
+              desc: "DaemonはMiddlewareに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/model
+              desc: "DaemonはModelに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/query
+              desc: "DaemonはQueryに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/repository
+              desc: "DaemonはRepositoryに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/sentry
+              desc: "DaemonはSentryに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/session
+              desc: "DaemonはSessionに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/templates
+              desc: "DaemonはTemplatesに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/usecase
+              desc: "DaemonはUseCaseに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/viewmodel
+              desc: "DaemonはViewModelに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/worker
+              desc: "DaemonはWorkerに依存できません。"
+
+        # Logging層: ログの出力形式とリクエストIDを扱う技術ユーティリティ。
+        # 設定もHTTPも知らず、すべての層から使えるよう標準ライブラリだけで完結させる。
+        logging-layer:
+          files:
+            - "**/internal/logging/**"
+          deny:
+            - pkg: github.com/cutreapp/cutre/go/internal/auth
+              desc: "LoggingはAuthに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/config
+              desc: "LoggingはConfigに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/database
+              desc: "LoggingはDatabaseに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/handler
+              desc: "LoggingはHandlerに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/httperror
+              desc: "LoggingはHttperrorに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/i18n
+              desc: "LoggingはI18nに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/metrics
+              desc: "LoggingはMetricsに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/middleware
+              desc: "LoggingはMiddlewareに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/model
+              desc: "LoggingはModelに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/query
+              desc: "LoggingはQueryに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/repository
+              desc: "LoggingはRepositoryに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/sentry
+              desc: "LoggingはSentryに依存できません。Sentryへのファンアウトは基底のハンドラーを包んで行います。"
+            - pkg: github.com/cutreapp/cutre/go/internal/session
+              desc: "LoggingはSessionに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/templates
+              desc: "LoggingはTemplatesに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/usecase
+              desc: "LoggingはUseCaseに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/viewmodel
+              desc: "LoggingはViewModelに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/worker
+              desc: "LoggingはWorkerに依存できません。"
+
+        # Metrics層: アプリのメトリクスを集めてPrometheusの形式で返すInfrastructure層のアダプタ。
+        # 設定もルーティングも知らず、集める対象 (接続プールなど) は呼び出し元から受け取る。
+        metrics-layer:
+          files:
+            - "**/internal/metrics/**"
+          deny:
+            - pkg: github.com/cutreapp/cutre/go/internal/auth
+              desc: "MetricsはAuthに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/config
+              desc: "MetricsはConfigに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/database
+              desc: "MetricsはDatabaseに依存できません。接続プールは呼び出し元から受け取ってください。"
+            - pkg: github.com/cutreapp/cutre/go/internal/handler
+              desc: "MetricsはHandlerに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/httperror
+              desc: "MetricsはHttperrorに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/i18n
+              desc: "MetricsはI18nに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/middleware
+              desc: "MetricsはMiddlewareに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/model
+              desc: "MetricsはModelに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/query
+              desc: "MetricsはQueryに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/repository
+              desc: "MetricsはRepositoryに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/sentry
+              desc: "MetricsはSentryに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/session
+              desc: "MetricsはSessionに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/templates
+              desc: "MetricsはTemplatesに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/usecase
+              desc: "MetricsはUseCaseに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/viewmodel
+              desc: "MetricsはViewModelに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/worker
+              desc: "MetricsはWorkerに依存できません。"
+
+        # Sentry層: エラートラッカーのSentryへ送るイベントを組み立てるInfrastructure層のアダプタ。
+        # SDKとRiverだけに依存し、HTTPのルートやユーザーなどアプリケーションの情報は呼び出し元のミドルウェアが載せる。
+        sentry-layer:
+          files:
+            - "**/internal/sentry/**"
+          deny:
+            - pkg: github.com/cutreapp/cutre/go/internal/auth
+              desc: "SentryはAuthに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/config
+              desc: "SentryはConfigに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/database
+              desc: "SentryはDatabaseに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/handler
+              desc: "SentryはHandlerに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/httperror
+              desc: "SentryはHttperrorに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/i18n
+              desc: "SentryはI18nに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/metrics
+              desc: "SentryはMetricsに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/middleware
+              desc: "SentryはMiddlewareに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/model
+              desc: "SentryはModelに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/query
+              desc: "SentryはQueryに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/repository
+              desc: "SentryはRepositoryに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/session
+              desc: "SentryはSessionに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/templates
+              desc: "SentryはTemplatesに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/usecase
+              desc: "SentryはUseCaseに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/viewmodel
+              desc: "SentryはViewModelに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/worker
+              desc: "SentryはWorkerに依存できません。"
+
 formatters:
   enable:
     - gofmt # Go標準のフォーマット

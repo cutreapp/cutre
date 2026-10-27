@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log/slog"
+	"os"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -18,8 +19,10 @@ import (
 	"github.com/cutreapp/cutre/go/internal/config"
 	"github.com/cutreapp/cutre/go/internal/dispatcher"
 	"github.com/cutreapp/cutre/go/internal/email"
+	"github.com/cutreapp/cutre/go/internal/logging"
 	"github.com/cutreapp/cutre/go/internal/ratelimit"
 	"github.com/cutreapp/cutre/go/internal/repository"
+	"github.com/cutreapp/cutre/go/internal/sentry"
 	"github.com/cutreapp/cutre/go/internal/usecase"
 )
 
@@ -29,6 +32,21 @@ const (
 	deleteExpiredUserSessionsInterval       = 24 * time.Hour
 	deleteExpiredRateLimitsInterval         = time.Hour
 	deleteExpiredEmailConfirmationsInterval = time.Hour
+)
+
+// ワーカーの接続プールとジョブの並行数の設定。値はAnnictにそろえる。
+//
+// プールはRiverの内部の処理 (ジョブの取得・完了の記録・LISTEN・リーダーの選出・定期ジョブの投入) が使う。
+// ジョブの中のUseCaseはdatabase/sqlの接続 (internal/database の MaxOpenConns) を使うため、
+// poolMaxConns はジョブの並行数に合わせて増やす必要が無い。
+// 並行数の上限は、ジョブがHTTPの側の接続を使い切らないよう MaxOpenConns より十分小さくする。
+// max_connections との関係は internal/database の MaxOpenConns のコメントを参照。
+const (
+	poolMaxConns        = 10
+	poolMinConns        = 2
+	poolMaxConnLifetime = 5 * time.Minute
+	poolMaxConnIdleTime = 2 * time.Minute
+	defaultMaxWorkers   = 10
 )
 
 // Client はRiverのクライアントと、それが使う接続プールをまとめて保持する。
@@ -44,7 +62,16 @@ type Client struct {
 // ワーカーが呼ぶUseCaseのRepositoryは、HTTPの側と同じdbで組み立てる。
 // ワーカーだけが使う依存はここで組み立て、serve.goの配線へ漏らさない。
 func NewClient(ctx context.Context, cfg *config.Config, db *sql.DB) (*Client, error) {
-	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
+	poolConfig, err := pgxpool.ParseConfig(cfg.DatabaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("ワーカー用の接続文字列の解析に失敗: %w", err)
+	}
+	poolConfig.MaxConns = poolMaxConns
+	poolConfig.MinConns = poolMinConns
+	poolConfig.MaxConnLifetime = poolMaxConnLifetime
+	poolConfig.MaxConnIdleTime = poolMaxConnIdleTime
+
+	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
 		return nil, fmt.Errorf("ワーカー用の接続プールの作成に失敗: %w", err)
 	}
@@ -69,11 +96,15 @@ func NewClient(ctx context.Context, cfg *config.Config, db *sql.DB) (*Client, er
 	river.AddWorker(workers, NewDeleteExpiredRateLimitsWorker(usecase.NewDeleteExpiredRateLimitsUsecase(limiter)))
 	river.AddWorker(workers, NewDeleteExpiredEmailConfirmationsWorker(usecase.NewDeleteExpiredEmailConfirmationsUsecase(emailConfirmationRepo)))
 
+	// Riverの内部のサービスは、一時的な接続の失敗をErrorで出力して自力で回復する。
+	// デフォルトのロガーに流すとSentryのイベントになってしまうため、同じ形式でSentryへのファンアウトだけを持たない基底のハンドラーを渡す。
+	// ジョブの失敗はRiverWorkerMiddlewareが送るため、対処が要るものは失われない。
 	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{
-		Queues:       map[string]river.QueueConfig{river.QueueDefault: {MaxWorkers: 10}},
+		Queues:       map[string]river.QueueConfig{river.QueueDefault: {MaxWorkers: defaultMaxWorkers}},
 		Workers:      workers,
 		PeriodicJobs: periodicJobs(),
-		Logger:       slog.Default(),
+		Middleware:   []rivertype.Middleware{sentry.RiverWorkerMiddleware()},
+		Logger:       slog.New(logging.NewBaseHandler(os.Stderr, cfg.LogFormat)),
 	})
 	if err != nil {
 		pool.Close()
@@ -141,6 +172,12 @@ func (c *Client) Stop(ctx context.Context) error {
 // ジョブを投入する側 (Dispatcher) へ渡すために使う。
 func (c *Client) Client() *river.Client[pgx.Tx] {
 	return c.riverClient
+}
+
+// PoolStat はワーカーの接続プールの状態を返す。
+// メトリクス (internal/metrics) が、プールそのものを受け取らずに読み取るために使う。
+func (c *Client) PoolStat() *pgxpool.Stat {
+	return c.pool.Stat()
 }
 
 // newEmailSender は設定に応じたメールの送信の手段を返す。

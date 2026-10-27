@@ -4,6 +4,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"net"
 	"net/mail"
 	"net/netip"
 	"os"
@@ -11,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/cutreapp/cutre/go/internal/logging"
 )
 
 // ContinuationTokenMinimumKeyLength は継続トークンの鍵に求める最小のバイト数。
@@ -30,6 +33,14 @@ type Config struct {
 
 	Port   string
 	Domain string
+
+	// ListenHost はHTTPサーバーが待ち受けるアドレス。既定は 0.0.0.0 (すべてのIPv4アドレス)。
+	// 本番では前段 (cloudflared) だけが届くよう 127.0.0.1 にする。
+	ListenHost string
+
+	// MetricsPort はメトリクス (internal/metrics) を返す内部向けのリスナーのポート。
+	// 空のときはリスナーを立てない。待ち受けるアドレスは ListenHost によらず 127.0.0.1 に固定する (MetricsAddr)。
+	MetricsPort string
 
 	// TrustedProxies はアプリの前段に立つリバースプロキシが接続してくるネットワーク。
 	//
@@ -65,9 +76,37 @@ type Config struct {
 	// EmailFrom は送信するメールのFromに使うアドレス。ResendAPIKey を設定するときは必須。
 	EmailFrom string
 
-	// GitRev はデプロイしたGitコミットの短縮ハッシュ。本番 / テストのアセットバージョンに使う。
+	// GitRev はデプロイしたGitコミットの短縮ハッシュ。本番 / テストのアセットバージョンとSentryのReleaseに使う。
+	// 取れないときは開発・テスト環境では "dev" にし、本番では起動を止める (resolveGitRev)。
 	GitRev string
+
+	// LogFormat はログの出力形式。既定はText。
+	// 本番ではログの収集側がフィールドとしてそのまま取り込めるようJSONにする。
+	LogFormat logging.Format
+
+	// SentryDSN はエラーを送るSentryのプロジェクトのDSN。空のときはSentryを無効にする。
+	// 開発・テスト環境はこの状態で動かす。
+	SentryDSN string
+
+	// SentryEnvironment はSentryで環境を見分ける名前。既定は Env。
+	SentryEnvironment string
+
+	// SentryTracesSampleRate はパフォーマンスのトレースを送るリクエストの割合 (0〜1)。既定は0.5。
+	SentryTracesSampleRate float64
+
+	// SentryDebug はSentryのSDKのデバッグ出力を有効にするか。既定は無効。
+	SentryDebug bool
 }
+
+// defaultListenHost は待ち受けるアドレスの既定値。
+const defaultListenHost = "0.0.0.0"
+
+// metricsHost はメトリクスのリスナーが待ち受けるアドレス。
+// メトリクスは同じVPSの収集 (vmagent) だけに返すため、外から届くアドレスでは待ち受けない。
+const metricsHost = "127.0.0.1"
+
+// defaultSentryTracesSampleRate はトレースを送るリクエストの既定の割合。姉妹プロジェクトと揃える。
+const defaultSentryTracesSampleRate = 0.5
 
 // Load は環境変数から設定を読み込む。
 // 必須の環境変数が無い場合はエラーを返し、起動を止める。
@@ -99,6 +138,15 @@ func Load() (*Config, error) {
 		return nil, errors.New("必須の環境変数 CUTRE_DOMAIN が設定されていません")
 	}
 
+	cfg.ListenHost = os.Getenv("CUTRE_LISTEN_HOST")
+	if cfg.ListenHost == "" {
+		cfg.ListenHost = defaultListenHost
+	}
+
+	if err := loadMetricsPort(cfg); err != nil {
+		return nil, err
+	}
+
 	trustedProxies, err := parseTrustedProxies(os.Getenv("CUTRE_TRUSTED_PROXIES"))
 	if err != nil {
 		return nil, err
@@ -128,9 +176,81 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
-	cfg.GitRev = getGitCommitHash()
+	gitRev, err := resolveGitRev(cfg)
+	if err != nil {
+		return nil, err
+	}
+	cfg.GitRev = gitRev
+
+	logFormat, err := logging.ParseFormat(os.Getenv("CUTRE_LOG_FORMAT"))
+	if err != nil {
+		return nil, fmt.Errorf("環境変数 CUTRE_LOG_FORMAT の値が不正です: %w", err)
+	}
+	cfg.LogFormat = logFormat
+
+	if err := loadSentry(cfg); err != nil {
+		return nil, err
+	}
 
 	return cfg, nil
+}
+
+// loadMetricsPort はメトリクスのリスナーのポートを読み取る。
+//
+// HTTPサーバーと同じポートは許さない。どちらの待ち受けにも SO_REUSEPORT を付けるため、
+// 同じポートだと127.0.0.1へ届いたリクエストが2つのリスナーに振り分けられ、公開側とメトリクスが入り混じる。
+func loadMetricsPort(cfg *Config) error {
+	cfg.MetricsPort = os.Getenv("CUTRE_METRICS_PORT")
+	if cfg.MetricsPort == "" {
+		return nil
+	}
+
+	port, err := strconv.Atoi(cfg.MetricsPort)
+	if err != nil || port < 1 || port > 65535 {
+		return fmt.Errorf("環境変数 CUTRE_METRICS_PORT には1から65535までのポート番号を設定してください: %q", cfg.MetricsPort)
+	}
+	// サービス名や先頭ゼロを含む表記も、実際に待ち受けるポート番号で比較する。
+	publicPort, err := net.LookupPort("tcp", cfg.Port)
+	if err != nil {
+		return fmt.Errorf("環境変数 CUTRE_PORT のポートを解決できません: %w", err)
+	}
+	if port == publicPort {
+		return errors.New("環境変数 CUTRE_METRICS_PORT には CUTRE_PORT と異なるポートを設定してください")
+	}
+
+	return nil
+}
+
+// loadSentry はSentryの設定を読み取る。
+//
+// 読めない値は起動を止める。黙って既定値に戻すと、設定したつもりの割合やデバッグ出力が効いていないことに気付けないため。
+func loadSentry(cfg *Config) error {
+	cfg.SentryDSN = os.Getenv("CUTRE_SENTRY_DSN")
+
+	cfg.SentryEnvironment = os.Getenv("CUTRE_SENTRY_ENVIRONMENT")
+	if cfg.SentryEnvironment == "" {
+		cfg.SentryEnvironment = cfg.Env
+	}
+
+	cfg.SentryTracesSampleRate = defaultSentryTracesSampleRate
+	if value := os.Getenv("CUTRE_SENTRY_TRACES_SAMPLE_RATE"); value != "" {
+		rate, err := strconv.ParseFloat(value, 64)
+		// NaNはどの比較もfalseになるため、範囲の内側にあることを確かめる形で書く。
+		if err != nil || !(rate >= 0 && rate <= 1) {
+			return fmt.Errorf("環境変数 CUTRE_SENTRY_TRACES_SAMPLE_RATE には0から1までの数を設定してください: %q", value)
+		}
+		cfg.SentryTracesSampleRate = rate
+	}
+
+	if value := os.Getenv("CUTRE_SENTRY_DEBUG"); value != "" {
+		debug, err := strconv.ParseBool(value)
+		if err != nil {
+			return fmt.Errorf("環境変数 CUTRE_SENTRY_DEBUG には true か false を設定してください: %q", value)
+		}
+		cfg.SentryDebug = debug
+	}
+
+	return nil
 }
 
 // loadEmail はメールの送信の設定を読み取る。
@@ -221,6 +341,17 @@ func (c *Config) IsProduction() bool {
 	return c.Env == "prod"
 }
 
+// ListenAddr はHTTPサーバーが待ち受けるアドレス (ホストとポート) を返す。
+// IPv6アドレスのホストも角括弧で囲んで組み立てる。
+func (c *Config) ListenAddr() string {
+	return net.JoinHostPort(c.ListenHost, c.Port)
+}
+
+// MetricsAddr はメトリクスのリスナーが待ち受けるアドレス (ホストとポート) を返す。
+func (c *Config) MetricsAddr() string {
+	return net.JoinHostPort(metricsHost, c.MetricsPort)
+}
+
 // AppURL はアプリケーションのベースURLを返す。
 func (c *Config) AppURL() string {
 	return "https://" + c.Domain
@@ -236,25 +367,56 @@ func (c *Config) AssetVersion() string {
 	return c.GitRev
 }
 
-// getGitCommitHash は実行中のビルドのGitコミットの短縮ハッシュを返す。
+// stampedGitRev はビルド時に
+// `-ldflags "-X github.com/cutreapp/cutre/go/internal/config.stampedGitRev=..."` で埋め込むGitコミットのハッシュ
+// (go/Makefile の build ターゲットを参照)。
+// リンカが書き込めるのはパッケージレベルの変数だけのためこの形にし、埋め込まないビルドでは空のままにする。
+var stampedGitRev string
+
+// resolveGitRev は実行中のビルドのGitコミットの短縮ハッシュを決める。
 //
-// Dokkuのデプロイ先コンテナには .git ディレクトリが無く `git rev-parse` が失敗するため、
-// Dokkuがデプロイ時のコミットハッシュを渡す GIT_REV を最優先する。
-// プラットフォームが提供する変数のため CUTRE_ プレフィックスは付かない。
-// ローカルのgitコマンドは開発用のフォールバックで、どちらも使えなければ "dev" を返す。
-func getGitCommitHash() string {
-	if rev := strings.TrimSpace(os.Getenv("GIT_REV")); rev != "" {
-		// `git rev-parse --short` の短縮形とおおよそ揃える。
-		const shortHashLen = 7
-		if len(rev) > shortHashLen {
-			return rev[:shortHashLen]
-		}
-		return rev
+// 次の順に探し、最初に見つかった値を使う。
+//
+//  1. 環境変数 GIT_REV (上書き用。外部のデプロイの仕組みが渡す変数のため CUTRE_ プレフィックスは付かない)
+//  2. ビルド時に埋め込んだ stampedGitRev
+//  3. ローカルのgitコマンド (開発・テスト環境だけ)
+//
+// 本番でgitコマンドを見ないのは、配布したバイナリの周囲にはリポジトリが無く、
+// あっても作業ディレクトリのリポジトリが実行中のビルドと一致する保証が無いため。
+//
+// どれからも取れないとき、本番では起動を止める。アセットバージョンが固定値になり、
+// デプロイしてもアセットのURLが変わらず、古いCSS / JSが immutable でキャッシュされ続けるため。
+// 開発・テスト環境では "dev" を返す。
+func resolveGitRev(cfg *Config) (string, error) {
+	rev := strings.TrimSpace(os.Getenv("GIT_REV"))
+	if rev == "" {
+		rev = strings.TrimSpace(stampedGitRev)
+	}
+	if rev == "" && !cfg.IsProduction() {
+		rev = gitCommandRev()
 	}
 
+	if rev == "" {
+		if cfg.IsProduction() {
+			return "", errors.New("本番環境ではGitのリビジョンが必要です。ビルド時に埋め込むか、環境変数 GIT_REV を設定してください")
+		}
+		return "dev", nil
+	}
+
+	// `git rev-parse --short` の短縮形とおおよそ揃える。
+	const shortHashLen = 7
+	if len(rev) > shortHashLen {
+		return rev[:shortHashLen], nil
+	}
+	return rev, nil
+}
+
+// gitCommandRev はローカルのgitコマンドで作業ディレクトリのHEADの短縮ハッシュを返す。
+// 取れないときは空文字列を返す。
+func gitCommandRev() string {
 	out, err := exec.Command("git", "rev-parse", "--short", "HEAD").Output()
 	if err != nil {
-		return "dev"
+		return ""
 	}
 	return strings.TrimSpace(string(out))
 }

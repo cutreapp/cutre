@@ -49,9 +49,34 @@ templ-generate: ## templファイルからGoコードを生成 (goimportsも実�
 	go tool templ generate
 	@$(MAKE) goimports
 
+# 配布したバイナリの周囲には実行時にリビジョンを読めるリポジトリが無いため、ビルド時に埋め込む。
+# 本番 (APP_ENV=prod) は埋め込みも環境変数 GIT_REV も無いと起動しない (internal/config の resolveGitRev を参照)。
+GIT_REV_STAMP ?= $(shell git rev-parse HEAD 2>/dev/null)
+GIT_REV_LDFLAGS = -X github.com/cutreapp/cutre/go/internal/config.stampedGitRev=$(GIT_REV_STAMP)
+
 .PHONY: build
-build: templ-generate ## バイナリを bin/cutre にビルド
-	go build -o bin/cutre ./cmd/cutre
+build: templ-generate ## バイナリを bin/cutre にビルド (Gitのリビジョンを埋め込む)
+	go build -ldflags "$(GIT_REV_LDFLAGS)" -o bin/cutre ./cmd/cutre
+
+# 本番へ配布する成果物。リリースのワークフロー (.github/workflows/release.yml) がこのターゲットで作る。
+# 展開先 (リリースのディレクトリ) の直下に bin/・static/・db/migrations/ が並ぶよう、最上位のディレクトリを作らずにまとめる。
+# rootが展開してもCIのランナーのUIDで作られないよう、所有者を0に揃える。
+DIST_DIR = dist
+DIST_ARCHIVE = cutre-linux-amd64.tar.gz
+DIST_STAGE = $(DIST_DIR)/stage
+
+.PHONY: dist
+dist: templ-generate assets ## 本番に配布する成果物 (linux/amd64のtar.gzとSHA256) を dist/ に作る
+	@test -n "$(GIT_REV_STAMP)" || { echo "リビジョンを取得できません (GIT_REV_STAMP を指定してください)"; exit 1; }
+	rm -rf $(DIST_DIR)
+	mkdir -p $(DIST_STAGE)/bin $(DIST_STAGE)/db
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags "-s -w $(GIT_REV_LDFLAGS)" -o $(DIST_STAGE)/bin/cutre ./cmd/cutre
+	cp -R static $(DIST_STAGE)/static
+	cp -R db/migrations $(DIST_STAGE)/db/migrations
+	find $(DIST_STAGE) -name .gitkeep -delete
+	tar --owner=0 --group=0 --numeric-owner --sort=name -C $(DIST_STAGE) -czf $(DIST_DIR)/$(DIST_ARCHIVE) bin static db
+	cd $(DIST_DIR) && sha256sum $(DIST_ARCHIVE) > $(DIST_ARCHIVE).sha256
+	rm -rf $(DIST_STAGE)
 
 .PHONY: fmt
 fmt: ## コードをフォーマット (go fmt + goimports)

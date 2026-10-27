@@ -33,6 +33,15 @@ func TestNewClient(t *testing.T) {
 	if client.Client() == nil {
 		t.Error("Client() = nil、基盤のRiverのクライアントを期待")
 	}
+
+	// 接続数の上限を既定値 (CPUのコア数で変わる) に任せず、PostgreSQLの max_connections の予算に収める。
+	poolConfig := client.PoolConfig()
+	if poolConfig.MaxConns != 10 {
+		t.Errorf("MaxConns = %d、期待値 = %d", poolConfig.MaxConns, 10)
+	}
+	if poolConfig.MinConns != 2 {
+		t.Errorf("MinConns = %d、期待値 = %d", poolConfig.MinConns, 2)
+	}
 }
 
 // TestNewClient_InvalidDatabaseURL は、接続文字列として読めない値を渡すとエラーを返すことを検証する。

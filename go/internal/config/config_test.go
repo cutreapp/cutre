@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/cutreapp/cutre/go/internal/clientip"
+	"github.com/cutreapp/cutre/go/internal/logging"
 )
 
 // t.Setenv はプロセス全体の環境変数を書き換えるため、t.Setenv を使うテストでは t.Parallel() を呼ばない。
@@ -21,6 +22,8 @@ func setRequiredEnv(t *testing.T) {
 	t.Setenv("DATABASE_URL", "postgres://postgres@localhost:5432/cutre_test?sslmode=disable")
 	t.Setenv("CUTRE_PORT", "8080")
 	t.Setenv("CUTRE_DOMAIN", "cutre.example.com")
+	t.Setenv("CUTRE_LISTEN_HOST", "")
+	t.Setenv("CUTRE_METRICS_PORT", "")
 	t.Setenv("CUTRE_TRUSTED_PROXIES", "")
 	t.Setenv("CUTRE_TURNSTILE_SITE_KEY", "")
 	t.Setenv("CUTRE_TURNSTILE_SECRET_KEY", "")
@@ -28,7 +31,13 @@ func setRequiredEnv(t *testing.T) {
 	t.Setenv("CUTRE_TOTP_ENCRYPTION_KEY", "test-totp-encryption-key-0123456789")
 	t.Setenv("CUTRE_RESEND_API_KEY", "")
 	t.Setenv("CUTRE_EMAIL_FROM", "")
-	t.Setenv("GIT_REV", "")
+	// 本番 (APP_ENV=prod) はリビジョンが無いと起動しないため、gitコマンドに頼らない固定値を渡す。
+	t.Setenv("GIT_REV", "0123456789abcdef")
+	t.Setenv("CUTRE_LOG_FORMAT", "")
+	t.Setenv("CUTRE_SENTRY_DSN", "")
+	t.Setenv("CUTRE_SENTRY_ENVIRONMENT", "")
+	t.Setenv("CUTRE_SENTRY_TRACES_SAMPLE_RATE", "")
+	t.Setenv("CUTRE_SENTRY_DEBUG", "")
 }
 
 func TestLoad(t *testing.T) {
@@ -167,25 +176,218 @@ func TestConfig_AssetVersion(t *testing.T) {
 	}
 }
 
-func TestGetGitCommitHash_GitRev(t *testing.T) {
+func TestLoad_ListenHost(t *testing.T) {
 	tests := []struct {
-		name   string
-		gitRev string
-		want   string
+		name       string
+		listenHost string
+		want       string
 	}{
-		{name: "7文字より長い値は先頭7文字に短縮する", gitRev: "0123456789abcdef", want: "0123456"},
-		{name: "7文字以下の値はそのまま返す", gitRev: "abc12", want: "abc12"},
-		{name: "前後の空白を取り除く", gitRev: " 0123456789 \n", want: "0123456"},
+		{name: "未設定なら0.0.0.0で待ち受ける", listenHost: "", want: "0.0.0.0"},
+		{name: "設定した値で待ち受ける", listenHost: "127.0.0.1", want: "127.0.0.1"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setRequiredEnv(t)
+			t.Setenv("CUTRE_LISTEN_HOST", tt.listenHost)
+
+			cfg, err := Load()
+			if err != nil {
+				t.Fatalf("Load()のエラー = %v", err)
+			}
+
+			if cfg.ListenHost != tt.want {
+				t.Errorf("ListenHost = %q、期待値 = %q", cfg.ListenHost, tt.want)
+			}
+		})
+	}
+}
+
+func TestConfig_ListenAddr(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name       string
+		listenHost string
+		want       string
+	}{
+		{name: "IPv4アドレスはそのままポートと繋ぐ", listenHost: "127.0.0.1", want: "127.0.0.1:8080"},
+		{name: "IPv6アドレスは角括弧で囲む", listenHost: "::1", want: "[::1]:8080"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			cfg := &Config{ListenHost: tt.listenHost, Port: "8080"}
+
+			if got := cfg.ListenAddr(); got != tt.want {
+				t.Errorf("ListenAddr() = %q、期待値 = %q", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestLoad_MetricsPort(t *testing.T) {
+	tests := []struct {
+		name        string
+		metricsPort string
+		wantAddr    string
+	}{
+		{name: "未設定ならリスナーを立てない", metricsPort: ""},
+		{name: "設定したポートで127.0.0.1だけで待ち受ける", metricsPort: "9100", wantAddr: "127.0.0.1:9100"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setRequiredEnv(t)
+			// 公開側を0.0.0.0で待ち受けても、メトリクスは127.0.0.1に留まることを確かめる。
+			t.Setenv("CUTRE_LISTEN_HOST", "0.0.0.0")
+			t.Setenv("CUTRE_METRICS_PORT", tt.metricsPort)
+
+			cfg, err := Load()
+			if err != nil {
+				t.Fatalf("Load()のエラー = %v", err)
+			}
+
+			if cfg.MetricsPort != tt.metricsPort {
+				t.Errorf("MetricsPort = %q、期待値 = %q", cfg.MetricsPort, tt.metricsPort)
+			}
+			if tt.wantAddr != "" {
+				if got := cfg.MetricsAddr(); got != tt.wantAddr {
+					t.Errorf("MetricsAddr() = %q、期待値 = %q", got, tt.wantAddr)
+				}
+			}
+		})
+	}
+}
+
+// TestLoad_MetricsPort_PublicPort は、公開側のサービス名を許しつつ、別表記の同一ポートを拒否することを検証する。
+func TestLoad_MetricsPort_PublicPort(t *testing.T) {
+	tests := []struct {
+		name        string
+		publicPort  string
+		metricsPort string
+		wantErr     string
+	}{
+		{name: "メトリクス側の先頭ゼロ", publicPort: "8080", metricsPort: "08080", wantErr: "CUTRE_PORT と異なるポート"},
+		{name: "公開側の先頭ゼロ", publicPort: "08080", metricsPort: "8080", wantErr: "CUTRE_PORT と異なるポート"},
+		{name: "サービス名と同じポート", publicPort: "http", metricsPort: "80", wantErr: "CUTRE_PORT と異なるポート"},
+		{name: "サービス名と異なるポート", publicPort: "http", metricsPort: "9100"},
+		{name: "先頭ゼロがあっても異なるポート", publicPort: "08080", metricsPort: "09100"},
+		{name: "解決できない公開側のポート", publicPort: "invalid-port-name", metricsPort: "9100", wantErr: "CUTRE_PORT"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setRequiredEnv(t)
+			t.Setenv("CUTRE_PORT", tt.publicPort)
+			t.Setenv("CUTRE_METRICS_PORT", tt.metricsPort)
+			cfg, err := Load()
+			if tt.wantErr != "" {
+				if err == nil || !strings.Contains(err.Error(), tt.wantErr) {
+					t.Fatalf("Load()のエラー = %v、期待値 = %q を含むエラー", err, tt.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Load()のエラー = %v", err)
+			}
+			if cfg.Port != tt.publicPort || cfg.MetricsPort != tt.metricsPort {
+				t.Errorf("ポートの設定 = %q / %q、期待値 = %q / %q", cfg.Port, cfg.MetricsPort, tt.publicPort, tt.metricsPort)
+			}
+		})
+	}
+}
+
+func TestLoad_InvalidMetricsPort(t *testing.T) {
+	tests := []struct {
+		name        string
+		metricsPort string
+	}{
+		{name: "数でないポート", metricsPort: "metrics"},
+		{name: "0のポート", metricsPort: "0"},
+		{name: "65535を超えるポート", metricsPort: "65536"},
+		{name: "HTTPサーバーと同じポート", metricsPort: "8080"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setRequiredEnv(t)
+			t.Setenv("CUTRE_METRICS_PORT", tt.metricsPort)
+
+			if _, err := Load(); err == nil {
+				t.Fatal("エラーを期待したが、nilだった")
+			}
+		})
+	}
+}
+
+// setStampedGitRev はビルド時に埋め込むリビジョンをテストの間だけ差し替える。
+// パッケージレベルの変数を書き換えるため、これを使うテストでは t.Parallel() を呼ばない。
+func setStampedGitRev(t *testing.T, rev string) {
+	t.Helper()
+
+	original := stampedGitRev
+	stampedGitRev = rev
+	t.Cleanup(func() { stampedGitRev = original })
+}
+
+func TestResolveGitRev(t *testing.T) {
+	tests := []struct {
+		name    string
+		env     string
+		gitRev  string
+		stamped string
+		want    string
+	}{
+		{name: "GIT_REVを埋め込んだ値より優先する", env: "prod", gitRev: "fedcba9876543210", stamped: "0123456789abcdef", want: "fedcba9"},
+		{name: "本番ではビルド時に埋め込んだ値を使う", env: "prod", stamped: "0123456789abcdef", want: "0123456"},
+		{name: "7文字以下の値はそのまま返す", env: "prod", gitRev: "abc12", want: "abc12"},
+		{name: "前後の空白を取り除く", env: "prod", gitRev: " 0123456789 \n", want: "0123456"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Setenv("GIT_REV", tt.gitRev)
+			setStampedGitRev(t, tt.stamped)
 
-			if got := getGitCommitHash(); got != tt.want {
-				t.Errorf("getGitCommitHash() = %q、期待値 = %q", got, tt.want)
+			got, err := resolveGitRev(&Config{Env: tt.env})
+			if err != nil {
+				t.Fatalf("resolveGitRev()のエラー = %v", err)
+			}
+			if got != tt.want {
+				t.Errorf("resolveGitRev() = %q、期待値 = %q", got, tt.want)
 			}
 		})
+	}
+}
+
+// TestLoad_ProductionRequiresGitRev は、本番でリビジョンが取れないときに起動を止めることを検証する。
+// アセットバージョンが固定値になり、デプロイしても古いCSS / JSがキャッシュされ続けるのを防ぐため。
+func TestLoad_ProductionRequiresGitRev(t *testing.T) {
+	setRequiredEnv(t)
+	t.Setenv("APP_ENV", "prod")
+	t.Setenv("CUTRE_RESEND_API_KEY", "re_test")
+	t.Setenv("CUTRE_EMAIL_FROM", "noreply@example.com")
+	t.Setenv("GIT_REV", "")
+	setStampedGitRev(t, "")
+
+	cfg, err := Load()
+	if err == nil {
+		t.Fatalf("エラーを期待したが、nilだった (GitRev = %q)", cfg.GitRev)
+	}
+	if !strings.Contains(err.Error(), "GIT_REV") {
+		t.Errorf("エラーメッセージ = %q、GIT_REV を含むことを期待", err.Error())
+	}
+
+	setStampedGitRev(t, "fedcba9876543210")
+
+	cfg, err = Load()
+	if err != nil {
+		t.Fatalf("埋め込んだリビジョンがあるときのLoad()のエラー = %v", err)
+	}
+	if cfg.GitRev != "fedcba9" {
+		t.Errorf("GitRev = %q、期待値 = %q", cfg.GitRev, "fedcba9")
 	}
 }
 
@@ -504,6 +706,116 @@ func TestLoad_TOTPEncryptionKey(t *testing.T) {
 			}
 			if cfg.TOTPEncryptionKey != tt.key {
 				t.Errorf("TOTPEncryptionKey = %q、期待値 = %q", cfg.TOTPEncryptionKey, tt.key)
+			}
+		})
+	}
+}
+
+// TestLoad_LogFormat は、ログの出力形式の読み取りと既定値、読めない値で起動を止めることを検証する。
+func TestLoad_LogFormat(t *testing.T) {
+	tests := []struct {
+		name    string
+		value   string
+		want    logging.Format
+		wantErr bool
+	}{
+		{name: "未設定ならText", value: "", want: logging.FormatText},
+		{name: "textを読み取る", value: "text", want: logging.FormatText},
+		{name: "jsonを読み取る", value: "json", want: logging.FormatJSON},
+		{name: "未知の形式はエラーになる", value: "xml", wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setRequiredEnv(t)
+			t.Setenv("CUTRE_LOG_FORMAT", tt.value)
+
+			cfg, err := Load()
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("エラーを期待したが、nilだった")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Load()のエラー = %v", err)
+			}
+
+			if cfg.LogFormat != tt.want {
+				t.Errorf("LogFormat = %q、期待値 = %q", cfg.LogFormat, tt.want)
+			}
+		})
+	}
+}
+
+func TestLoad_Sentry(t *testing.T) {
+	setRequiredEnv(t)
+	t.Setenv("CUTRE_SENTRY_DSN", "https://public@o0.ingest.sentry.io/1")
+	t.Setenv("CUTRE_SENTRY_ENVIRONMENT", "production")
+	t.Setenv("CUTRE_SENTRY_TRACES_SAMPLE_RATE", "0.1")
+	t.Setenv("CUTRE_SENTRY_DEBUG", "true")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load()のエラー = %v", err)
+	}
+
+	if cfg.SentryDSN != "https://public@o0.ingest.sentry.io/1" {
+		t.Errorf("SentryDSN = %q、期待値 = %q", cfg.SentryDSN, "https://public@o0.ingest.sentry.io/1")
+	}
+	if cfg.SentryEnvironment != "production" {
+		t.Errorf("SentryEnvironment = %q、期待値 = %q", cfg.SentryEnvironment, "production")
+	}
+	if cfg.SentryTracesSampleRate != 0.1 {
+		t.Errorf("SentryTracesSampleRate = %v、期待値 = %v", cfg.SentryTracesSampleRate, 0.1)
+	}
+	if !cfg.SentryDebug {
+		t.Error("SentryDebug = false、期待値 = true")
+	}
+}
+
+func TestLoad_SentryDefaults(t *testing.T) {
+	setRequiredEnv(t)
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("Load()のエラー = %v", err)
+	}
+
+	if cfg.SentryDSN != "" {
+		t.Errorf("SentryDSN = %q、期待値 = 空", cfg.SentryDSN)
+	}
+	if cfg.SentryEnvironment != "test" {
+		t.Errorf("SentryEnvironment = %q、期待値 = APP_ENV の値 (%q)", cfg.SentryEnvironment, "test")
+	}
+	if cfg.SentryTracesSampleRate != 0.5 {
+		t.Errorf("SentryTracesSampleRate = %v、期待値 = %v", cfg.SentryTracesSampleRate, 0.5)
+	}
+	if cfg.SentryDebug {
+		t.Error("SentryDebug = true、期待値 = false")
+	}
+}
+
+func TestLoad_InvalidSentry(t *testing.T) {
+	tests := []struct {
+		name  string
+		key   string
+		value string
+	}{
+		{name: "数でない割合", key: "CUTRE_SENTRY_TRACES_SAMPLE_RATE", value: "half"},
+		{name: "0未満の割合", key: "CUTRE_SENTRY_TRACES_SAMPLE_RATE", value: "-0.1"},
+		{name: "1を超える割合", key: "CUTRE_SENTRY_TRACES_SAMPLE_RATE", value: "1.5"},
+		{name: "NaNの割合", key: "CUTRE_SENTRY_TRACES_SAMPLE_RATE", value: "NaN"},
+		{name: "真偽値でないデバッグ", key: "CUTRE_SENTRY_DEBUG", value: "yes"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setRequiredEnv(t)
+			t.Setenv(tt.key, tt.value)
+
+			if _, err := Load(); err == nil {
+				t.Fatal("エラーを期待したが、nilだった")
 			}
 		})
 	}
