@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/cutreapp/cutre/go/internal/clientip"
+	"github.com/cutreapp/cutre/go/internal/logging"
 )
 
 // t.Setenv はプロセス全体の環境変数を書き換えるため、t.Setenv を使うテストでは t.Parallel() を呼ばない。
@@ -29,6 +30,7 @@ func setRequiredEnv(t *testing.T) {
 	t.Setenv("CUTRE_RESEND_API_KEY", "")
 	t.Setenv("CUTRE_EMAIL_FROM", "")
 	t.Setenv("GIT_REV", "")
+	t.Setenv("CUTRE_LOG_FORMAT", "")
 }
 
 func TestLoad(t *testing.T) {
@@ -504,6 +506,43 @@ func TestLoad_TOTPEncryptionKey(t *testing.T) {
 			}
 			if cfg.TOTPEncryptionKey != tt.key {
 				t.Errorf("TOTPEncryptionKey = %q、期待値 = %q", cfg.TOTPEncryptionKey, tt.key)
+			}
+		})
+	}
+}
+
+// TestLoad_LogFormat は、ログの出力形式の読み取りと既定値、読めない値で起動を止めることを検証する。
+func TestLoad_LogFormat(t *testing.T) {
+	tests := []struct {
+		name    string
+		value   string
+		want    logging.Format
+		wantErr bool
+	}{
+		{name: "未設定ならText", value: "", want: logging.FormatText},
+		{name: "textを読み取る", value: "text", want: logging.FormatText},
+		{name: "jsonを読み取る", value: "json", want: logging.FormatJSON},
+		{name: "未知の形式はエラーになる", value: "xml", wantErr: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			setRequiredEnv(t)
+			t.Setenv("CUTRE_LOG_FORMAT", tt.value)
+
+			cfg, err := Load()
+			if tt.wantErr {
+				if err == nil {
+					t.Fatal("エラーを期待したが、nilだった")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Load()のエラー = %v", err)
+			}
+
+			if cfg.LogFormat != tt.want {
+				t.Errorf("LogFormat = %q、期待値 = %q", cfg.LogFormat, tt.want)
 			}
 		})
 	}

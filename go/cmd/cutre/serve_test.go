@@ -726,6 +726,30 @@ func TestNewRouter_NotFound(t *testing.T) {
 	}
 }
 
+// TestNewRouter_RequestID は、ハンドラーが描く応答にもルートが無い応答にも、
+// 自前で採番したリクエストIDが載ることを検証する。
+func TestNewRouter_RequestID(t *testing.T) {
+	t.Parallel()
+
+	for _, path := range []string{"/health", "/no-such-page"} {
+		t.Run(path, func(t *testing.T) {
+			t.Parallel()
+
+			router := newRouter(testConfig(), testutil.GetTestDB(), t.TempDir())
+
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+			req.Header.Set("X-Request-Id", "client-supplied")
+			rec := httptest.NewRecorder()
+
+			router.ServeHTTP(rec, req)
+
+			if got := rec.Header().Get("X-Request-Id"); got == "" || got == "client-supplied" {
+				t.Errorf("X-Request-Id = %q、期待値 = 自前で採番した値", got)
+			}
+		})
+	}
+}
+
 // TestNewRouter_MethodNotAllowed は経路はあるがメソッドを受け付けないリクエストが、
 // 共通の405ページに落ち、許可メソッドを伴って返ることを固定する。
 // 描画そのもののテストは internal/httperror が持つため、ここで見るのは

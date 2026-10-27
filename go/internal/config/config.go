@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/cutreapp/cutre/go/internal/logging"
 )
 
 // ContinuationTokenMinimumKeyLength は継続トークンの鍵に求める最小のバイト数。
@@ -67,6 +69,10 @@ type Config struct {
 
 	// GitRev はデプロイしたGitコミットの短縮ハッシュ。本番 / テストのアセットバージョンに使う。
 	GitRev string
+
+	// LogFormat はログの出力形式。既定はText。
+	// 本番ではログの収集側がフィールドとしてそのまま取り込めるようJSONにする。
+	LogFormat logging.Format
 }
 
 // Load は環境変数から設定を読み込む。
@@ -129,6 +135,12 @@ func Load() (*Config, error) {
 	}
 
 	cfg.GitRev = getGitCommitHash()
+
+	logFormat, err := logging.ParseFormat(os.Getenv("CUTRE_LOG_FORMAT"))
+	if err != nil {
+		return nil, fmt.Errorf("環境変数 CUTRE_LOG_FORMAT の値が不正です: %w", err)
+	}
+	cfg.LogFormat = logFormat
 
 	return cfg, nil
 }

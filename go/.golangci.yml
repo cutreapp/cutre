@@ -409,6 +409,47 @@ linters:
             - pkg: github.com/cutreapp/cutre/go/internal/viewmodel
               desc: "ClientIPはViewModelに依存できません。"
 
+        # Logging層: ログの出力形式とリクエストIDを扱う技術ユーティリティ。
+        # 設定もHTTPも知らず、すべての層から使えるよう標準ライブラリだけで完結させる。
+        logging-layer:
+          files:
+            - "**/internal/logging/**"
+          deny:
+            - pkg: github.com/cutreapp/cutre/go/internal/auth
+              desc: "LoggingはAuthに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/config
+              desc: "LoggingはConfigに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/database
+              desc: "LoggingはDatabaseに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/handler
+              desc: "LoggingはHandlerに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/httperror
+              desc: "LoggingはHttperrorに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/i18n
+              desc: "LoggingはI18nに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/metrics
+              desc: "LoggingはMetricsに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/middleware
+              desc: "LoggingはMiddlewareに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/model
+              desc: "LoggingはModelに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/query
+              desc: "LoggingはQueryに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/repository
+              desc: "LoggingはRepositoryに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/sentry
+              desc: "LoggingはSentryに依存できません。Sentryへのファンアウトは基底のハンドラーを包んで行います。"
+            - pkg: github.com/cutreapp/cutre/go/internal/session
+              desc: "LoggingはSessionに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/templates
+              desc: "LoggingはTemplatesに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/usecase
+              desc: "LoggingはUseCaseに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/viewmodel
+              desc: "LoggingはViewModelに依存できません。"
+            - pkg: github.com/cutreapp/cutre/go/internal/worker
+              desc: "LoggingはWorkerに依存できません。"
+
 formatters:
   enable:
     - gofmt # Go標準のフォーマット

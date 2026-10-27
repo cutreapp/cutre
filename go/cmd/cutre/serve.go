@@ -69,6 +69,7 @@ import (
 	"github.com/cutreapp/cutre/go/internal/handler/welcome"
 	"github.com/cutreapp/cutre/go/internal/httperror"
 	"github.com/cutreapp/cutre/go/internal/i18n"
+	"github.com/cutreapp/cutre/go/internal/logging"
 	"github.com/cutreapp/cutre/go/internal/middleware"
 	"github.com/cutreapp/cutre/go/internal/model"
 	"github.com/cutreapp/cutre/go/internal/ratelimit"
@@ -84,13 +85,17 @@ import (
 // runServe はHTTPサーバーを起動し、シャットダウンが完了するまでブロックする。
 // 戻り値はプロセスの終了コード。
 func runServe() int {
-	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo})))
+	// 出力形式は設定から決まるため、設定を読み終えるまではText形式で出す。
+	slog.SetDefault(slog.New(logging.NewBaseHandler(os.Stderr, logging.FormatText)))
 
 	cfg, err := config.Load()
 	if err != nil {
 		slog.Error("設定の読み込みに失敗しました", "error", err)
 		return 1
 	}
+
+	baseHandler := logging.NewBaseHandler(os.Stderr, cfg.LogFormat)
+	slog.SetDefault(slog.New(baseHandler))
 
 	db, err := database.Connect(cfg.DatabaseURL)
 	if err != nil {
@@ -592,8 +597,9 @@ func newRouter(cfg *config.Config, db *sql.DB, staticDir string) *chi.Mux {
 	r.Use(middleware.SecurityHeaders)
 
 	// chimiddleware.RealIP はGHSA-3fxj-6jh8-hvhxのため使わない。
-	r.Use(chimiddleware.Logger)
-	r.Use(chimiddleware.RequestID)
+	// アクセスログにリクエストIDを載せ、panicから返す500も記録するため、この順に並べる。
+	r.Use(middleware.RequestID)
+	r.Use(middleware.AccessLog)
 	r.Use(chimiddleware.Recoverer)
 
 	// リダイレクトの発行元は、内側が書いたステータスを見てから付ける。
