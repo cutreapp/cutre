@@ -68,6 +68,7 @@ type Config struct {
 	EmailFrom string
 
 	// GitRev はデプロイしたGitコミットの短縮ハッシュ。本番 / テストのアセットバージョンに使う。
+	// 取れないときは開発・テスト環境では "dev" にし、本番では起動を止める (resolveGitRev)。
 	GitRev string
 
 	// LogFormat はログの出力形式。既定はText。
@@ -134,7 +135,11 @@ func Load() (*Config, error) {
 		return nil, err
 	}
 
-	cfg.GitRev = getGitCommitHash()
+	gitRev, err := resolveGitRev(cfg)
+	if err != nil {
+		return nil, err
+	}
+	cfg.GitRev = gitRev
 
 	logFormat, err := logging.ParseFormat(os.Getenv("CUTRE_LOG_FORMAT"))
 	if err != nil {
@@ -248,25 +253,56 @@ func (c *Config) AssetVersion() string {
 	return c.GitRev
 }
 
-// getGitCommitHash は実行中のビルドのGitコミットの短縮ハッシュを返す。
+// stampedGitRev はビルド時に
+// `-ldflags "-X github.com/cutreapp/cutre/go/internal/config.stampedGitRev=..."` で埋め込むGitコミットのハッシュ
+// (go/Makefile の build ターゲットを参照)。
+// リンカが書き込めるのはパッケージレベルの変数だけのためこの形にし、埋め込まないビルドでは空のままにする。
+var stampedGitRev string
+
+// resolveGitRev は実行中のビルドのGitコミットの短縮ハッシュを決める。
 //
-// Dokkuのデプロイ先コンテナには .git ディレクトリが無く `git rev-parse` が失敗するため、
-// Dokkuがデプロイ時のコミットハッシュを渡す GIT_REV を最優先する。
-// プラットフォームが提供する変数のため CUTRE_ プレフィックスは付かない。
-// ローカルのgitコマンドは開発用のフォールバックで、どちらも使えなければ "dev" を返す。
-func getGitCommitHash() string {
-	if rev := strings.TrimSpace(os.Getenv("GIT_REV")); rev != "" {
-		// `git rev-parse --short` の短縮形とおおよそ揃える。
-		const shortHashLen = 7
-		if len(rev) > shortHashLen {
-			return rev[:shortHashLen]
-		}
-		return rev
+// 次の順に探し、最初に見つかった値を使う。
+//
+//  1. 環境変数 GIT_REV (上書き用。外部のデプロイの仕組みが渡す変数のため CUTRE_ プレフィックスは付かない)
+//  2. ビルド時に埋め込んだ stampedGitRev
+//  3. ローカルのgitコマンド (開発・テスト環境だけ)
+//
+// 本番でgitコマンドを見ないのは、配布したバイナリの周囲にはリポジトリが無く、
+// あっても作業ディレクトリのリポジトリが実行中のビルドと一致する保証が無いため。
+//
+// どれからも取れないとき、本番では起動を止める。アセットバージョンが固定値になり、
+// デプロイしてもアセットのURLが変わらず、古いCSS / JSが immutable でキャッシュされ続けるため。
+// 開発・テスト環境では "dev" を返す。
+func resolveGitRev(cfg *Config) (string, error) {
+	rev := strings.TrimSpace(os.Getenv("GIT_REV"))
+	if rev == "" {
+		rev = strings.TrimSpace(stampedGitRev)
+	}
+	if rev == "" && !cfg.IsProduction() {
+		rev = gitCommandRev()
 	}
 
+	if rev == "" {
+		if cfg.IsProduction() {
+			return "", errors.New("本番環境ではGitのリビジョンが必要です。ビルド時に埋め込むか、環境変数 GIT_REV を設定してください")
+		}
+		return "dev", nil
+	}
+
+	// `git rev-parse --short` の短縮形とおおよそ揃える。
+	const shortHashLen = 7
+	if len(rev) > shortHashLen {
+		return rev[:shortHashLen], nil
+	}
+	return rev, nil
+}
+
+// gitCommandRev はローカルのgitコマンドで作業ディレクトリのHEADの短縮ハッシュを返す。
+// 取れないときは空文字列を返す。
+func gitCommandRev() string {
 	out, err := exec.Command("git", "rev-parse", "--short", "HEAD").Output()
 	if err != nil {
-		return "dev"
+		return ""
 	}
 	return strings.TrimSpace(string(out))
 }

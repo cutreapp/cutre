@@ -29,7 +29,8 @@ func setRequiredEnv(t *testing.T) {
 	t.Setenv("CUTRE_TOTP_ENCRYPTION_KEY", "test-totp-encryption-key-0123456789")
 	t.Setenv("CUTRE_RESEND_API_KEY", "")
 	t.Setenv("CUTRE_EMAIL_FROM", "")
-	t.Setenv("GIT_REV", "")
+	// 本番 (APP_ENV=prod) はリビジョンが無いと起動しないため、gitコマンドに頼らない固定値を渡す。
+	t.Setenv("GIT_REV", "0123456789abcdef")
 	t.Setenv("CUTRE_LOG_FORMAT", "")
 }
 
@@ -169,25 +170,72 @@ func TestConfig_AssetVersion(t *testing.T) {
 	}
 }
 
-func TestGetGitCommitHash_GitRev(t *testing.T) {
+// setStampedGitRev はビルド時に埋め込むリビジョンをテストの間だけ差し替える。
+// パッケージレベルの変数を書き換えるため、これを使うテストでは t.Parallel() を呼ばない。
+func setStampedGitRev(t *testing.T, rev string) {
+	t.Helper()
+
+	original := stampedGitRev
+	stampedGitRev = rev
+	t.Cleanup(func() { stampedGitRev = original })
+}
+
+func TestResolveGitRev(t *testing.T) {
 	tests := []struct {
-		name   string
-		gitRev string
-		want   string
+		name    string
+		env     string
+		gitRev  string
+		stamped string
+		want    string
 	}{
-		{name: "7文字より長い値は先頭7文字に短縮する", gitRev: "0123456789abcdef", want: "0123456"},
-		{name: "7文字以下の値はそのまま返す", gitRev: "abc12", want: "abc12"},
-		{name: "前後の空白を取り除く", gitRev: " 0123456789 \n", want: "0123456"},
+		{name: "GIT_REVを埋め込んだ値より優先する", env: "prod", gitRev: "fedcba9876543210", stamped: "0123456789abcdef", want: "fedcba9"},
+		{name: "本番ではビルド時に埋め込んだ値を使う", env: "prod", stamped: "0123456789abcdef", want: "0123456"},
+		{name: "7文字以下の値はそのまま返す", env: "prod", gitRev: "abc12", want: "abc12"},
+		{name: "前後の空白を取り除く", env: "prod", gitRev: " 0123456789 \n", want: "0123456"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			t.Setenv("GIT_REV", tt.gitRev)
+			setStampedGitRev(t, tt.stamped)
 
-			if got := getGitCommitHash(); got != tt.want {
-				t.Errorf("getGitCommitHash() = %q、期待値 = %q", got, tt.want)
+			got, err := resolveGitRev(&Config{Env: tt.env})
+			if err != nil {
+				t.Fatalf("resolveGitRev()のエラー = %v", err)
+			}
+			if got != tt.want {
+				t.Errorf("resolveGitRev() = %q、期待値 = %q", got, tt.want)
 			}
 		})
+	}
+}
+
+// TestLoad_ProductionRequiresGitRev は、本番でリビジョンが取れないときに起動を止めることを検証する。
+// アセットバージョンが固定値になり、デプロイしても古いCSS / JSがキャッシュされ続けるのを防ぐため。
+func TestLoad_ProductionRequiresGitRev(t *testing.T) {
+	setRequiredEnv(t)
+	t.Setenv("APP_ENV", "prod")
+	t.Setenv("CUTRE_RESEND_API_KEY", "re_test")
+	t.Setenv("CUTRE_EMAIL_FROM", "noreply@example.com")
+	t.Setenv("GIT_REV", "")
+	setStampedGitRev(t, "")
+
+	cfg, err := Load()
+	if err == nil {
+		t.Fatalf("エラーを期待したが、nilだった (GitRev = %q)", cfg.GitRev)
+	}
+	if !strings.Contains(err.Error(), "GIT_REV") {
+		t.Errorf("エラーメッセージ = %q、GIT_REV を含むことを期待", err.Error())
+	}
+
+	setStampedGitRev(t, "fedcba9876543210")
+
+	cfg, err = Load()
+	if err != nil {
+		t.Fatalf("埋め込んだリビジョンがあるときのLoad()のエラー = %v", err)
+	}
+	if cfg.GitRev != "fedcba9" {
+		t.Errorf("GitRev = %q、期待値 = %q", cfg.GitRev, "fedcba9")
 	}
 }
 

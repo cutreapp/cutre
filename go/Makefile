@@ -49,9 +49,14 @@ templ-generate: ## templファイルからGoコードを生成 (goimportsも実�
 	go tool templ generate
 	@$(MAKE) goimports
 
+# 配布したバイナリの周囲には実行時にリビジョンを読めるリポジトリが無いため、ビルド時に埋め込む。
+# 本番 (APP_ENV=prod) は埋め込みも環境変数 GIT_REV も無いと起動しない (internal/config の resolveGitRev を参照)。
+GIT_REV_STAMP ?= $(shell git rev-parse HEAD 2>/dev/null)
+GIT_REV_LDFLAGS = -X github.com/cutreapp/cutre/go/internal/config.stampedGitRev=$(GIT_REV_STAMP)
+
 .PHONY: build
-build: templ-generate ## バイナリを bin/cutre にビルド
-	go build -o bin/cutre ./cmd/cutre
+build: templ-generate ## バイナリを bin/cutre にビルド (Gitのリビジョンを埋め込む)
+	go build -ldflags "$(GIT_REV_LDFLAGS)" -o bin/cutre ./cmd/cutre
 
 .PHONY: fmt
 fmt: ## コードをフォーマット (go fmt + goimports)

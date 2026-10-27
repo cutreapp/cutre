@@ -136,7 +136,7 @@ func runServe() int {
 	const staticDir = "./static"
 
 	addr := fmt.Sprintf("0.0.0.0:%s", cfg.Port)
-	slog.Info("サーバーを起動します", "addr", addr, "env", cfg.Env)
+	slog.Info("サーバーを起動します", "addr", addr, "env", cfg.Env, "revision", cfg.GitRev)
 
 	srv := &http.Server{
 		Addr:           addr,
