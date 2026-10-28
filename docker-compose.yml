@@ -8,6 +8,7 @@ services:
     volumes:
       - .:/workspace
       - op-config:/home/developer/.config/op
+      - wikino-cli-config:/home/developer/.config/wikino
       - go-mod-cache:/go/pkg/mod
       - go-build-cache:/go/.cache/go-build
     ports:
@@ -34,3 +35,4 @@ volumes:
   go-mod-cache:
   op-config:
   postgresql18-data:
+  wikino-cli-config:
